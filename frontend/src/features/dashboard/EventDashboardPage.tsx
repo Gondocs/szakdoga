@@ -40,7 +40,15 @@ import DownloadIcon from '@mui/icons-material/Download';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { toast } from 'react-toastify';
 import type { DashboardData, EvacuationEvent, Shelter, SpecialNeedCategory } from '../../types';
-import { fetchAllShelters, fetchDashboard, fetchEvent, summaryReportExportUrl, updateEvent } from '../../lib/api/endpoints';
+import {
+  fetchAllShelters,
+  fetchDashboard,
+  fetchEvent,
+  fetchStockForecast,
+  summaryReportExportUrl,
+  updateEvent,
+  type StockForecastData,
+} from '../../lib/api/endpoints';
 import { KpiCard } from '../../components/ui/KpiCard';
 import { RiskBadge } from '../../components/ui/RiskBadge';
 import { EventStatusBadge } from '../events/EventStatusBadge';
@@ -58,6 +66,7 @@ export function EventDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [stockForecast, setStockForecast] = useState<StockForecastData | null>(null);
 
   const canEditEvent = user?.role?.code === 'admin' || user?.role?.code === 'manager';
 
@@ -65,6 +74,7 @@ export function EventDashboardPage() {
     if (!eventId) return;
     fetchDashboard(eventId).then(setData).catch(() => setError('A dashboard adatok betöltése nem sikerült (lehet, hogy nincs jogosultsága).'));
     fetchEvent(eventId).then(setEvent).catch(() => setEvent(null));
+    fetchStockForecast(eventId).then(setStockForecast).catch(() => setStockForecast(null));
   }
 
   useEffect(() => {
@@ -257,6 +267,50 @@ export function EventDashboardPage() {
           </Table>
         </TableContainer>
       </Paper>
+
+      {stockForecast && (
+        <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5 }}>Napi készletigény-előrejelzés</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            A jelenleg befogadóhelyen tartózkodók száma és egyedi igényei alapján becsült napi szükséglet.
+          </Typography>
+          <Stack direction="row" flexWrap="wrap" gap={2} sx={{ mb: 2 }}>
+            <KpiCard label="Étkezési adag / nap" value={stockForecast.totals.meal_portions_per_day} icon={<PeopleAltIcon fontSize="small" />} />
+            <KpiCard label="Ebből speciális diéta" value={stockForecast.totals.special_diet_portions_per_day} icon={<PeopleAltIcon fontSize="small" />} />
+            <KpiCard label="Takaró" value={stockForecast.totals.blankets_needed} icon={<HotelIcon fontSize="small" />} />
+            <KpiCard label="Matrac" value={stockForecast.totals.mattresses_needed} icon={<HotelIcon fontSize="small" />} />
+            <KpiCard label="Gyógyszerre szoruló" value={stockForecast.totals.medicine_needed_count} icon={<WarningAmberIcon fontSize="small" />} />
+          </Stack>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Befogadóhely</TableCell>
+                  <TableCell>Létszám</TableCell>
+                  <TableCell>Étkezési adag/nap</TableCell>
+                  <TableCell>Speciális diéta/nap</TableCell>
+                  <TableCell>Takaró</TableCell>
+                  <TableCell>Matrac</TableCell>
+                  <TableCell>Gyógyszerre szoruló</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {stockForecast.by_shelter.map((row) => (
+                  <TableRow key={row.shelter_id}>
+                    <TableCell>{row.shelter_name}</TableCell>
+                    <TableCell>{row.checked_in_count}</TableCell>
+                    <TableCell>{row.meal_portions_per_day}</TableCell>
+                    <TableCell>{row.special_diet_portions_per_day}</TableCell>
+                    <TableCell>{row.blankets_needed}</TableCell>
+                    <TableCell>{row.mattresses_needed}</TableCell>
+                    <TableCell>{row.medicine_needed_count}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
+      )}
 
       <Paper variant="outlined" sx={{ p: 3 }}>
         <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>Speciális igények kategóriánként</Typography>
