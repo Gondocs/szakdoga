@@ -209,6 +209,17 @@ export interface Incident {
   created_at: string;
 }
 
+export interface AssemblyPoint {
+  id: number;
+  event_id: string;
+  name: string;
+  address: string | null;
+  lat: number;
+  lng: number;
+  notes: string | null;
+  created_at: string;
+}
+
 export type CareEventCategory = 'meal' | 'aid_package' | 'medical' | 'hygiene' | 'other';
 
 export interface CareEvent {
@@ -239,6 +250,7 @@ export interface CheckInRecord {
   event_id: string;
   person: { id: string; full_name: string };
   shelter: { id: string; name: string };
+  bed_label?: string | null;
   checked_in_at: string;
   checked_in_by: string;
   temporary_leave_at?: string | null;

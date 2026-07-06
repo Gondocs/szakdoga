@@ -1,5 +1,6 @@
 import { apiClient, ensureCsrfCookie } from './client';
 import type {
+  AssemblyPoint,
   AuditLogEntry,
   CheckInRecord,
   DashboardData,
@@ -40,6 +41,18 @@ export async function logout(): Promise<void> {
 
 export async function fetchMe(): Promise<User> {
   const { data } = await apiClient.get<{ data: User }>('/api/me');
+  return data.data;
+}
+
+export interface UpdateProfilePayload {
+  name?: string;
+  email?: string;
+  password?: string;
+  current_password?: string;
+}
+
+export async function updateProfile(payload: UpdateProfilePayload): Promise<User> {
+  const { data } = await apiClient.put<{ data: User }>('/api/me', payload);
   return data.data;
 }
 
@@ -86,6 +99,28 @@ export async function deleteEvent(eventId: string): Promise<void> {
 
 export async function fetchDashboard(eventId: string): Promise<DashboardData> {
   const { data } = await apiClient.get<{ data: DashboardData }>(`/api/events/${eventId}/dashboard`);
+  return data.data;
+}
+
+export interface StockForecastShelterRow {
+  shelter_id: string;
+  shelter_name: string | null;
+  checked_in_count: number;
+  meal_portions_per_day: number;
+  special_diet_portions_per_day: number;
+  blankets_needed: number;
+  mattresses_needed: number;
+  medicine_needed_count: number;
+}
+
+export interface StockForecastData {
+  generated_at: string;
+  by_shelter: StockForecastShelterRow[];
+  totals: Omit<StockForecastShelterRow, 'shelter_id' | 'shelter_name'>;
+}
+
+export async function fetchStockForecast(eventId: string): Promise<StockForecastData> {
+  const { data } = await apiClient.get<{ data: StockForecastData }>(`/api/events/${eventId}/stock-forecast`);
   return data.data;
 }
 
@@ -296,6 +331,33 @@ export async function resolveIncident(incidentId: number): Promise<Incident> {
   return data.data;
 }
 
+export interface AssemblyPointPayload {
+  name: string;
+  address?: string | null;
+  lat: number;
+  lng: number;
+  notes?: string | null;
+}
+
+export async function fetchAssemblyPoints(eventId: string): Promise<AssemblyPoint[]> {
+  const { data } = await apiClient.get<{ data: AssemblyPoint[] }>(`/api/events/${eventId}/assembly-points`);
+  return data.data;
+}
+
+export async function createAssemblyPoint(eventId: string, payload: AssemblyPointPayload): Promise<AssemblyPoint> {
+  const { data } = await apiClient.post<{ data: AssemblyPoint }>(`/api/events/${eventId}/assembly-points`, payload);
+  return data.data;
+}
+
+export async function updateAssemblyPoint(id: number, payload: AssemblyPointPayload): Promise<AssemblyPoint> {
+  const { data } = await apiClient.put<{ data: AssemblyPoint }>(`/api/assembly-points/${id}`, payload);
+  return data.data;
+}
+
+export async function deleteAssemblyPoint(id: number): Promise<void> {
+  await apiClient.delete(`/api/assembly-points/${id}`);
+}
+
 export async function fetchCareEvents(personId: string): Promise<CareEvent[]> {
   const { data } = await apiClient.get<{ data: CareEvent[] }>(`/api/persons/${personId}/care-events`);
   return data.data;
@@ -483,6 +545,7 @@ export interface CheckInPayload {
   public_id?: string;
   person_id?: string;
   override_capacity?: boolean;
+  bed_label?: string | null;
 }
 
 export async function checkInPerson(shelterId: string, payload: CheckInPayload) {
@@ -490,10 +553,23 @@ export async function checkInPerson(shelterId: string, payload: CheckInPayload) 
   return data.data;
 }
 
-export async function transferPerson(personId: string, shelterId: string, overrideCapacity = false): Promise<CheckInRecord> {
+export async function transferPerson(
+  personId: string,
+  shelterId: string,
+  overrideCapacity = false,
+  bedLabel?: string | null,
+): Promise<CheckInRecord> {
   const { data } = await apiClient.post<{ data: CheckInRecord }>(`/api/persons/${personId}/transfer`, {
     shelter_id: shelterId,
     override_capacity: overrideCapacity,
+    bed_label: bedLabel,
+  });
+  return data.data;
+}
+
+export async function updateBedAssignment(personId: string, bedLabel: string | null): Promise<CheckInRecord> {
+  const { data } = await apiClient.patch<{ data: CheckInRecord }>(`/api/persons/${personId}/bed-assignment`, {
+    bed_label: bedLabel,
   });
   return data.data;
 }
