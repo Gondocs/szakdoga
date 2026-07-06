@@ -54,4 +54,35 @@ class AuthTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.email', $user->email);
     }
+
+    public function test_user_can_update_own_name_without_current_password(): void
+    {
+        $this->actingAsRole(RoleCode::Admin);
+
+        $this->putJson('/api/me', ['name' => 'Új Név'])
+            ->assertOk()
+            ->assertJsonPath('data.name', 'Új Név');
+    }
+
+    public function test_user_cannot_change_email_without_correct_current_password(): void
+    {
+        $this->actingAsRole(RoleCode::Admin, ['password' => bcrypt('titkosjelszo')]);
+
+        $this->putJson('/api/me', [
+            'email' => 'uj-email@example.com',
+            'current_password' => 'wrong-password',
+        ])->assertUnprocessable();
+    }
+
+    public function test_user_can_change_password_with_correct_current_password(): void
+    {
+        $user = $this->actingAsRole(RoleCode::Admin, ['password' => bcrypt('regijelszo')]);
+
+        $this->putJson('/api/me', [
+            'password' => 'ujjelszo123',
+            'current_password' => 'regijelszo',
+        ])->assertOk();
+
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('ujjelszo123', $user->fresh()->password));
+    }
 }

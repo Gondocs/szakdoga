@@ -127,4 +127,50 @@ class ShelterTransferTest extends TestCase
         $returnResponse->assertOk();
         $this->assertNotNull($returnResponse->json('data.temporary_return_at'));
     }
+
+    public function test_bed_label_can_be_set_on_checkin_and_transfer_and_updated_afterwards(): void
+    {
+        $this->actingAsRole(RoleCode::Admin);
+        $municipality = Municipality::factory()->create();
+        $shelterA = Shelter::factory()->create(['capacity_total' => 50]);
+        $shelterB = Shelter::factory()->create(['capacity_total' => 50]);
+
+        $eventId = $this->postJson('/api/events', [
+            'code' => 'EVT-TRANSFER-4',
+            'name' => 'Teszt esemény',
+            'status' => 'active',
+            'shelters' => [
+                ['shelter_id' => $shelterA->id, 'capacity_limit' => 10],
+                ['shelter_id' => $shelterB->id, 'capacity_limit' => 10],
+            ],
+        ])->assertCreated()->json('data.id');
+
+        $this->actingAsRole(RoleCode::Registrar);
+        $personId = $this->postJson("/api/events/{$eventId}/persons", [
+            'last_name' => 'Teszt', 'first_name' => 'Elek', 'municipality_id' => $municipality->id,
+        ])->assertCreated()->json('data.id');
+        $publicId = $this->postJson("/api/persons/{$personId}/qr")->assertCreated()->json('data.public_id');
+
+        $this->actingAsRole(RoleCode::Admin);
+        $checkInResponse = $this->postJson("/api/shelters/{$shelterA->id}/checkins", [
+            'event_id' => $eventId,
+            'public_id' => $publicId,
+            'bed_label' => 'A terem, 3. ágy',
+        ]);
+        $checkInResponse->assertCreated();
+        $checkInResponse->assertJsonPath('data.bed_label', 'A terem, 3. ágy');
+
+        $transferResponse = $this->postJson("/api/persons/{$personId}/transfer", [
+            'shelter_id' => $shelterB->id,
+            'bed_label' => 'B terem, 7. ágy',
+        ]);
+        $transferResponse->assertCreated();
+        $transferResponse->assertJsonPath('data.bed_label', 'B terem, 7. ágy');
+
+        $updateResponse = $this->patchJson("/api/persons/{$personId}/bed-assignment", ['bed_label' => 'C terem, 1. ágy']);
+        $updateResponse->assertOk();
+        $updateResponse->assertJsonPath('data.bed_label', 'C terem, 1. ágy');
+
+        $this->assertDatabaseHas('checkins', ['person_id' => $personId, 'bed_label' => 'C terem, 1. ágy']);
+    }
 }
