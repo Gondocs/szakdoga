@@ -49,6 +49,7 @@ import {
   temporaryLeave,
   temporaryReturn,
   transferPerson,
+  updateBedAssignment,
   updatePerson,
   updateRegistrationStatus,
   uploadPersonDocumentPhoto,
@@ -129,8 +130,12 @@ export function PersonDetailPage() {
   const [isTogglingLeave, setIsTogglingLeave] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferShelterId, setTransferShelterId] = useState('');
+  const [transferBedLabel, setTransferBedLabel] = useState('');
   const [eventShelters, setEventShelters] = useState<ShelterWithRisk[]>([]);
   const [isTransferring, setIsTransferring] = useState(false);
+  const [bedLabelOpen, setBedLabelOpen] = useState(false);
+  const [bedLabelDraft, setBedLabelDraft] = useState('');
+  const [isSavingBedLabel, setIsSavingBedLabel] = useState(false);
 
   function reload() {
     if (!personId) return;
@@ -278,11 +283,12 @@ export function PersonDetailPage() {
     if (!personId || !transferShelterId) return;
     setIsTransferring(true);
     try {
-      const checkIn = await transferPerson(personId, transferShelterId);
+      const checkIn = await transferPerson(personId, transferShelterId, false, transferBedLabel.trim() || undefined);
       setLastCheckIn(checkIn);
       toast.success('Áthelyezés rögzítve.');
       setTransferOpen(false);
       setTransferShelterId('');
+      setTransferBedLabel('');
       reload();
     } catch (err: unknown) {
       const apiCode = (err as { response?: { data?: { code?: string } } })?.response?.data?.code;
@@ -293,6 +299,26 @@ export function PersonDetailPage() {
       }
     } finally {
       setIsTransferring(false);
+    }
+  }
+
+  function handleOpenBedLabel() {
+    setBedLabelDraft(lastCheckIn?.bed_label ?? '');
+    setBedLabelOpen(true);
+  }
+
+  async function handleSaveBedLabel() {
+    if (!personId) return;
+    setIsSavingBedLabel(true);
+    try {
+      const checkIn = await updateBedAssignment(personId, bedLabelDraft.trim() || null);
+      setLastCheckIn(checkIn);
+      toast.success('Ágy/szoba azonosító frissítve.');
+      setBedLabelOpen(false);
+    } catch {
+      toast.error('A frissítés nem sikerült.');
+    } finally {
+      setIsSavingBedLabel(false);
     }
   }
 
@@ -523,6 +549,12 @@ export function PersonDetailPage() {
               Ideiglenesen eltávozott: {new Date(lastCheckIn.temporary_leave_at).toLocaleString('hu-HU')}
             </Alert>
           )}
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            Ágy/szoba/szektor: <strong>{lastCheckIn?.bed_label || '– nincs megadva –'}</strong>
+            <Button size="small" onClick={handleOpenBedLabel} sx={{ ml: 1 }}>
+              Szerkesztés
+            </Button>
+          </Typography>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
             <Button
               variant="outlined"
@@ -671,11 +703,39 @@ export function PersonDetailPage() {
                 </MenuItem>
               ))}
           </TextField>
+          <TextField
+            label="Ágy/szoba/szektor azonosító (opcionális)"
+            fullWidth
+            sx={{ mt: 2 }}
+            value={transferBedLabel}
+            onChange={(e) => setTransferBedLabel(e.target.value)}
+            placeholder="pl. A terem, 12. ágy"
+          />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setTransferOpen(false)} color="inherit">Mégse</Button>
           <Button variant="contained" onClick={handleTransfer} disabled={isTransferring || !transferShelterId}>
             {isTransferring ? 'Áthelyezés…' : 'Áthelyezés'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={bedLabelOpen} onClose={() => setBedLabelOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle>Ágy/szoba azonosító módosítása</DialogTitle>
+        <DialogContent>
+          <TextField
+            label="Ágy/szoba/szektor azonosító"
+            fullWidth
+            sx={{ mt: 1 }}
+            value={bedLabelDraft}
+            onChange={(e) => setBedLabelDraft(e.target.value)}
+            placeholder="pl. A terem, 12. ágy"
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setBedLabelOpen(false)} color="inherit">Mégse</Button>
+          <Button variant="contained" onClick={handleSaveBedLabel} disabled={isSavingBedLabel}>
+            {isSavingBedLabel ? 'Mentés…' : 'Mentés'}
           </Button>
         </DialogActions>
       </Dialog>

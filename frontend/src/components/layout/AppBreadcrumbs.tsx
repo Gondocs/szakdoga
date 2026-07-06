@@ -21,6 +21,7 @@ const segmentLabels: Record<string, string> = {
   visszatelepites: 'Visszatelepítés',
   felhasznalok: 'Felhasználók',
   naplo: 'Napló',
+  beallitasok: 'Beállítások',
 };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
