@@ -23,9 +23,9 @@ class TransferPersonAction
     {
     }
 
-    public function execute(Person $person, Shelter $newShelter, User $operator, bool $overrideCapacity = false): CheckIn
+    public function execute(Person $person, Shelter $newShelter, User $operator, bool $overrideCapacity = false, ?string $bedLabel = null): CheckIn
     {
-        return DB::transaction(function () use ($person, $newShelter, $operator, $overrideCapacity) {
+        return DB::transaction(function () use ($person, $newShelter, $operator, $overrideCapacity, $bedLabel) {
             $registration = $person->registration()->lockForUpdate()->firstOrFail();
 
             $currentCheckIn = CheckIn::where('person_id', $person->id)
@@ -64,6 +64,7 @@ class TransferPersonAction
                 'event_id' => $registration->event_id,
                 'person_id' => $person->id,
                 'shelter_id' => $newShelter->id,
+                'bed_label' => $bedLabel,
                 'checked_in_at' => now(),
                 'checked_in_by' => $operator->id,
             ]);

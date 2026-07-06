@@ -10,6 +10,7 @@ use App\Models\EvacuationEvent;
 use App\Models\SpecialNeed;
 use App\Services\CapacityRiskService;
 use App\Services\DemographicsService;
+use App\Services\StockForecastService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
@@ -197,5 +198,27 @@ class DashboardController extends Controller
         return response()->json([
             'data' => collect($buckets)->map(fn ($count, $bucket) => ['bucket' => $bucket, 'count' => $count])->values(),
         ]);
+    }
+
+    #[OA\Get(
+        path: '/api/events/{event}/stock-forecast',
+        summary: 'Napi készletigény-előrejelzés befogadóhelyenként',
+        description: 'A jelenleg befogadóhelyen tartózkodó személyek száma és egyedi igényei alapján becsült napi '.
+            'étkezési adag-, takaró-, matrac- és gyógyszerigény.',
+        security: [['sanctumSession' => []]],
+        tags: ['Dashboard'],
+        parameters: [
+            new OA\Parameter(name: 'event', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Készletigény-előrejelzés befogadóhelyenkénti és összesített bontásban'),
+            new OA\Response(response: 403, description: 'Nincs jogosultság'),
+        ]
+    )]
+    public function stockForecast(EvacuationEvent $event, StockForecastService $stockForecastService)
+    {
+        $this->authorize('viewDashboard', $event);
+
+        return response()->json(['data' => $stockForecastService->forEvent($event)]);
     }
 }

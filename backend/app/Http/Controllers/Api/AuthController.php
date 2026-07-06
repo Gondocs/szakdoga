@@ -7,6 +7,9 @@ use App\Http\Requests\LoginRequest;
 use App\Http\Resources\UserResource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 use OpenApi\Attributes as OA;
 
@@ -95,5 +98,60 @@ class AuthController extends Controller
     public function me(Request $request)
     {
         return new UserResource($request->user()->load(['role', 'shelter']));
+    }
+
+    #[OA\Put(
+        path: '/api/me',
+        summary: 'Saját profil szerkesztése (név, e-mail, jelszó)',
+        description: 'E-mail vagy jelszó módosításához a jelenlegi jelszó megadása is szükséges.',
+        security: [['sanctumSession' => []]],
+        tags: ['Auth'],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                properties: [
+                    new OA\Property(property: 'name', type: 'string'),
+                    new OA\Property(property: 'email', type: 'string', format: 'email'),
+                    new OA\Property(property: 'password', type: 'string', format: 'password', nullable: true),
+                    new OA\Property(property: 'current_password', type: 'string', format: 'password', nullable: true),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Frissített felhasználó'),
+            new OA\Response(response: 422, description: 'Validációs hiba vagy hibás jelenlegi jelszó'),
+        ]
+    )]
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+
+        $data = $request->validate([
+            'name' => ['sometimes', 'required', 'string', 'max:255'],
+            'email' => ['sometimes', 'required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'password' => ['sometimes', 'nullable', 'string', Password::min(8)],
+            'current_password' => ['nullable', 'string'],
+        ]);
+
+        if (isset($data['email']) || ! empty($data['password'])) {
+            if (! Hash::check($data['current_password'] ?? '', $user->password)) {
+                throw ValidationException::withMessages([
+                    'current_password' => 'A jelenlegi jelszó nem megfelelő.',
+                ]);
+            }
+        }
+
+        $update = array_filter([
+            'name' => $data['name'] ?? null,
+            'email' => $data['email'] ?? null,
+        ], fn ($v) => $v !== null);
+
+        if (! empty($data['password'])) {
+            $update['password'] = bcrypt($data['password']);
+        }
+
+        $user->update($update);
+
+        return new UserResource($user->fresh(['role', 'shelter']));
     }
 }

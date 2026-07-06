@@ -25,9 +25,9 @@ class CheckInPersonAction
      * kapacitás-ellenőrzés, checkin rögzítés, regisztráció-státusz és
      * event_shelters.checked_in_count frissítése, majd napló.
      */
-    public function execute(EvacuationEvent $event, Person $person, Shelter $shelter, User $operator, bool $overrideCapacity = false): CheckIn
+    public function execute(EvacuationEvent $event, Person $person, Shelter $shelter, User $operator, bool $overrideCapacity = false, ?string $bedLabel = null): CheckIn
     {
-        return DB::transaction(function () use ($event, $person, $shelter, $operator, $overrideCapacity) {
+        return DB::transaction(function () use ($event, $person, $shelter, $operator, $overrideCapacity, $bedLabel) {
             $registration = $person->registration()->lockForUpdate()->firstOrFail();
 
             if ($registration->status === RegistrationStatus::ArrivedShelter) {
@@ -47,6 +47,7 @@ class CheckInPersonAction
                 'event_id' => $event->id,
                 'person_id' => $person->id,
                 'shelter_id' => $shelter->id,
+                'bed_label' => $bedLabel,
                 'checked_in_at' => now(),
                 'checked_in_by' => $operator->id,
             ]);

@@ -38,6 +38,7 @@ class CheckInController extends Controller
                     new OA\Property(property: 'public_id', type: 'string', description: 'QR-token azonosítója (vagy person_id adható meg helyette)'),
                     new OA\Property(property: 'person_id', type: 'string', format: 'uuid'),
                     new OA\Property(property: 'override_capacity', type: 'boolean', description: 'Csak admin/vezető szerepkörnél hatásos'),
+                    new OA\Property(property: 'bed_label', type: 'string', nullable: true, description: 'Ágy/szoba/szektor azonosító (opcionális)'),
                 ]
             )
         ),
@@ -87,7 +88,7 @@ class CheckInController extends Controller
             && $request->user()->hasRole(RoleCode::Admin, RoleCode::Manager);
 
         try {
-            $checkIn = $action->execute($event, $person, $shelter, $request->user(), $overrideCapacity);
+            $checkIn = $action->execute($event, $person, $shelter, $request->user(), $overrideCapacity, $request->validated('bed_label'));
         } catch (AlreadyCheckedInException $e) {
             return response()->json(['message' => $e->getMessage(), 'code' => 'ALREADY_CHECKED_IN'], 409);
         } catch (ShelterFullException $e) {
@@ -116,6 +117,7 @@ class CheckInController extends Controller
                 properties: [
                     new OA\Property(property: 'shelter_id', type: 'string', format: 'uuid'),
                     new OA\Property(property: 'override_capacity', type: 'boolean'),
+                    new OA\Property(property: 'bed_label', type: 'string', nullable: true, description: 'Ágy/szoba/szektor azonosító (opcionális)'),
                 ]
             )
         ),
@@ -131,6 +133,7 @@ class CheckInController extends Controller
         $data = $request->validate([
             'shelter_id' => ['required', 'uuid', 'exists:shelters,id'],
             'override_capacity' => ['nullable', 'boolean'],
+            'bed_label' => ['nullable', 'string', 'max:100'],
         ]);
 
         $newShelter = Shelter::findOrFail($data['shelter_id']);
@@ -140,7 +143,7 @@ class CheckInController extends Controller
         $overrideCapacity = $request->boolean('override_capacity') && $request->user()->hasRole(RoleCode::Admin, RoleCode::Manager);
 
         try {
-            $checkIn = $action->execute($person, $newShelter, $request->user(), $overrideCapacity);
+            $checkIn = $action->execute($person, $newShelter, $request->user(), $overrideCapacity, $data['bed_label'] ?? null);
         } catch (ShelterFullException $e) {
             return response()->json(['message' => $e->getMessage(), 'code' => 'SHELTER_FULL'], 409);
         }
@@ -194,6 +197,42 @@ class CheckInController extends Controller
         $this->authorize('checkIn', $checkIn->shelter);
 
         $checkIn->update(['temporary_return_at' => now()]);
+
+        return new CheckInResource($checkIn->fresh(['person', 'shelter', 'checkedInBy']));
+    }
+
+    #[OA\Patch(
+        path: '/api/persons/{person}/bed-assignment',
+        summary: 'Ágy/szoba azonosító módosítása a jelenlegi befogadóhelyi elhelyezésen',
+        security: [['sanctumSession' => []]],
+        tags: ['CheckIns'],
+        parameters: [
+            new OA\Parameter(name: 'person', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid')),
+        ],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                properties: [
+                    new OA\Property(property: 'bed_label', type: 'string', nullable: true),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Ágy/szoba azonosító frissítve'),
+            new OA\Response(response: 403, description: 'Nincs jogosultság'),
+            new OA\Response(response: 422, description: 'A személy nincs befogadóhelyen'),
+        ]
+    )]
+    public function updateBedAssignment(Request $request, Person $person)
+    {
+        $data = $request->validate([
+            'bed_label' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $checkIn = $this->currentCheckInOrFail($person);
+        $this->authorize('checkIn', $checkIn->shelter);
+
+        $checkIn->update(['bed_label' => $data['bed_label'] ?? null]);
 
         return new CheckInResource($checkIn->fresh(['person', 'shelter', 'checkedInBy']));
     }
