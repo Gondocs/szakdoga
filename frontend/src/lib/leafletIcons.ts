@@ -27,3 +27,10 @@ export const shelterIcon = new L.DivIcon({
   iconSize: [26, 26],
   iconAnchor: [13, 13],
 });
+
+export const assemblyPointIcon = new L.DivIcon({
+  html: '<div style="background:#2e7d32;color:#fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,0.4);font-size:14px;">📍</div>',
+  className: '',
+  iconSize: [26, 26],
+  iconAnchor: [13, 13],
+});

@@ -33,6 +33,7 @@ export function QrCheckInPage() {
   const [shelterId, setShelterId] = useState<string>('');
   const [publicId, setPublicId] = useState('');
   const [previewPerson, setPreviewPerson] = useState<Person | null>(null);
+  const [bedLabel, setBedLabel] = useState('');
   const [isBusy, setIsBusy] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
 
@@ -87,10 +88,15 @@ export function QrCheckInPage() {
     if (!eventId || !shelterId) return;
     setIsBusy(true);
     try {
-      await checkInPerson(shelterId, { event_id: eventId, public_id: publicId.trim() });
+      await checkInPerson(shelterId, {
+        event_id: eventId,
+        public_id: publicId.trim(),
+        bed_label: bedLabel.trim() || undefined,
+      });
       toast.success(`${previewPerson?.full_name ?? 'A személy'} sikeresen érkeztetve.`);
       setPreviewPerson(null);
       setPublicId('');
+      setBedLabel('');
     } catch (err: unknown) {
       const apiMessage = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       toast.error(apiMessage ?? 'Az érkeztetés nem sikerült.');
@@ -178,6 +184,14 @@ export function QrCheckInPage() {
                     A kiválasztott befogadóhely javasolt az egyedi igények alapján.
                   </Typography>
                 )}
+                <TextField
+                  label="Ágy/szoba/szektor azonosító (opcionális)"
+                  value={bedLabel}
+                  onChange={(e) => setBedLabel(e.target.value)}
+                  placeholder="pl. A terem, 12. ágy"
+                  size="small"
+                  fullWidth
+                />
                 <Divider />
                 <Button
                   variant="contained"

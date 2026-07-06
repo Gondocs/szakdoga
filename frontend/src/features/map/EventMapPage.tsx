@@ -1,17 +1,40 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Popup, CircleMarker } from 'react-leaflet';
-import { Box, Typography, Stack, Paper, Button, CircularProgress, Alert } from '@mui/material';
+import { MapContainer, TileLayer, Marker, Popup, CircleMarker, useMapEvents } from 'react-leaflet';
+import {
+  Box,
+  Typography,
+  Stack,
+  Paper,
+  Button,
+  CircularProgress,
+  Alert,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Tooltip,
+} from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import AddLocationAltIcon from '@mui/icons-material/AddLocationAlt';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { toast } from 'react-toastify';
 import 'leaflet/dist/leaflet.css';
-import { busIcon, shelterIcon } from '../../lib/leafletIcons';
-import type { ShelterWithRisk } from '../../types';
+import { assemblyPointIcon, busIcon, shelterIcon } from '../../lib/leafletIcons';
+import type { AssemblyPoint, ShelterWithRisk } from '../../types';
+import { useAuth } from '../auth/AuthContext';
 import {
+  createAssemblyPoint,
+  deleteAssemblyPoint,
+  fetchAssemblyPoints,
   fetchPersonMunicipalitySummary,
   fetchShelters,
   fetchTransports,
   simulateTransportPosition,
+  updateAssemblyPoint,
   type MunicipalityPersonSummary,
   type Transport,
 } from '../../lib/api/endpoints';
@@ -21,25 +44,54 @@ const GYMS_CENTER: [number, number] = [47.75, 17.35];
 export function EventMapPage() {
   const { eventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canManageAssemblyPoints = user?.role?.code === 'admin' || user?.role?.code === 'manager';
   const [shelters, setShelters] = useState<ShelterWithRisk[]>([]);
   const [transports, setTransports] = useState<Transport[]>([]);
   const [municipalitySummary, setMunicipalitySummary] = useState<MunicipalityPersonSummary[]>([]);
+  const [assemblyPoints, setAssemblyPoints] = useState<AssemblyPoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [simulatingId, setSimulatingId] = useState<string | null>(null);
+  const [isPlacingPoint, setIsPlacingPoint] = useState(false);
+  const [editingPoint, setEditingPoint] = useState<AssemblyPoint | 'new' | null>(null);
+  const [draftCoords, setDraftCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   function load() {
     if (!eventId) return;
     setIsLoading(true);
-    Promise.all([fetchShelters(eventId), fetchTransports(eventId), fetchPersonMunicipalitySummary(eventId)])
-      .then(([shelterList, transportList, summary]) => {
+    Promise.all([
+      fetchShelters(eventId),
+      fetchTransports(eventId),
+      fetchPersonMunicipalitySummary(eventId),
+      fetchAssemblyPoints(eventId),
+    ])
+      .then(([shelterList, transportList, summary, assemblyPointList]) => {
         setShelters(shelterList);
         setTransports(transportList);
         setMunicipalitySummary(summary);
+        setAssemblyPoints(assemblyPointList);
       })
       .finally(() => setIsLoading(false));
   }
 
   useEffect(load, [eventId]);
+
+  function handleMapClickForNewPoint(lat: number, lng: number) {
+    setIsPlacingPoint(false);
+    setDraftCoords({ lat, lng });
+    setEditingPoint('new');
+  }
+
+  async function handleDeleteAssemblyPoint(point: AssemblyPoint) {
+    if (!window.confirm(`Biztosan törli a(z) "${point.name}" gyülekezési pontot?`)) return;
+    try {
+      await deleteAssemblyPoint(point.id);
+      setAssemblyPoints((prev) => prev.filter((p) => p.id !== point.id));
+      toast.success('Gyülekezési pont törölve.');
+    } catch {
+      toast.error('A törlés nem sikerült.');
+    }
+  }
 
   async function handleSimulate(transportId: string) {
     setSimulatingId(transportId);
@@ -90,12 +142,49 @@ export function EventMapPage() {
         </Paper>
       )}
 
+      {canManageAssemblyPoints && (
+        <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1}>
+            <Typography variant="subtitle2" fontWeight={700}>Gyülekezési pontok</Typography>
+            <Button
+              size="small"
+              variant={isPlacingPoint ? 'contained' : 'outlined'}
+              color={isPlacingPoint ? 'secondary' : 'primary'}
+              startIcon={<AddLocationAltIcon fontSize="small" />}
+              onClick={() => setIsPlacingPoint((prev) => !prev)}
+            >
+              {isPlacingPoint ? 'Kattintson a térképre…' : 'Új gyülekezési pont'}
+            </Button>
+          </Stack>
+          {assemblyPoints.length > 0 && (
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1.5 }}>
+              {assemblyPoints.map((p) => (
+                <Paper key={p.id} variant="outlined" sx={{ px: 1.5, py: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Typography variant="body2">{p.name}</Typography>
+                  <Tooltip title="Szerkesztés">
+                    <IconButton size="small" onClick={() => setEditingPoint(p)}>
+                      <EditIcon fontSize="inherit" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Törlés">
+                    <IconButton size="small" color="error" onClick={() => handleDeleteAssemblyPoint(p)}>
+                      <DeleteIcon fontSize="inherit" />
+                    </IconButton>
+                  </Tooltip>
+                </Paper>
+              ))}
+            </Stack>
+          )}
+        </Paper>
+      )}
+
       <Paper variant="outlined" sx={{ overflow: 'hidden', height: { xs: 420, sm: 560 } }}>
         <MapContainer center={GYMS_CENTER} zoom={9} style={{ height: '100%', width: '100%' }}>
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> közreműködők'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
+          {isPlacingPoint && <MapClickCatcher onClick={handleMapClickForNewPoint} />}
           {municipalitySummary.map((m) => (
             <CircleMarker
               key={m.municipality_id}
@@ -141,6 +230,21 @@ export function EventMapPage() {
               </Popup>
             </Marker>
           ))}
+          {assemblyPoints.map((p) => (
+            <Marker key={p.id} position={[p.lat, p.lng]} icon={assemblyPointIcon}>
+              <Popup>
+                <strong>{p.name}</strong>
+                <br />
+                {p.address}
+                {p.notes && (
+                  <>
+                    <br />
+                    {p.notes}
+                  </>
+                )}
+              </Popup>
+            </Marker>
+          ))}
         </MapContainer>
       </Paper>
 
@@ -149,6 +253,110 @@ export function EventMapPage() {
           Egyik hozzárendelt befogadóhely településéhez sincs rögzítve koordináta.
         </Typography>
       )}
+
+      {editingPoint && eventId && (
+        <AssemblyPointDialog
+          eventId={eventId}
+          point={editingPoint === 'new' ? null : editingPoint}
+          initialCoords={draftCoords}
+          onClose={() => {
+            setEditingPoint(null);
+            setDraftCoords(null);
+          }}
+          onSaved={(saved) => {
+            setAssemblyPoints((prev) => {
+              const exists = prev.some((p) => p.id === saved.id);
+              return exists ? prev.map((p) => (p.id === saved.id ? saved : p)) : [...prev, saved];
+            });
+            setEditingPoint(null);
+            setDraftCoords(null);
+          }}
+        />
+      )}
     </Box>
+  );
+}
+
+function MapClickCatcher({ onClick }: { onClick: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click: (e) => onClick(e.latlng.lat, e.latlng.lng),
+  });
+  return null;
+}
+
+function AssemblyPointDialog({
+  eventId,
+  point,
+  initialCoords,
+  onClose,
+  onSaved,
+}: {
+  eventId: string;
+  point: AssemblyPoint | null;
+  initialCoords: { lat: number; lng: number } | null;
+  onClose: () => void;
+  onSaved: (point: AssemblyPoint) => void;
+}) {
+  const [name, setName] = useState(point?.name ?? '');
+  const [address, setAddress] = useState(point?.address ?? '');
+  const [lat, setLat] = useState(point?.lat ?? initialCoords?.lat ?? GYMS_CENTER[0]);
+  const [lng, setLng] = useState(point?.lng ?? initialCoords?.lng ?? GYMS_CENTER[1]);
+  const [notes, setNotes] = useState(point?.notes ?? '');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const payload = { name, address: address || null, lat, lng, notes: notes || null };
+      const saved = point ? await updateAssemblyPoint(point.id, payload) : await createAssemblyPoint(eventId, payload);
+      toast.success('Gyülekezési pont mentve.');
+      onSaved(saved);
+    } catch {
+      toast.error('A mentés nem sikerült.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <Dialog open onClose={onClose} fullWidth maxWidth="xs">
+      <Box component="form" onSubmit={handleSubmit}>
+        <DialogTitle>{point ? 'Gyülekezési pont szerkesztése' : 'Új gyülekezési pont'}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField label="Név" required fullWidth value={name} onChange={(e) => setName(e.target.value)} />
+            <TextField label="Cím" fullWidth value={address} onChange={(e) => setAddress(e.target.value)} />
+            <Stack direction="row" spacing={1}>
+              <TextField
+                label="Szélesség (lat)"
+                type="number"
+                required
+                fullWidth
+                value={lat}
+                onChange={(e) => setLat(Number(e.target.value))}
+                inputProps={{ step: 'any' }}
+              />
+              <TextField
+                label="Hosszúság (lng)"
+                type="number"
+                required
+                fullWidth
+                value={lng}
+                onChange={(e) => setLng(Number(e.target.value))}
+                inputProps={{ step: 'any' }}
+              />
+            </Stack>
+            <TextField label="Megjegyzés" fullWidth multiline minRows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={onClose} color="inherit">Mégse</Button>
+          <Button type="submit" variant="contained" disabled={isSubmitting}>
+            {isSubmitting ? 'Mentés…' : 'Mentés'}
+          </Button>
+        </DialogActions>
+      </Box>
+    </Dialog>
   );
 }
