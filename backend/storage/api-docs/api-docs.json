@@ -1,0 +1,3848 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Kitelepítési Támogató Rendszer API",
+        "description": "QR-kódos kitelepítési, regisztrációs és befogadóhelyi nyomon követő prototípus REST API-ja.\n\nAz autentikáció Laravel Sanctum SPA session-cookie alapú: előbb GET /sanctum/csrf-cookie, utána POST /api/login. A böngészőn kívüli kliensek (pl. ez a Swagger UI) ezért a `/api/login` végpontot csak akkor tudják sikeresen meghívni, ha a kliens ugyanabból az origin-ből fut, ahonnan a cookie-kat is fogadja.",
+        "version": "0.1.0"
+    },
+    "servers": [
+        {
+            "url": "http://localhost:8000",
+            "description": "Helyi fejlesztői szerver"
+        }
+    ],
+    "paths": {
+        "/api/audit-logs": {
+            "get": {
+                "tags": [
+                    "Audit"
+                ],
+                "summary": "Műveleti napló lapozott listázása és szűrése",
+                "description": "Csak admin, vezető és auditor szerepkör jogosult.",
+                "operationId": "ab8e70c62f5b42edcb5e9faf01792013",
+                "parameters": [
+                    {
+                        "name": "entity_type",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "example": "Person"
+                        }
+                    },
+                    {
+                        "name": "action",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "example": "checkin"
+                        }
+                    },
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "description": "Kezdő dátum/időpont (naptár szerinti szűrés)",
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "description": "Záró dátum/időpont (naptár szerinti szűrés)",
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Napló lapozott listája"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/login": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Bejelentkezés (Sanctum SPA session)",
+                "operationId": "222b2625838e3c57e017987f73598fda",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "admin@katasztrofavedelem.test"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "password"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Sikeres bejelentkezés",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "name": {
+                                                    "type": "string",
+                                                    "example": "Admin Felhasználó"
+                                                },
+                                                "email": {
+                                                    "type": "string",
+                                                    "example": "admin@katasztrofavedelem.test"
+                                                },
+                                                "role": {
+                                                    "properties": {
+                                                        "code": {
+                                                            "type": "string",
+                                                            "example": "admin"
+                                                        },
+                                                        "name": {
+                                                            "type": "string",
+                                                            "example": "Rendszergazda"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Hibás e-mail vagy jelszó"
+                    }
+                }
+            }
+        },
+        "/api/logout": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Kijelentkezés",
+                "operationId": "ad65cbbd4e9f201619eae184a5961a98",
+                "responses": {
+                    "204": {
+                        "description": "Sikeres kijelentkezés"
+                    },
+                    "401": {
+                        "description": "Nincs bejelentkezve"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/me": {
+            "get": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Aktuális bejelentkezett felhasználó és jogosultsága",
+                "operationId": "8367feff40ba10e43187792cad3132c1",
+                "responses": {
+                    "200": {
+                        "description": "Aktuális felhasználó adatai"
+                    },
+                    "401": {
+                        "description": "Nincs bejelentkezve"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/persons/{person}/care-events": {
+            "get": {
+                "tags": [
+                    "CareEvents"
+                ],
+                "summary": "Egy személyhez rögzített ellátási események listája",
+                "operationId": "28925d814971bf85b4c698e1a94dbced",
+                "parameters": [
+                    {
+                        "name": "person",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ellátási események időrendben"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "CareEvents"
+                ],
+                "summary": "Ellátási esemény rögzítése (étkezés, segélycsomag, orvosi ellátás, tisztálkodás)",
+                "description": "Admin, vezető, regisztrátor vagy befogadóhelyi kezelő jogosult.",
+                "operationId": "0e5ebe2be0608fc61a7e0ee05c8b1075",
+                "parameters": [
+                    {
+                        "name": "person",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "category"
+                                ],
+                                "properties": {
+                                    "category": {
+                                        "type": "string",
+                                        "enum": [
+                                            "meal",
+                                            "aid_package",
+                                            "medical",
+                                            "hygiene",
+                                            "other"
+                                        ]
+                                    },
+                                    "note": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "shelter_id": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Létrehozott ellátási esemény"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/shelters/{shelter}/checkins": {
+            "post": {
+                "tags": [
+                    "CheckIns"
+                ],
+                "summary": "Személy érkeztetése egy befogadóhelyre (QR-kód vagy azonosító alapján)",
+                "description": "Tranzakciós művelet: kapacitás-ellenőrzés, checkin rögzítés, regisztráció-státusz és kapacitás frissítése, audit napló.",
+                "operationId": "14d1b53e9b27574f02df3cf71a1e9b29",
+                "parameters": [
+                    {
+                        "name": "shelter",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "event_id"
+                                ],
+                                "properties": {
+                                    "event_id": {
+                                        "type": "string",
+                                        "format": "uuid"
+                                    },
+                                    "public_id": {
+                                        "description": "QR-token azonosítója (vagy person_id adható meg helyette)",
+                                        "type": "string"
+                                    },
+                                    "person_id": {
+                                        "type": "string",
+                                        "format": "uuid"
+                                    },
+                                    "override_capacity": {
+                                        "description": "Csak admin/vezető szerepkörnél hatásos",
+                                        "type": "boolean"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Sikeres érkeztetés"
+                    },
+                    "403": {
+                        "description": "EVENT_MISMATCH — az esemény nem aktív vagy a kód más eseményhez tartozik"
+                    },
+                    "404": {
+                        "description": "QR_TOKEN_NOT_FOUND — a kód vagy a személy nem található"
+                    },
+                    "409": {
+                        "description": "ALREADY_CHECKED_IN vagy SHELTER_FULL"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/persons/{person}/transfer": {
+            "post": {
+                "tags": [
+                    "CheckIns"
+                ],
+                "summary": "Személy áthelyezése másik befogadóhelyre",
+                "description": "A régi befogadóhely kapacitása felszabadul, az újé lefoglalódik. Admin/vezető korlátlanul, befogadóhelyi kezelő csak a saját befogadóhelyére fogadhat át.",
+                "operationId": "de2ff8186e9284b6da3d14b50f4cae67",
+                "parameters": [
+                    {
+                        "name": "person",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "shelter_id"
+                                ],
+                                "properties": {
+                                    "shelter_id": {
+                                        "type": "string",
+                                        "format": "uuid"
+                                    },
+                                    "override_capacity": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Sikeres áthelyezés"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    },
+                    "409": {
+                        "description": "SHELTER_FULL"
+                    },
+                    "422": {
+                        "description": "A személy nincs befogadóhelyen, vagy már ott van"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/persons/{person}/temporary-leave": {
+            "post": {
+                "tags": [
+                    "CheckIns"
+                ],
+                "summary": "Ideiglenes eltávozás rögzítése a befogadóhelyről",
+                "operationId": "ee7c0eb7a91414c4396c4588cd7ccaf7",
+                "parameters": [
+                    {
+                        "name": "person",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ideiglenes eltávozás rögzítve"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    },
+                    "422": {
+                        "description": "A személy nincs befogadóhelyen"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/persons/{person}/temporary-return": {
+            "post": {
+                "tags": [
+                    "CheckIns"
+                ],
+                "summary": "Ideiglenes eltávozásból való visszaérkezés rögzítése",
+                "operationId": "830445c2a71bd55824cf3e2f77d890e1",
+                "parameters": [
+                    {
+                        "name": "person",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Visszaérkezés rögzítve"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    },
+                    "422": {
+                        "description": "A személy nincs befogadóhelyen"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/citizens/{citizen}/history": {
+            "get": {
+                "tags": [
+                    "Citizens"
+                ],
+                "summary": "Egy polgár összes kitelepítési eseményhez tartozó regisztrációjának története",
+                "operationId": "3362341cebc1cd23e125b1154accf629",
+                "parameters": [
+                    {
+                        "name": "citizen",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A polgár kitelepítési története eseményenként"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/events/{event}/dashboard": {
+            "get": {
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Vezetői dashboard: összesített mutatók és kapacitáskockázat",
+                "operationId": "2a67e5e532eafdf25bf8f96c137bc274",
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Dashboard adatok",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "properties": {
+                                                "registered_count": {
+                                                    "type": "integer"
+                                                },
+                                                "families_count": {
+                                                    "type": "integer"
+                                                },
+                                                "arrived_count": {
+                                                    "type": "integer"
+                                                },
+                                                "central_transport_required_count": {
+                                                    "type": "integer"
+                                                },
+                                                "central_accommodation_required_count": {
+                                                    "type": "integer"
+                                                },
+                                                "status_breakdown": {
+                                                    "description": "Regisztrációk száma státuszonként",
+                                                    "type": "object"
+                                                },
+                                                "registrations_by_day": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "date": {
+                                                                "type": "string",
+                                                                "format": "date"
+                                                            },
+                                                            "count": {
+                                                                "type": "integer"
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "overall_risk": {
+                                                    "properties": {
+                                                        "score": {
+                                                            "type": "number",
+                                                            "format": "float"
+                                                        },
+                                                        "level": {
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "low",
+                                                                "medium",
+                                                                "high",
+                                                                "critical"
+                                                            ]
+                                                        },
+                                                        "utilization": {
+                                                            "type": "number",
+                                                            "format": "float"
+                                                        },
+                                                        "intake_rate_per_hour": {
+                                                            "description": "Érkeztetési ütem az elmúlt 2 órában",
+                                                            "type": "number",
+                                                            "format": "float"
+                                                        },
+                                                        "forecast_hours_to_full": {
+                                                            "description": "Becsült hátralévő óra a teljes kapacitás beteléséig a jelenlegi ütem alapján",
+                                                            "type": "number",
+                                                            "format": "float",
+                                                            "nullable": true
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság a dashboard megtekintéséhez"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/events/{event}/registrations-timeline": {
+            "get": {
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Regisztrációk időbeli eloszlása, választható időegységgel",
+                "operationId": "def73289385355f4adeeda1f2b76ec99",
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "interval",
+                        "in": "query",
+                        "description": "Idő-felbontás",
+                        "schema": {
+                            "type": "string",
+                            "default": "day",
+                            "enum": [
+                                "15min",
+                                "hour",
+                                "day"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Időbeli bontású regisztrációs adatok",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "bucket": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "count": {
+                                                        "type": "integer"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/events": {
+            "get": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Kitelepítési események listája (lapozott)",
+                "operationId": "bfa71f7834738c23055600dfda51f2d1",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Esemény lista"
+                    },
+                    "401": {
+                        "description": "Nincs bejelentkezve"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Új kitelepítési esemény létrehozása",
+                "description": "Csak admin és vezető szerepkör jogosult.",
+                "operationId": "8d230cd5fc10b96a4aad3e6f6ad4fda3",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "code",
+                                    "name",
+                                    "status"
+                                ],
+                                "properties": {
+                                    "code": {
+                                        "type": "string",
+                                        "example": "EVT-2026-002"
+                                    },
+                                    "name": {
+                                        "type": "string",
+                                        "example": "Mosoni-Duna árvízi kitelepítés"
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "example": "active",
+                                        "enum": [
+                                            "draft",
+                                            "active",
+                                            "paused",
+                                            "closed"
+                                        ]
+                                    },
+                                    "starts_at": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "nullable": true
+                                    },
+                                    "ends_at": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "nullable": true
+                                    },
+                                    "shelters": {
+                                        "type": "array",
+                                        "items": {
+                                            "properties": {
+                                                "shelter_id": {
+                                                    "type": "string",
+                                                    "format": "uuid"
+                                                },
+                                                "capacity_limit": {
+                                                    "type": "integer",
+                                                    "example": 100
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Létrehozott esemény"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    },
+                    "422": {
+                        "description": "Validációs hiba"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/events/{event}": {
+            "get": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Esemény adatlap",
+                "operationId": "4a0b2305496a0c04e027eec40c4fbad3",
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Esemény adatai"
+                    },
+                    "404": {
+                        "description": "Nincs ilyen esemény"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Esemény módosítása: státusz (aktiválás/szüneteltetés/lezárás), adatok, befogadóhely-kapacitások",
+                "description": "A \"shelters\" tömbben megadott befogadóhelyek felülírják/kiegészítik a meglévő hozzárendeléseket.",
+                "operationId": "30dd08cf23dbe913552b337917be1fbc",
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Frissített esemény"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Esemény törlése",
+                "description": "Csak admin jogosult, és csak akkor engedélyezett, ha az eseményhez még nem tartozik egyetlen regisztrált személy sem (adatvesztés elkerülése végett). Meglévő regisztrációk esetén az esemény \"lezárva\" státuszra állítása javasolt törlés helyett.",
+                "operationId": "31f4f52820c0ef5c2885f63336be3cc3",
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Sikeres törlés"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    },
+                    "409": {
+                        "description": "Az eseményhez már tartoznak regisztrációk"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/events/{event}/persons/export": {
+            "get": {
+                "tags": [
+                    "Persons"
+                ],
+                "summary": "Regisztrált személyek exportálása CSV formátumban",
+                "description": "Opcionális (F14) jelentéskészítő funkció. Admin vagy vezető szerepkör szükséges.",
+                "operationId": "e7d574be18ecc27ca3c657184838bb9c",
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "CSV fájl letöltése"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/events/{event}/shelters/{shelter}/roster-export": {
+            "get": {
+                "tags": [
+                    "Shelters"
+                ],
+                "summary": "Egy befogadóhelyen jelenleg tartózkodók névsorának exportálása CSV formátumban (nyomtatáshoz)",
+                "description": "Admin és vezető bármely befogadóhelyre, a befogadóhelyi kezelő csak a saját befogadóhelyére kérheti le.",
+                "operationId": "9c67ead354b509b164c357d81715d1d9",
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "shelter",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "CSV fájl letöltése"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/events/{event}/report-export": {
+            "get": {
+                "tags": [
+                    "Persons"
+                ],
+                "summary": "Összesített (demográfiai és igény-eloszlási) jelentés exportálása CSV formátumban",
+                "description": "Aggregált vezetői jelentés (nem személyenkénti lista): összesítő mutatók, státusz- és igény-eloszlás, befogadóhelyi kihasználtság. Admin vagy vezető szerepkör szükséges.",
+                "operationId": "13152c8c01be5c6de9fae8436e0520ca",
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "CSV fájl letöltése"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/events/{event}/families": {
+            "get": {
+                "tags": [
+                    "Persons"
+                ],
+                "summary": "Eseményhez tartozó családok/csoportok listája",
+                "operationId": "6549aea3a461bdd29278099e60bdd520",
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Családok listája"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/families/{family}": {
+            "get": {
+                "tags": [
+                    "Persons"
+                ],
+                "summary": "Család részletei: tagok és kapcsolattartó",
+                "operationId": "31bff0fd65bb89f2c6a2efdf9f3b58b5",
+                "parameters": [
+                    {
+                        "name": "family",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Család adatai a tagokkal"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/events/{event}/families/reunification-worklist": {
+            "get": {
+                "tags": [
+                    "Persons"
+                ],
+                "summary": "Szétszakadt családok munkalistája (családegyesítés)",
+                "description": "Interreg tanulmány \"Családegyesítési munkalista és vészprotokoll\" funkciója: a jelenleg különböző befogadóhelyeken tartózkodó családok listája, a tagok aktuális elhelyezésével és az ügyintézés eddigi bejegyzéseivel.",
+                "operationId": "794b0aeb56ded8d7e028ff87fb63462f",
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Szétszakadt családok listája"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/families/{family}/reunification-notes": {
+            "get": {
+                "tags": [
+                    "Persons"
+                ],
+                "summary": "Egy család családegyesítési bejegyzéseinek listája",
+                "operationId": "c0741a23bbad69ea5f279c22702f8ede",
+                "parameters": [
+                    {
+                        "name": "family",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Bejegyzések időrendben"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Persons"
+                ],
+                "summary": "Családegyesítési bejegyzés hozzáadása",
+                "description": "Admin, vezető vagy regisztrátor jogosult.",
+                "operationId": "8c8a98c89df4f67bdfd193274e4f1581",
+                "parameters": [
+                    {
+                        "name": "family",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "note"
+                                ],
+                                "properties": {
+                                    "note": {
+                                        "type": "string"
+                                    },
+                                    "resolved": {
+                                        "type": "boolean",
+                                        "example": false
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Létrehozott bejegyzés"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/events/{event}/incidents": {
+            "get": {
+                "tags": [
+                    "Incidents"
+                ],
+                "summary": "Eseményhez tartozó panaszok/rendkívüli események listája",
+                "operationId": "a129fdc031d524f22f8be8600cc73ea1",
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "open",
+                                "resolved"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Incidensek időrendben"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Incidents"
+                ],
+                "summary": "Panasz/rendkívüli esemény rögzítése",
+                "description": "Admin, vezető, regisztrátor vagy befogadóhelyi kezelő jogosult.",
+                "operationId": "e85c6c10bc691afafb3d9994a1125a29",
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "category",
+                                    "severity",
+                                    "description"
+                                ],
+                                "properties": {
+                                    "category": {
+                                        "type": "string",
+                                        "enum": [
+                                            "complaint",
+                                            "conflict",
+                                            "security",
+                                            "damage",
+                                            "other"
+                                        ]
+                                    },
+                                    "severity": {
+                                        "type": "string",
+                                        "enum": [
+                                            "low",
+                                            "medium",
+                                            "high"
+                                        ]
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    },
+                                    "shelter_id": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "nullable": true
+                                    },
+                                    "person_id": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Létrehozott incidens"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/incidents/{incident}/resolve": {
+            "post": {
+                "tags": [
+                    "Incidents"
+                ],
+                "summary": "Panasz/rendkívüli esemény lezárása",
+                "operationId": "1f70ebf03091ff2b98112b1437cf7ce1",
+                "parameters": [
+                    {
+                        "name": "incident",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lezárt incidens"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/municipalities": {
+            "get": {
+                "tags": [
+                    "Persons"
+                ],
+                "summary": "Település törzsadatok listája",
+                "operationId": "2ca5621f4520819599138f67b8ea32ef",
+                "responses": {
+                    "200": {
+                        "description": "Települések listája"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Persons"
+                ],
+                "summary": "Új település törzsadat felvétele",
+                "description": "Csak admin és vezető szerepkör jogosult.",
+                "operationId": "39619e4c45e300c72ca3c70df8e1ac46",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "county"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "Győr"
+                                    },
+                                    "county": {
+                                        "type": "string",
+                                        "example": "Győr-Moson-Sopron"
+                                    },
+                                    "postal_code": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "lat": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "nullable": true
+                                    },
+                                    "lng": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Létrehozott település"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/municipalities/{municipality}": {
+            "put": {
+                "tags": [
+                    "Persons"
+                ],
+                "summary": "Település törzsadat módosítása",
+                "description": "Csak admin és vezető szerepkör jogosult.",
+                "operationId": "b7b0610a066abe002905cd44ee7f4e22",
+                "parameters": [
+                    {
+                        "name": "municipality",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Frissített település"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Persons"
+                ],
+                "summary": "Település törzsadat törlése",
+                "description": "Csak admin jogosult, és csak akkor, ha nincs hozzá kapcsolódó személy vagy befogadóhely.",
+                "operationId": "53a94f6b5799bfc1d08d264357ba53be",
+                "parameters": [
+                    {
+                        "name": "municipality",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Sikeres törlés"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    },
+                    "409": {
+                        "description": "A település használatban van"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/events/{event}/persons": {
+            "get": {
+                "tags": [
+                    "Persons"
+                ],
+                "summary": "Eseményhez tartozó regisztrált személyek listája",
+                "operationId": "2c211367119dcbf226219810bfd5ebd9",
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "registered",
+                                "in_transport",
+                                "arrived_shelter",
+                                "left_shelter",
+                                "returned_home",
+                                "cancelled"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "special_need_category",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "medical",
+                                "mobility",
+                                "age",
+                                "diet",
+                                "animal",
+                                "other"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "special_need_type",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "central_transport_required",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "central_accommodation_required",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "shelter_id",
+                        "in": "query",
+                        "description": "Csak az adott befogadóhelyre bejelentkezett személyek",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "municipality_id",
+                        "in": "query",
+                        "description": "Csak az adott lakóhely szerinti település",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Oldalankénti elemszám (max. 1000)",
+                        "schema": {
+                            "type": "integer",
+                            "default": 25
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Személyek lapozott listája"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Persons"
+                ],
+                "summary": "Személy/család regisztráció rögzítése",
+                "description": "Csak aktív eseményhez lehet regisztrálni. Admin, vezető vagy regisztrátor szerepkör szükséges.",
+                "operationId": "c912d6b7b2b5ea69e3b78b9d58713fba",
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "last_name",
+                                    "first_name",
+                                    "municipality_id"
+                                ],
+                                "properties": {
+                                    "last_name": {
+                                        "type": "string",
+                                        "example": "Kovács"
+                                    },
+                                    "first_name": {
+                                        "type": "string",
+                                        "example": "János"
+                                    },
+                                    "birth_place": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "birth_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "nullable": true
+                                    },
+                                    "mother_birth_name": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "municipality_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "address_postal_code": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "address_settlement": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "address_street": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "address_house_number": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "phone": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "nullable": true
+                                    },
+                                    "family_id": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "nullable": true
+                                    },
+                                    "create_new_family": {
+                                        "type": "boolean",
+                                        "example": false
+                                    },
+                                    "is_primary_contact": {
+                                        "type": "boolean",
+                                        "example": false
+                                    },
+                                    "central_transport_required": {
+                                        "type": "boolean",
+                                        "example": false
+                                    },
+                                    "central_accommodation_required": {
+                                        "type": "boolean",
+                                        "example": false
+                                    },
+                                    "under_regular_medical_care": {
+                                        "type": "boolean",
+                                        "example": false
+                                    },
+                                    "own_vehicle": {
+                                        "type": "boolean",
+                                        "example": false
+                                    },
+                                    "travels_alone": {
+                                        "type": "boolean",
+                                        "nullable": true
+                                    },
+                                    "special_needs": {
+                                        "type": "array",
+                                        "items": {
+                                            "properties": {
+                                                "category": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "medical",
+                                                        "mobility",
+                                                        "age",
+                                                        "diet",
+                                                        "animal",
+                                                        "other"
+                                                    ]
+                                                },
+                                                "type": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "priority": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "description": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "animals": {
+                                        "type": "array",
+                                        "items": {
+                                            "properties": {
+                                                "animal_type": {
+                                                    "type": "string",
+                                                    "example": "kutya"
+                                                },
+                                                "count": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "stays_at_address": {
+                                                    "type": "boolean",
+                                                    "example": false
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Létrehozott személy és regisztráció"
+                    },
+                    "422": {
+                        "description": "Validációs hiba vagy nem aktív esemény"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/events/{event}/persons/municipality-summary": {
+            "get": {
+                "tags": [
+                    "Persons"
+                ],
+                "summary": "Regisztráltak száma lakóhely (település) szerint aggregálva, térképes megjelenítéshez",
+                "description": "Csak a koordinátával rendelkező településeket adja vissza. Interreg tanulmány \"Geografikus Nyomon Követési Dashboard\" funkciója.",
+                "operationId": "c39af08df3f782bb4bd1ef69749e2f68",
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Településenkénti összesítés koordinátákkal"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/events/{event}/persons/bulk-import": {
+            "post": {
+                "tags": [
+                    "Persons"
+                ],
+                "summary": "Lakossági/önkormányzati névlista tömeges importálása előzetes QR-kód generálással",
+                "description": "Interreg tanulmány \"Előzetes kódgenerálás és kiosztás\" funkciója: egy előre összeállított lakossági vagy önkormányzati CSV-lista alapján tömegesen létrehozza a regisztrációkat és azonnal QR-kódot is generál mindegyikhez, hogy a tényleges kitelepítéskor már csak a kód beolvasása legyen szükséges. CSV-fejléc: vezetéknév,keresztnév,okmányszám,település,telefon. Admin, vezető vagy regisztrátor szerepkör szükséges, csak aktív eseményhez.",
+                "operationId": "70e4a11f0b59c361874817ab377e6cbb",
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "file"
+                                ],
+                                "properties": {
+                                    "file": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Import összegzés: létrehozott személyek QR-kódokkal, hibás sorok"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    },
+                    "422": {
+                        "description": "Validációs hiba vagy nem aktív esemény"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/persons/{person}": {
+            "get": {
+                "tags": [
+                    "Persons"
+                ],
+                "summary": "Személy adatlap (regisztráció, speciális igények, állatok, QR-tokenek)",
+                "operationId": "a82703e911372267ac34d57b2a6066ad",
+                "parameters": [
+                    {
+                        "name": "person",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Személy adatai"
+                    },
+                    "404": {
+                        "description": "Nincs ilyen személy"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Persons"
+                ],
+                "summary": "Személy adatainak módosítása",
+                "description": "Csak nem lezárt eseményhez tartozó személy módosítható; admin vagy regisztrátor szerepkör szükséges.",
+                "operationId": "d89c5420877e0b35a910e7001985885b",
+                "parameters": [
+                    {
+                        "name": "person",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "last_name": {
+                                        "type": "string"
+                                    },
+                                    "first_name": {
+                                        "type": "string"
+                                    },
+                                    "phone": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Frissített személy adatai"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság vagy lezárt esemény"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/persons/{person}/document-photo": {
+            "post": {
+                "tags": [
+                    "Persons"
+                ],
+                "summary": "Okmányfénykép rögzítése a helyszíni regisztrációhoz",
+                "description": "Kamerával vagy fájlfeltöltéssel rögzített kép az igazolványról (nem OCR, csak tárolás). Admin vagy regisztrátor szerepkör szükséges.",
+                "operationId": "e09f014c862490b615079023379c57c6",
+                "parameters": [
+                    {
+                        "name": "person",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "photo",
+                                    "side"
+                                ],
+                                "properties": {
+                                    "photo": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    },
+                                    "side": {
+                                        "description": "Az okmány eleje vagy hátulja",
+                                        "type": "string",
+                                        "enum": [
+                                            "front",
+                                            "back"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Frissített személy, benne a document_photo_front_url/document_photo_back_url"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    },
+                    "422": {
+                        "description": "Validációs hiba"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Persons"
+                ],
+                "summary": "Okmányfénykép (eleje vagy hátulja) eltávolítása",
+                "operationId": "9de23c885a34d125c13e6625777459a0",
+                "parameters": [
+                    {
+                        "name": "person",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "side",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "front",
+                                "back"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Frissített személy"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/persons/{person}/status-history": {
+            "get": {
+                "tags": [
+                    "Persons"
+                ],
+                "summary": "A személy regisztrációjának státusztörténete időrendben",
+                "operationId": "e4ce5d432903c9fe0a494be584b54093",
+                "parameters": [
+                    {
+                        "name": "person",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Státusztörténet bejegyzések"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/persons/{person}/qr": {
+            "post": {
+                "tags": [
+                    "Qr"
+                ],
+                "summary": "QR-token generálása egy regisztrált személyhez",
+                "description": "Csak aktív eseményhez és aktív regisztrációhoz generálható. Egy már meglévő aktív token visszavonásra kerül.",
+                "operationId": "83650aee5b2bc248fd2e0a2a57b530c3",
+                "parameters": [
+                    {
+                        "name": "person",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Létrehozott QR-token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "public_id": {
+                                                    "type": "string",
+                                                    "example": "a1b2c3d4e5f6..."
+                                                },
+                                                "status": {
+                                                    "type": "string",
+                                                    "example": "active"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Nem aktív esemény vagy regisztráció"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/qr/resolve": {
+            "post": {
+                "tags": [
+                    "Qr"
+                ],
+                "summary": "QR azonosító feloldása befogadóhelyi/adminisztrátori előnézethez",
+                "description": "A public_id alapján visszaadja a minimálisan szükséges személyadatokat érkeztetés előtti megerősítéshez.",
+                "operationId": "01b86a14490d1853d4c2bee329f0fddc",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "public_id"
+                                ],
+                                "properties": {
+                                    "public_id": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Feloldott személy adatai"
+                    },
+                    "404": {
+                        "description": "QR_TOKEN_NOT_FOUND — a kód nem található"
+                    },
+                    "409": {
+                        "description": "QR_TOKEN_INVALID — a kód lejárt vagy visszavont"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/qr-tokens/{qrToken}/deliver": {
+            "post": {
+                "tags": [
+                    "Qr"
+                ],
+                "summary": "QR-kód kiosztásának rögzítése (kiosztási nyilvántartás)",
+                "description": "Interreg tanulmány \"Kiosztási nyilvántartás\" követelménye: rögzíti, hogy a kódot mikor, milyen formában (digitális, kártya, karszalag, nyomtatott) adták át az érintettnek.",
+                "operationId": "4c8ae7f32268b9de0364ceb323a6b8bc",
+                "parameters": [
+                    {
+                        "name": "qrToken",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "delivery_method"
+                                ],
+                                "properties": {
+                                    "delivery_method": {
+                                        "type": "string",
+                                        "enum": [
+                                            "digital",
+                                            "card",
+                                            "wristband",
+                                            "paper"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Frissített QR-token, benne a kiosztás adataival"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/registrations/{registration}/status": {
+            "put": {
+                "tags": [
+                    "Persons"
+                ],
+                "summary": "Regisztráció státuszának kézi módosítása",
+                "description": "A checkin-folyamaton kívüli manuális státuszváltás (pl. szállítás alatt, visszatelepült, törölt). Admin, vezető vagy regisztrátor szerepkör szükséges.",
+                "operationId": "5d70846185fd114b9d29cb8aefbcef1a",
+                "parameters": [
+                    {
+                        "name": "registration",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "status"
+                                ],
+                                "properties": {
+                                    "status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "registered",
+                                            "in_transport",
+                                            "arrived_shelter",
+                                            "left_shelter",
+                                            "returned_home",
+                                            "cancelled"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Frissített regisztráció"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/events/{event}/registrations/bulk-status": {
+            "put": {
+                "tags": [
+                    "Persons"
+                ],
+                "summary": "Több személy regisztrációs státuszának egyszerre történő módosítása",
+                "description": "Tömeges művelet (pl. egy csoport visszatelepítése). Admin, vezető vagy regisztrátor szerepkör szükséges. Az egyes személyeknél fellépő hibák nem szakítják meg a többi feldolgozását.",
+                "operationId": "a51289c80d8ad8f9aca27ec42782f696",
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "person_ids",
+                                    "status"
+                                ],
+                                "properties": {
+                                    "person_ids": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        }
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "registered",
+                                            "in_transport",
+                                            "arrived_shelter",
+                                            "left_shelter",
+                                            "returned_home",
+                                            "cancelled"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A sikeresen és a sikertelenül frissített személyek azonosítói"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    },
+                    "422": {
+                        "description": "Validációs hiba"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/events/{event}/repatriation-authorizations": {
+            "get": {
+                "tags": [
+                    "Repatriation"
+                ],
+                "summary": "Az eseményben érintett települések visszatelepítési engedélyezési státusza",
+                "operationId": "d8d805b2f5f60ea34bbfa8bc6ae3c462",
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Településenkénti engedélyezési státuszok, létszámadatokkal"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Repatriation"
+                ],
+                "summary": "Egy település visszatelepítési engedélyezési státuszának rögzítése/frissítése",
+                "description": "Csak admin és vezető szerepkör jogosult.",
+                "operationId": "c8eb25055057fa6899d25762aa89707a",
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "municipality_id",
+                                    "status"
+                                ],
+                                "properties": {
+                                    "municipality_id": {
+                                        "type": "integer"
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "not_permitted",
+                                            "conditional",
+                                            "permitted"
+                                        ]
+                                    },
+                                    "conditions_note": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "window_starts_at": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "nullable": true
+                                    },
+                                    "window_ends_at": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Frissített engedélyezési státusz"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/public/events/{code}": {
+            "get": {
+                "tags": [
+                    "SelfService"
+                ],
+                "summary": "Aktív esemény alapadatainak lekérdezése kóddal (önkiszolgáló regisztrációs oldalhoz)",
+                "operationId": "69b629335babc928f82e2f961236f376",
+                "parameters": [
+                    {
+                        "name": "code",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Az esemény alapadatai, ha aktív"
+                    },
+                    "404": {
+                        "description": "Nincs ilyen kódú aktív esemény"
+                    }
+                }
+            }
+        },
+        "/api/public/events/{code}/self-register": {
+            "post": {
+                "tags": [
+                    "SelfService"
+                ],
+                "summary": "Lakossági önkiszolgáló előregisztráció és azonnali QR-kód kiadás",
+                "description": "Hitelesítés nélkül hívható. Csak aktív eseményhez engedélyezett. A rögzítés self_service csatornaként kerül naplózásra, a végrehajtó egy szintetikus rendszerfelhasználó.",
+                "operationId": "36b0913e52f7fc7e2f8fb12ed7c2c270",
+                "parameters": [
+                    {
+                        "name": "code",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "last_name",
+                                    "first_name",
+                                    "municipality_id"
+                                ],
+                                "properties": {
+                                    "last_name": {
+                                        "type": "string"
+                                    },
+                                    "first_name": {
+                                        "type": "string"
+                                    },
+                                    "municipality_id": {
+                                        "type": "integer"
+                                    },
+                                    "gender": {
+                                        "type": "string",
+                                        "enum": [
+                                            "male",
+                                            "female",
+                                            "other"
+                                        ]
+                                    },
+                                    "id_document_number": {
+                                        "type": "string"
+                                    },
+                                    "phone": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "A generált QR-token public_id-je és a rögzített adatok"
+                    },
+                    "404": {
+                        "description": "Nincs ilyen kódú aktív esemény"
+                    },
+                    "422": {
+                        "description": "Validációs hiba"
+                    }
+                }
+            }
+        },
+        "/api/public/self-profile/{publicId}": {
+            "get": {
+                "tags": [
+                    "SelfService"
+                ],
+                "summary": "A lakos saját adatainak lekérdezése a QR-kódja (public_id) alapján",
+                "description": "Hitelesítés nélkül hívható. Interreg tanulmány \"Folyamatos Adatfrissítési Kapcsolat\" funkciója: a lakos a visszatelepítésig bármikor megtekintheti és frissítheti az elérhetőségét.",
+                "operationId": "505c7c453c677811cd8eda07d32d41f5",
+                "parameters": [
+                    {
+                        "name": "publicId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A személy adatai"
+                    },
+                    "404": {
+                        "description": "A kód nem található"
+                    },
+                    "409": {
+                        "description": "A kód lejárt/visszavont, vagy a regisztráció már lezárult"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "SelfService"
+                ],
+                "summary": "A lakos saját adatainak frissítése a QR-kódja (public_id) alapján",
+                "description": "Hitelesítés nélkül hívható. Csak az elérhetőség, ideiglenes cím és egyedi igények módosíthatók; a személyazonosító adatokat a helyszíni regisztrátor kezeli.",
+                "operationId": "934f8287df3fb3faea460ed54903e0d0",
+                "parameters": [
+                    {
+                        "name": "publicId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Frissített adatok"
+                    },
+                    "404": {
+                        "description": "A kód nem található"
+                    },
+                    "409": {
+                        "description": "A kód lejárt/visszavont, vagy a regisztráció már lezárult"
+                    },
+                    "422": {
+                        "description": "Validációs hiba"
+                    }
+                }
+            }
+        },
+        "/api/public/self-profile/{publicId}/confirm-arrival": {
+            "post": {
+                "tags": [
+                    "SelfService"
+                ],
+                "summary": "Saját járművel utazó lakos aktív megérkezés-megerősítése",
+                "description": "Hitelesítés nélkül hívható. Interreg tanulmány \"Saját Járművel Utazók Kezelése\" funkciója: csak akkor engedélyezett, ha a regisztrációban jelezte, hogy saját járművel utazik.",
+                "operationId": "a7b6c809f80c47018c38b939987bd6f1",
+                "parameters": [
+                    {
+                        "name": "publicId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Megérkezés rögzítve"
+                    },
+                    "404": {
+                        "description": "A kód nem található"
+                    },
+                    "409": {
+                        "description": "A kód lejárt/visszavont, vagy a regisztráció már lezárult"
+                    },
+                    "422": {
+                        "description": "A személy nem saját járművel utazik"
+                    }
+                }
+            }
+        },
+        "/api/public/self-profile/{publicId}/confirm-return": {
+            "post": {
+                "tags": [
+                    "SelfService"
+                ],
+                "summary": "Visszatelepülés önkéntes megerősítése QR-kóddal",
+                "description": "Hitelesítés nélkül hívható. Interreg tanulmány \"Visszatelepítési modul\" funkciója: csak akkor engedélyezett, ha a lakóhely települése az esemény alatt engedélyezett vagy feltételes visszatelepítési státuszban van.",
+                "operationId": "09887d840a281f0ca937684566321f21",
+                "parameters": [
+                    {
+                        "name": "publicId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Visszatelepülés rögzítve"
+                    },
+                    "404": {
+                        "description": "A kód nem található"
+                    },
+                    "409": {
+                        "description": "A kód lejárt/visszavont, vagy a regisztráció már lezárult"
+                    },
+                    "422": {
+                        "description": "A település visszatelepítése még nem engedélyezett"
+                    }
+                }
+            }
+        },
+        "/api/shelters": {
+            "get": {
+                "tags": [
+                    "Shelters"
+                ],
+                "summary": "Összes törzsadat befogadóhely listája (esemény-függetlenül)",
+                "operationId": "13339ff9f2c742fb3c14f23db985fb27",
+                "responses": {
+                    "200": {
+                        "description": "Befogadóhelyek listája"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Shelters"
+                ],
+                "summary": "Új befogadóhely törzsadat létrehozása",
+                "description": "Csak admin és vezető szerepkör jogosult.",
+                "operationId": "5d81bac4109d049d24b952b80d185b7a",
+                "responses": {
+                    "201": {
+                        "description": "Létrehozott befogadóhely"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/shelters/{shelter}": {
+            "put": {
+                "tags": [
+                    "Shelters"
+                ],
+                "summary": "Befogadóhely törzsadat módosítása",
+                "operationId": "374c1ad1840132667db6bc9fc201dca7",
+                "parameters": [
+                    {
+                        "name": "shelter",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Frissített befogadóhely"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Shelters"
+                ],
+                "summary": "Befogadóhely törzsadat törlése",
+                "description": "Csak admin jogosult, és csak akkor engedélyezett, ha a befogadóhely jelenleg egyetlen eseményhez sincs hozzárendelve (nincs kapcsolódó kapacitás- vagy érkeztetési adat).",
+                "operationId": "12bd6f081ef80ee5c8cedf3af14c53af",
+                "parameters": [
+                    {
+                        "name": "shelter",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Sikeres törlés"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    },
+                    "409": {
+                        "description": "A befogadóhely eseményhez van rendelve"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/events/{event}/shelters": {
+            "get": {
+                "tags": [
+                    "Shelters"
+                ],
+                "summary": "Egy eseményhez rendelt befogadóhelyek kapacitása és kockázati szintje",
+                "operationId": "f8bf55550977dbb31dfa598e49026def",
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "person_id",
+                        "in": "query",
+                        "description": "Ha megadott, a válasz az adott személy egyedi igényei alapján javasolt sorrendben és pontszámmal tér vissza (Interreg tanulmány \"Valós Idejű Kapacitás Összekapcsolás\" funkciója).",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Befogadóhelyek kapacitás- és kockázatadatokkal",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "event_shelter_id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "capacity_limit": {
+                                                        "type": "integer"
+                                                    },
+                                                    "checked_in_count": {
+                                                        "type": "integer"
+                                                    },
+                                                    "utilization": {
+                                                        "type": "number",
+                                                        "format": "float",
+                                                        "example": 0.62
+                                                    },
+                                                    "risk_score": {
+                                                        "type": "number",
+                                                        "format": "float",
+                                                        "example": 43.4
+                                                    },
+                                                    "risk_level": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "low",
+                                                            "medium",
+                                                            "high",
+                                                            "critical"
+                                                        ]
+                                                    },
+                                                    "match_score": {
+                                                        "type": "integer",
+                                                        "nullable": true
+                                                    },
+                                                    "match_reasons": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "recommended": {
+                                                        "type": "boolean"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/events/{event}/transports": {
+            "get": {
+                "tags": [
+                    "Transports"
+                ],
+                "summary": "Egy eseményhez rendelt szállítóeszközök listája, a jelenlegi utaslétszámmal",
+                "operationId": "f1f1b8d2cb595078af8ec55affec8729",
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Szállítóeszközök listája"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Transports"
+                ],
+                "summary": "Új szállítóeszköz (busz/vonat) létrehozása egy eseményhez",
+                "description": "Csak admin és vezető szerepkör jogosult.",
+                "operationId": "a69fc43952b602ad8d6b8045eb5ea94c",
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "code"
+                                ],
+                                "properties": {
+                                    "code": {
+                                        "type": "string",
+                                        "example": "1. sz. busz - Győr"
+                                    },
+                                    "capacity": {
+                                        "type": "integer",
+                                        "nullable": true
+                                    },
+                                    "vehicle_id": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Létrehozott szállítóeszköz"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    },
+                    "409": {
+                        "description": "A kiválasztott jármű már használatban van egy másik eseményben"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/transports/{transport}": {
+            "put": {
+                "tags": [
+                    "Transports"
+                ],
+                "summary": "Szállítóeszköz adatainak módosítása",
+                "description": "Csak admin és vezető szerepkör jogosult.",
+                "operationId": "221bea288d374f169175b865750854b6",
+                "parameters": [
+                    {
+                        "name": "transport",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "code": {
+                                        "type": "string"
+                                    },
+                                    "capacity": {
+                                        "type": "integer",
+                                        "nullable": true
+                                    },
+                                    "vehicle_id": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Frissített szállítóeszköz"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    },
+                    "409": {
+                        "description": "A kiválasztott jármű már használatban van egy másik eseményben"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Transports"
+                ],
+                "summary": "Szállítóeszköz törlése",
+                "description": "Csak admin és vezető jogosult, és csak akkor, ha jelenleg senki nincs a fedélzetén.",
+                "operationId": "6a6b5badd33e8d3db3e8fc8877d864a8",
+                "parameters": [
+                    {
+                        "name": "transport",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Sikeres törlés"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    },
+                    "409": {
+                        "description": "A járművön jelenleg is tartózkodnak személyek"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/transports/{transport}/passengers": {
+            "get": {
+                "tags": [
+                    "Transports"
+                ],
+                "summary": "A jármű fedélzetén jelenleg tartózkodó személyek listája",
+                "operationId": "ae584d5e3c9c0318d1a936a792c76a2c",
+                "parameters": [
+                    {
+                        "name": "transport",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Fedélzeten tartózkodó személyek"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/transports/{transport}/simulate-position": {
+            "post": {
+                "tags": [
+                    "Transports"
+                ],
+                "summary": "A jármű pozíciójának szimulálása (valós GPS-integráció hiányában demonstrációs célra)",
+                "description": "Az esemény egyik, koordinátával rendelkező befogadóhelye közelébe helyezi a járművet, kis véletlenszerű eltéréssel. Admin, vezető, regisztrátor vagy befogadóhelyi kezelő jogosult.",
+                "operationId": "2d523637cb0c4413a519002eeac6f7b1",
+                "parameters": [
+                    {
+                        "name": "transport",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Frissített pozíció"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    },
+                    "422": {
+                        "description": "Nincs koordinátával rendelkező befogadóhely az eseményhez"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/transports/{transport}/board": {
+            "post": {
+                "tags": [
+                    "Transports"
+                ],
+                "summary": "Személy felszállásának rögzítése QR-kóddal (digitális manifeszt)",
+                "description": "A regisztráció státusza \"szállítás alatt\"-ra változik. Admin, vezető, regisztrátor vagy befogadóhelyi kezelő jogosult.",
+                "operationId": "2365530535a47d8709d0d809aae67363",
+                "parameters": [
+                    {
+                        "name": "transport",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "public_id"
+                                ],
+                                "properties": {
+                                    "public_id": {
+                                        "type": "string"
+                                    },
+                                    "override_capacity": {
+                                        "type": "boolean",
+                                        "example": false
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Rögzített felszállás"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    },
+                    "404": {
+                        "description": "QR_TOKEN_NOT_FOUND"
+                    },
+                    "409": {
+                        "description": "QR_TOKEN_INVALID, ALREADY_ONBOARD vagy TRANSPORT_OVERCAPACITY"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/transports/{transport}/alight": {
+            "post": {
+                "tags": [
+                    "Transports"
+                ],
+                "summary": "Személy leszállásának rögzítése QR-kóddal (áthelyezés igazolása)",
+                "operationId": "866815e35b0608545dc67577ce9b9f2e",
+                "parameters": [
+                    {
+                        "name": "transport",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "public_id"
+                                ],
+                                "properties": {
+                                    "public_id": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Rögzített leszállás"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    },
+                    "404": {
+                        "description": "QR_TOKEN_NOT_FOUND vagy NOT_ONBOARD"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/transports/{transport}/import-manifest": {
+            "post": {
+                "tags": [
+                    "Transports"
+                ],
+                "summary": "Előre elkészített szervezett szállítási lista (utaslista) tömeges importálása CSV-ből",
+                "description": "Interreg tanulmány \"Szervezett Szállítási Listák (importálása)\" funkciója: a fejléc nélküli vagy egy fejlécsort tartalmazó CSV első oszlopában szereplő okmányszámok alapján tömegesen felszállítja az egyező, az eseményhez tartozó személyeket erre a járműre. Admin, vezető, regisztrátor vagy befogadóhelyi kezelő jogosult.",
+                "operationId": "51e70360b98e5fdcf20c5a0347471fd0",
+                "parameters": [
+                    {
+                        "name": "transport",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "file"
+                                ],
+                                "properties": {
+                                    "file": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Import összegzés: felszállt, nem található, már fedélzeten lévő okmányszámok"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    },
+                    "422": {
+                        "description": "Validációs hiba"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/users": {
+            "get": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Rendszerfelhasználók listája",
+                "description": "Csak admin szerepkör jogosult.",
+                "operationId": "566aed8efb436ca506e0ef51a032ecd9",
+                "responses": {
+                    "200": {
+                        "description": "Felhasználók listája"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Új rendszerfelhasználó létrehozása",
+                "operationId": "be551c1d694a01c164966f58bfa77013",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "email",
+                                    "password",
+                                    "role_id"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password"
+                                    },
+                                    "role_id": {
+                                        "type": "integer"
+                                    },
+                                    "shelter_id": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Létrehozott felhasználó"
+                    },
+                    "422": {
+                        "description": "Validációs hiba"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/users/{targetUser}": {
+            "put": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Rendszerfelhasználó módosítása (szerepkör, befogadóhely, jelszó)",
+                "operationId": "6db3c49523a18bebd9089209ad42add7",
+                "parameters": [
+                    {
+                        "name": "targetUser",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Frissített felhasználó"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/users/{targetUser}/avatar": {
+            "post": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Profilkép feltöltése/cseréje",
+                "description": "Saját profilkép bárki feltöltheti, más felhasználóét csak admin.",
+                "operationId": "ce1ca6f744f03d2f542c726433ea0931",
+                "parameters": [
+                    {
+                        "name": "targetUser",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "avatar"
+                                ],
+                                "properties": {
+                                    "avatar": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Frissített felhasználó, benne az avatar_url"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    },
+                    "422": {
+                        "description": "Validációs hiba"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Profilkép eltávolítása",
+                "operationId": "f6b8118379436238558f0eebb4e3a510",
+                "parameters": [
+                    {
+                        "name": "targetUser",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Frissített felhasználó"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/roles": {
+            "get": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Szerepkörök listája (felhasználókezelő űrlaphoz)",
+                "operationId": "f48ce60eca4060f2597c20716ebe012e",
+                "responses": {
+                    "200": {
+                        "description": "Szerepkörök listája"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/vehicles": {
+            "get": {
+                "tags": [
+                    "Vehicles"
+                ],
+                "summary": "Szállítójármű-flotta törzsadatainak listája, aktuális hozzárendeléssel",
+                "operationId": "043b3ce51f006f946511103cfe1c2ca1",
+                "responses": {
+                    "200": {
+                        "description": "Járművek listája"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Vehicles"
+                ],
+                "summary": "Új jármű felvétele a flottába",
+                "description": "Csak admin és vezető szerepkör jogosult.",
+                "operationId": "74e9ae3e5f1ee2f69f3a177820d204b9",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "plate_number",
+                                    "label"
+                                ],
+                                "properties": {
+                                    "plate_number": {
+                                        "type": "string",
+                                        "example": "AAA-123"
+                                    },
+                                    "label": {
+                                        "type": "string",
+                                        "example": "1. sz. busz"
+                                    },
+                                    "capacity": {
+                                        "type": "integer",
+                                        "nullable": true
+                                    },
+                                    "driver_name": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "notes": {
+                                        "type": "string",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Létrehozott jármű"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/vehicles/{vehicle}": {
+            "put": {
+                "tags": [
+                    "Vehicles"
+                ],
+                "summary": "Jármű törzsadatainak módosítása",
+                "description": "Csak admin és vezető szerepkör jogosult.",
+                "operationId": "82a1b2a717b16eb7e08a86288a7f8093",
+                "parameters": [
+                    {
+                        "name": "vehicle",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Frissített jármű"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Vehicles"
+                ],
+                "summary": "Jármű törlése a flottából",
+                "description": "Csak admin és vezető jogosult, és csak akkor, ha a jármű jelenleg nincs folyamatban lévő eseményhez rendelve.",
+                "operationId": "495952c6402028fab9f82c080af676ad",
+                "parameters": [
+                    {
+                        "name": "vehicle",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Sikeres törlés"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    },
+                    "409": {
+                        "description": "A jármű jelenleg használatban van"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "sanctumSession": {
+                "type": "apiKey",
+                "description": "Laravel Sanctum SPA session-cookie autentikáció. Bejelentkezés: POST /api/login.",
+                "name": "laravel_session",
+                "in": "cookie"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Auth",
+            "description": "Bejelentkezés, kijelentkezés, aktuális felhasználó"
+        },
+        {
+            "name": "Events",
+            "description": "Kitelepítési események kezelése"
+        },
+        {
+            "name": "Persons",
+            "description": "Személy/család regisztráció"
+        },
+        {
+            "name": "Qr",
+            "description": "QR-token generálás és feloldás"
+        },
+        {
+            "name": "Shelters",
+            "description": "Befogadóhelyek és kapacitás"
+        },
+        {
+            "name": "CheckIns",
+            "description": "Befogadóhelyi érkeztetés"
+        },
+        {
+            "name": "Dashboard",
+            "description": "Összesített mutatók és kockázati becslés"
+        },
+        {
+            "name": "Audit",
+            "description": "Műveleti napló"
+        },
+        {
+            "name": "CareEvents",
+            "description": "CareEvents"
+        },
+        {
+            "name": "Citizens",
+            "description": "Citizens"
+        },
+        {
+            "name": "Incidents",
+            "description": "Incidents"
+        },
+        {
+            "name": "Repatriation",
+            "description": "Repatriation"
+        },
+        {
+            "name": "SelfService",
+            "description": "SelfService"
+        },
+        {
+            "name": "Transports",
+            "description": "Transports"
+        },
+        {
+            "name": "Users",
+            "description": "Users"
+        },
+        {
+            "name": "Vehicles",
+            "description": "Vehicles"
+        }
+    ]
+}

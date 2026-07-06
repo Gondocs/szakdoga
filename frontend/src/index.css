@@ -1,0 +1,25 @@
+:root {
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .printable-id-card, .printable-id-card * {
+    visibility: visible;
+  }
+  .printable-id-card {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+}
