@@ -31,6 +31,7 @@ import DirectionsBusIcon from '@mui/icons-material/DirectionsBus';
 import GroupIcon from '@mui/icons-material/Group';
 import HistoryEduIcon from '@mui/icons-material/HistoryEdu';
 import LocationCityIcon from '@mui/icons-material/LocationCity';
+import SettingsIcon from '@mui/icons-material/Settings';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -52,6 +53,7 @@ const navItems = [
   { to: '/telepulesek', label: 'Települések', icon: <LocationCityIcon fontSize="small" /> },
   { to: '/jarmuvek', label: 'Járművek', icon: <DirectionsBusIcon fontSize="small" /> },
   { to: '/naplo', label: 'Napló', icon: <HistoryEduIcon fontSize="small" /> },
+  { to: '/beallitasok', label: 'Beállítások', icon: <SettingsIcon fontSize="small" /> },
 ];
 
 export function AppLayout() {

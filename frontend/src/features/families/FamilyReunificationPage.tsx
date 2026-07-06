@@ -61,27 +61,33 @@ export function FamilyReunificationPage() {
         <Stack spacing={1.5}>
           {families.map((f) => (
             <Paper key={f.id} variant="outlined" sx={{ p: 2 }}>
-              <Stack direction="row" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap={1}>
-                <Box>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <WarningAmberIcon color="warning" fontSize="small" />
-                    <Typography fontWeight={700}>{f.family_code}</Typography>
-                  </Stack>
-                  <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 1 }}>
-                    {f.members.map((m) => (
-                      <Chip key={m.id} size="small" label={`${m.full_name}: ${m.current_shelter ?? 'nincs befogadóhelyen'}`} />
-                    ))}
-                  </Stack>
-                  {f.latest_note && (
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                      Utolsó bejegyzés: {f.latest_note.note} {f.latest_note.resolved && '(megoldva jelölve)'}
-                    </Typography>
-                  )}
-                </Box>
-                <Button variant="outlined" size="small" onClick={() => setActiveFamily(f)}>
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                justifyContent="space-between"
+                alignItems={{ xs: 'flex-start', sm: 'center' }}
+                spacing={1}
+                sx={{ mb: 1.5 }}
+              >
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <WarningAmberIcon color="warning" fontSize="small" />
+                  <Typography fontWeight={700}>{f.family_code}</Typography>
+                </Stack>
+                <Button variant="outlined" size="small" onClick={() => setActiveFamily(f)} sx={{ flexShrink: 0 }}>
                   Bejegyzések ({f.notes_count})
                 </Button>
               </Stack>
+
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                {f.members.map((m) => (
+                  <Chip key={m.id} size="small" label={`${m.full_name}: ${m.current_shelter ?? 'nincs befogadóhelyen'}`} />
+                ))}
+              </Stack>
+
+              {f.latest_note && (
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
+                  Utolsó bejegyzés: {f.latest_note.note} {f.latest_note.resolved && '(megoldva jelölve)'}
+                </Typography>
+              )}
             </Paper>
           ))}
         </Stack>
