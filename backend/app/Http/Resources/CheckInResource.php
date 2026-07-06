@@ -20,6 +20,7 @@ class CheckInResource extends JsonResource
                 'id' => $this->shelter->id,
                 'name' => $this->shelter->name,
             ]),
+            'bed_label' => $this->bed_label,
             'checked_in_at' => $this->checked_in_at?->toIso8601String(),
             'checked_in_by' => $this->whenLoaded('checkedInBy', fn () => $this->checkedInBy->name),
             'temporary_leave_at' => $this->temporary_leave_at?->toIso8601String(),

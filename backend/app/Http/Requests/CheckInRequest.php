@@ -18,6 +18,7 @@ class CheckInRequest extends FormRequest
             'person_id' => ['required_without:public_id', 'uuid', 'exists:persons,id'],
             'event_id' => ['required', 'uuid', 'exists:evacuation_events,id'],
             'override_capacity' => ['nullable', 'boolean'],
+            'bed_label' => ['nullable', 'string', 'max:100'],
         ];
     }
 }
