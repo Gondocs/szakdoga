@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AssemblyPointController;
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CareEventController;
@@ -39,6 +40,7 @@ Route::middleware('throttle:20,1')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
+    Route::put('/me', [AuthController::class, 'updateProfile']);
 
     Route::get('/events', [EvacuationEventController::class, 'index']);
     Route::post('/events', [EvacuationEventController::class, 'store']);
@@ -47,6 +49,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/events/{event}', [EvacuationEventController::class, 'destroy']);
     Route::get('/events/{event}/dashboard', [DashboardController::class, 'show']);
     Route::get('/events/{event}/registrations-timeline', [DashboardController::class, 'timeline']);
+    Route::get('/events/{event}/stock-forecast', [DashboardController::class, 'stockForecast']);
     Route::get('/events/{event}/persons/export', [ExportController::class, 'personsCsv']);
     Route::get('/events/{event}/shelters/{shelter}/roster-export', [ExportController::class, 'shelterRosterCsv']);
     Route::get('/events/{event}/report-export', [ExportController::class, 'summaryReportCsv']);
@@ -76,6 +79,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/events/{event}/incidents', [IncidentController::class, 'store']);
     Route::post('/incidents/{incident}/resolve', [IncidentController::class, 'resolve']);
 
+    Route::get('/events/{event}/assembly-points', [AssemblyPointController::class, 'index']);
+    Route::post('/events/{event}/assembly-points', [AssemblyPointController::class, 'store']);
+    Route::put('/assembly-points/{assemblyPoint}', [AssemblyPointController::class, 'update']);
+    Route::delete('/assembly-points/{assemblyPoint}', [AssemblyPointController::class, 'destroy']);
+
     Route::get('/events/{event}/repatriation-authorizations', [RepatriationController::class, 'index']);
     Route::put('/events/{event}/repatriation-authorizations', [RepatriationController::class, 'upsert']);
 
@@ -100,6 +108,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/persons/{person}/transfer', [CheckInController::class, 'transfer']);
     Route::post('/persons/{person}/temporary-leave', [CheckInController::class, 'temporaryLeave']);
     Route::post('/persons/{person}/temporary-return', [CheckInController::class, 'temporaryReturn']);
+    Route::patch('/persons/{person}/bed-assignment', [CheckInController::class, 'updateBedAssignment']);
 
     Route::get('/events/{event}/transports', [TransportController::class, 'index']);
     Route::post('/events/{event}/transports', [TransportController::class, 'store']);
