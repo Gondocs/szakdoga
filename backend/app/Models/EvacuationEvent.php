@@ -71,6 +71,11 @@ class EvacuationEvent extends Model
         return $this->hasMany(Incident::class, 'event_id');
     }
 
+    public function assemblyPoints(): HasMany
+    {
+        return $this->hasMany(AssemblyPoint::class, 'event_id');
+    }
+
     public function isActive(): bool
     {
         return $this->status === EventStatus::Active;

@@ -16,6 +16,7 @@ class CheckIn extends Model
         'event_id',
         'person_id',
         'shelter_id',
+        'bed_label',
         'checked_in_at',
         'checked_in_by',
         'temporary_leave_at',
