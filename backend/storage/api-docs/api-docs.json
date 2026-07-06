@@ -12,6 +12,165 @@
         }
     ],
     "paths": {
+        "/api/events/{event}/assembly-points": {
+            "get": {
+                "tags": [
+                    "AssemblyPoints"
+                ],
+                "summary": "Eseményhez tartozó gyülekezési pontok listája",
+                "operationId": "826eb8ee8aa4faed0a59b4d2f915c1a0",
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Gyülekezési pontok listája"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "AssemblyPoints"
+                ],
+                "summary": "Gyülekezési pont létrehozása",
+                "operationId": "47872064b6b1574aeeee7311e51f5690",
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "lat",
+                                    "lng"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "address": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "lat": {
+                                        "type": "number",
+                                        "format": "float"
+                                    },
+                                    "lng": {
+                                        "type": "number",
+                                        "format": "float"
+                                    },
+                                    "notes": {
+                                        "type": "string",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Létrehozott gyülekezési pont"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/assembly-points/{assemblyPoint}": {
+            "put": {
+                "tags": [
+                    "AssemblyPoints"
+                ],
+                "summary": "Gyülekezési pont módosítása",
+                "operationId": "0eb864218416dc6a91ed84412033854e",
+                "parameters": [
+                    {
+                        "name": "assemblyPoint",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Frissített gyülekezési pont"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "AssemblyPoints"
+                ],
+                "summary": "Gyülekezési pont törlése",
+                "operationId": "63243cc38e871f125bfcfb94920a5bb9",
+                "parameters": [
+                    {
+                        "name": "assemblyPoint",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Törölve"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
         "/api/audit-logs": {
             "get": {
                 "tags": [
@@ -203,6 +362,56 @@
                         "sanctumSession": []
                     }
                 ]
+            },
+            "put": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Saját profil szerkesztése (név, e-mail, jelszó)",
+                "description": "E-mail vagy jelszó módosításához a jelenlegi jelszó megadása is szükséges.",
+                "operationId": "36a81ce2b9e4c1bbb80f4245fe9b8e46",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "nullable": true
+                                    },
+                                    "current_password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Frissített felhasználó"
+                    },
+                    "422": {
+                        "description": "Validációs hiba vagy hibás jelenlegi jelszó"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
             }
         },
         "/api/persons/{person}/care-events": {
@@ -344,6 +553,11 @@
                                     "override_capacity": {
                                         "description": "Csak admin/vezető szerepkörnél hatásos",
                                         "type": "boolean"
+                                    },
+                                    "bed_label": {
+                                        "description": "Ágy/szoba/szektor azonosító (opcionális)",
+                                        "type": "string",
+                                        "nullable": true
                                     }
                                 },
                                 "type": "object"
@@ -406,6 +620,11 @@
                                     },
                                     "override_capacity": {
                                         "type": "boolean"
+                                    },
+                                    "bed_label": {
+                                        "description": "Ágy/szoba/szektor azonosító (opcionális)",
+                                        "type": "string",
+                                        "nullable": true
                                     }
                                 },
                                 "type": "object"
@@ -491,6 +710,58 @@
                 "responses": {
                     "200": {
                         "description": "Visszaérkezés rögzítve"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    },
+                    "422": {
+                        "description": "A személy nincs befogadóhelyen"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/persons/{person}/bed-assignment": {
+            "patch": {
+                "tags": [
+                    "CheckIns"
+                ],
+                "summary": "Ágy/szoba azonosító módosítása a jelenlegi befogadóhelyi elhelyezésen",
+                "operationId": "d163949b86a826eea1b4d42dcf930419",
+                "parameters": [
+                    {
+                        "name": "person",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "bed_label": {
+                                        "type": "string",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Ágy/szoba azonosító frissítve"
                     },
                     "403": {
                         "description": "Nincs jogosultság"
@@ -712,6 +983,40 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/events/{event}/stock-forecast": {
+            "get": {
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Napi készletigény-előrejelzés befogadóhelyenként",
+                "description": "A jelenleg befogadóhelyen tartózkodó személyek száma és egyedi igényei alapján becsült napi étkezési adag-, takaró-, matrac- és gyógyszerigény.",
+                "operationId": "e9e2d11b386c0c58c196c16830a692cc",
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Készletigény-előrejelzés befogadóhelyenkénti és összesített bontásban"
                     },
                     "403": {
                         "description": "Nincs jogosultság"
@@ -3811,6 +4116,10 @@
         {
             "name": "Audit",
             "description": "Műveleti napló"
+        },
+        {
+            "name": "AssemblyPoints",
+            "description": "AssemblyPoints"
         },
         {
             "name": "CareEvents",
