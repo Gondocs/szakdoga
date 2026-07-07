@@ -17,6 +17,7 @@ import {
   TableCell,
   TableContainer,
   Tooltip,
+  TableSortLabel,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
@@ -39,17 +40,34 @@ export function FamilyListPage() {
   const [families, setFamilies] = useState<FamilySummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<'code' | 'members'>('code');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
     if (!eventId) return;
     fetchFamilies(eventId).then(setFamilies).finally(() => setIsLoading(false));
   }, [eventId]);
 
+  function handleSort(column: typeof sortBy) {
+    if (sortBy === column) {
+      setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(column);
+      setSortDir('asc');
+    }
+  }
+
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return families;
-    return families.filter((f) => f.family_code.toLowerCase().includes(term));
-  }, [families, search]);
+    const base = term ? families.filter((f) => f.family_code.toLowerCase().includes(term)) : families;
+
+    return [...base].sort((a, b) => {
+      const result = sortBy === 'members'
+        ? a.members_count - b.members_count
+        : a.family_code.localeCompare(b.family_code, 'hu');
+      return sortDir === 'asc' ? result : -result;
+    });
+  }, [families, search, sortBy, sortDir]);
 
   const splitCount = useMemo(() => families.filter((f) => f.is_split).length, [families]);
 
@@ -118,8 +136,16 @@ export function FamilyListPage() {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Családkód</TableCell>
-                <TableCell>Létszám</TableCell>
+                <TableCell sortDirection={sortBy === 'code' ? sortDir : false}>
+                  <TableSortLabel active={sortBy === 'code'} direction={sortBy === 'code' ? sortDir : 'asc'} onClick={() => handleSort('code')}>
+                    Családkód
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sortDirection={sortBy === 'members' ? sortDir : false}>
+                  <TableSortLabel active={sortBy === 'members'} direction={sortBy === 'members' ? sortDir : 'asc'} onClick={() => handleSort('members')}>
+                    Létszám
+                  </TableSortLabel>
+                </TableCell>
                 <TableCell></TableCell>
               </TableRow>
             </TableHead>
