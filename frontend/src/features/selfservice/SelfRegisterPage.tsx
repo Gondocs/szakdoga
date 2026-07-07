@@ -53,6 +53,7 @@ export function SelfRegisterPage() {
   const [street, setStreet] = useState('');
   const [houseNumber, setHouseNumber] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [ownVehicle, setOwnVehicle] = useState(false);
   const [specialNeeds, setSpecialNeeds] = useState<SpecialNeedRow[]>([]);
 
@@ -84,6 +85,7 @@ export function SelfRegisterPage() {
         address_street: street || undefined,
         address_house_number: houseNumber || undefined,
         phone: phone || undefined,
+        email: email || undefined,
         own_vehicle: ownVehicle,
         special_needs: specialNeeds.length
           ? specialNeeds.map((row) => ({ category: row.category, type: row.type || undefined, description: row.description || undefined }))
@@ -233,6 +235,9 @@ export function SelfRegisterPage() {
               </Grid>
               <Grid size={{ xs: 12, sm: 4 }}>
                 <TextField label="Telefon" fullWidth value={phone} onChange={(e) => setPhone(e.target.value)} />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <TextField label="E-mail" type="email" fullWidth value={email} onChange={(e) => setEmail(e.target.value)} />
               </Grid>
               <Grid size={12}>
                 <FormControlLabel
