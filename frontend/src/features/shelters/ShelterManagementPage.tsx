@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import {
   Box,
   Typography,
@@ -23,6 +23,8 @@ import {
   Tooltip,
   FormControlLabel,
   Checkbox,
+  TableSortLabel,
+  InputAdornment,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
@@ -30,6 +32,7 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import HomeWorkIcon from '@mui/icons-material/HomeWork';
+import SearchIcon from '@mui/icons-material/Search';
 import { toast } from 'react-toastify';
 import { useAuth } from '../auth/AuthContext';
 import type { Municipality, Shelter } from '../../types';
@@ -71,9 +74,48 @@ export function ShelterManagementPage() {
   const [dialogShelter, setDialogShelter] = useState<Shelter | 'new' | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Shelter | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<'name' | 'municipality' | 'capacity' | 'status'>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   const canManage = user?.role?.code === 'admin' || user?.role?.code === 'manager';
   const isAdmin = user?.role?.code === 'admin';
+
+  function handleSort(column: typeof sortBy) {
+    if (sortBy === column) {
+      setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(column);
+      setSortDir('asc');
+    }
+  }
+
+  const displayedShelters = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const filtered = term
+      ? shelters.filter((s) => s.name.toLowerCase().includes(term) || (s.municipality ?? '').toLowerCase().includes(term))
+      : shelters;
+
+    const sorted = [...filtered].sort((a, b) => {
+      let result = 0;
+      switch (sortBy) {
+        case 'municipality':
+          result = (a.municipality ?? '').localeCompare(b.municipality ?? '', 'hu');
+          break;
+        case 'capacity':
+          result = a.capacity_total - b.capacity_total;
+          break;
+        case 'status':
+          result = statusLabels[a.status].localeCompare(statusLabels[b.status], 'hu');
+          break;
+        default:
+          result = a.name.localeCompare(b.name, 'hu');
+      }
+      return sortDir === 'asc' ? result : -result;
+    });
+
+    return sorted;
+  }, [shelters, search, sortBy, sortDir]);
 
   function load() {
     setIsLoading(true);
@@ -114,11 +156,23 @@ export function ShelterManagementPage() {
         )}
       </Stack>
 
+      <TextField
+        placeholder="Keresés név vagy település alapján…"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        size="small"
+        sx={{ mb: 2, maxWidth: 360 }}
+        fullWidth
+        InputProps={{
+          startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>,
+        }}
+      />
+
       {isLoading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>
       ) : isMobile ? (
         <Stack spacing={1.5}>
-          {shelters.map((s) => (
+          {displayedShelters.map((s) => (
             <Paper key={s.id} variant="outlined" sx={{ p: 2 }}>
               <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
                 <Stack direction="row" spacing={1.5} alignItems="center">
@@ -150,23 +204,39 @@ export function ShelterManagementPage() {
               </Stack>
             </Paper>
           ))}
-          {shelters.length === 0 && <Typography color="text.secondary">Nincs rögzített befogadóhely.</Typography>}
+          {displayedShelters.length === 0 && <Typography color="text.secondary">Nincs rögzített befogadóhely.</Typography>}
         </Stack>
       ) : (
         <TableContainer component={Paper} variant="outlined">
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Név</TableCell>
-                <TableCell>Település</TableCell>
-                <TableCell>Kapacitás</TableCell>
-                <TableCell>Státusz</TableCell>
+                <TableCell sortDirection={sortBy === 'name' ? sortDir : false}>
+                  <TableSortLabel active={sortBy === 'name'} direction={sortBy === 'name' ? sortDir : 'asc'} onClick={() => handleSort('name')}>
+                    Név
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sortDirection={sortBy === 'municipality' ? sortDir : false}>
+                  <TableSortLabel active={sortBy === 'municipality'} direction={sortBy === 'municipality' ? sortDir : 'asc'} onClick={() => handleSort('municipality')}>
+                    Település
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sortDirection={sortBy === 'capacity' ? sortDir : false}>
+                  <TableSortLabel active={sortBy === 'capacity'} direction={sortBy === 'capacity' ? sortDir : 'asc'} onClick={() => handleSort('capacity')}>
+                    Kapacitás
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sortDirection={sortBy === 'status' ? sortDir : false}>
+                  <TableSortLabel active={sortBy === 'status'} direction={sortBy === 'status' ? sortDir : 'asc'} onClick={() => handleSort('status')}>
+                    Státusz
+                  </TableSortLabel>
+                </TableCell>
                 <TableCell>Szolgáltatások</TableCell>
                 <TableCell align="right"></TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {shelters.map((s) => (
+              {displayedShelters.map((s) => (
                 <TableRow key={s.id} hover>
                   <TableCell>{s.name}</TableCell>
                   <TableCell>{s.municipality ?? '–'}</TableCell>
@@ -193,7 +263,7 @@ export function ShelterManagementPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {shelters.length === 0 && (
+              {displayedShelters.length === 0 && (
                 <TableRow><TableCell colSpan={6} align="center">Nincs rögzített befogadóhely.</TableCell></TableRow>
               )}
             </TableBody>
