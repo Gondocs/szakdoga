@@ -178,4 +178,26 @@ class AuthController extends Controller
 
         return new UserResource($user->fresh(['role', 'shelter']));
     }
+
+    #[OA\Get(
+        path: '/api/me/login-history',
+        summary: 'Saját legutóbbi bejelentkezési/kijelentkezési előzmények',
+        description: 'Minden szerepkör lekérheti a saját fiókjához tartozó bejegyzéseket, függetlenül attól, '.
+            'hogy jogosult-e az általános műveleti napló megtekintésére.',
+        security: [['sanctumSession' => []]],
+        tags: ['Auth'],
+        responses: [
+            new OA\Response(response: 200, description: 'Legutóbbi bejelentkezési előzmények (max. 10 bejegyzés)'),
+        ]
+    )]
+    public function loginHistory(Request $request)
+    {
+        $entries = AuditLog::where('user_id', $request->user()->id)
+            ->whereIn('action', ['login', 'logout', 'login_failed'])
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get(['id', 'action', 'created_at']);
+
+        return response()->json(['data' => $entries]);
+    }
 }
