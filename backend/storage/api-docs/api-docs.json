@@ -2081,6 +2081,34 @@
                         }
                     },
                     {
+                        "name": "sort_by",
+                        "in": "query",
+                        "description": "Rendezés mezője",
+                        "schema": {
+                            "type": "string",
+                            "default": "name",
+                            "enum": [
+                                "name",
+                                "status",
+                                "municipality",
+                                "created_at"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "sort_dir",
+                        "in": "query",
+                        "description": "Rendezés iránya",
+                        "schema": {
+                            "type": "string",
+                            "default": "asc",
+                            "enum": [
+                                "asc",
+                                "desc"
+                            ]
+                        }
+                    },
+                    {
                         "name": "page",
                         "in": "query",
                         "schema": {

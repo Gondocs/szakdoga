@@ -159,6 +159,8 @@ export interface PersonListParams {
   central_accommodation_required?: boolean;
   shelter_id?: string;
   municipality_id?: number;
+  sort_by?: 'name' | 'status' | 'municipality' | 'created_at';
+  sort_dir?: 'asc' | 'desc';
   page?: number;
   per_page?: number;
 }
