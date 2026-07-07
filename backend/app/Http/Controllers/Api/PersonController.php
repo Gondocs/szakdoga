@@ -39,6 +39,8 @@ class PersonController extends Controller
             new OA\Parameter(name: 'central_accommodation_required', in: 'query', schema: new OA\Schema(type: 'boolean')),
             new OA\Parameter(name: 'shelter_id', in: 'query', description: 'Csak az adott befogadóhelyre bejelentkezett személyek', schema: new OA\Schema(type: 'string', format: 'uuid')),
             new OA\Parameter(name: 'municipality_id', in: 'query', description: 'Csak az adott lakóhely szerinti település', schema: new OA\Schema(type: 'integer')),
+            new OA\Parameter(name: 'sort_by', in: 'query', description: 'Rendezés mezője', schema: new OA\Schema(type: 'string', enum: ['name', 'status', 'municipality', 'created_at'], default: 'name')),
+            new OA\Parameter(name: 'sort_dir', in: 'query', description: 'Rendezés iránya', schema: new OA\Schema(type: 'string', enum: ['asc', 'desc'], default: 'asc')),
             new OA\Parameter(name: 'page', in: 'query', schema: new OA\Schema(type: 'integer', default: 1)),
             new OA\Parameter(name: 'per_page', in: 'query', description: 'Oldalankénti elemszám (max. 1000)', schema: new OA\Schema(type: 'integer', default: 25)),
         ],
@@ -81,9 +83,25 @@ class PersonController extends Controller
             ->when($request->filled('shelter_id'), fn ($query) => $query->whereHas(
                 'checkins',
                 fn ($q) => $q->where('shelter_id', $request->string('shelter_id'))
-            ))
-            ->orderBy('last_name')
-            ->paginate(min($request->integer('per_page', 25), 1000));
+            ));
+
+        $sortDir = $request->string('sort_dir')->value() === 'desc' ? 'desc' : 'asc';
+
+        match ($request->string('sort_by')->value() ?: 'name') {
+            'status' => $persons->select('persons.*')
+                ->leftJoin('registrations', function ($join) use ($event) {
+                    $join->on('registrations.person_id', '=', 'persons.id')
+                        ->where('registrations.event_id', '=', $event->id);
+                })
+                ->orderBy('registrations.status', $sortDir),
+            'municipality' => $persons->select('persons.*')
+                ->leftJoin('municipalities', 'municipalities.id', '=', 'persons.municipality_id')
+                ->orderBy('municipalities.name', $sortDir),
+            'created_at' => $persons->orderBy('persons.created_at', $sortDir),
+            default => $persons->orderBy('persons.last_name', $sortDir)->orderBy('persons.first_name', $sortDir),
+        };
+
+        $persons = $persons->paginate(min($request->integer('per_page', 25), 1000));
 
         return PersonResource::collection($persons);
     }
