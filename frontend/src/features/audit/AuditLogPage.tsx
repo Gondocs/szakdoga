@@ -91,14 +91,147 @@ function buildEntityLink(entityType: string, entityId: string): string | null {
   }
 }
 
-function formatValue(value: unknown): string {
+const FIELD_LABELS: Record<string, string> = {
+  event_id: 'Esemény',
+  family_id: 'Család',
+  municipality_id: 'Település',
+  last_name: 'Vezetéknév',
+  first_name: 'Keresztnév',
+  birth_last_name: 'Születési vezetéknév',
+  birth_first_name: 'Születési keresztnév',
+  birth_place: 'Születési hely',
+  birth_date: 'Születési dátum',
+  mother_birth_name: 'Anyja neve',
+  address_postal_code: 'Irányítószám',
+  address_settlement: 'Település (cím)',
+  address_street: 'Utca',
+  address_house_number: 'Házszám',
+  phone: 'Telefon',
+  email: 'E-mail',
+  created_by: 'Létrehozta',
+  updated_by: 'Módosította',
+  gender: 'Nem',
+  id_document_number: 'Okmányszám',
+  document_photo_front_path: 'Okmányfénykép (elülső)',
+  document_photo_back_path: 'Okmányfénykép (hátulsó)',
+  person_id: 'Személy',
+  status: 'Státusz',
+  channel: 'Regisztráció csatorna',
+  central_transport_required: 'Központi szállítás igénylése',
+  central_accommodation_required: 'Központi elszállásolás igénylése',
+  under_regular_medical_care: 'Rendszeres orvosi ellátás',
+  own_vehicle: 'Saját jármű',
+  travels_alone: 'Egyedül utazik',
+  self_arrival_confirmed_at: 'Önálló megérkezés megerősítve',
+  registered_at: 'Regisztráció időpontja',
+  registered_by: 'Regisztrálta',
+  shelter_id: 'Befogadóhely',
+  bed_label: 'Ágy/szoba azonosító',
+  checked_in_at: 'Érkeztetés időpontja',
+  temporary_leave_at: 'Ideiglenes eltávozás',
+  temporary_return_at: 'Visszaérkezés',
+  checked_in_by: 'Érkeztette',
+  name: 'Név',
+  address: 'Cím',
+  capacity_total: 'Teljes kapacitás',
+  accessible_capacity: 'Akadálymentes férőhelyek',
+  medical_support_available: 'Egészségügyi ellátás',
+  drinking_water_available: 'Ivóvíz elérhető',
+  meals_available: 'Étkezés elérhető',
+  hygiene_facilities_available: 'Tisztálkodási lehetőség',
+  childcare_available: 'Gyermekellátás',
+  psychological_support_available: 'Lelki segítségnyújtás',
+  house_rules: 'Házirend',
+  public_health_notes: 'Közegészségügyi megjegyzés',
+  contact_phone: 'Kapcsolattartó telefon',
+  plate_number: 'Rendszám',
+  label: 'Megnevezés',
+  vehicle_type: 'Jármű típusa',
+  capacity: 'Kapacitás',
+  driver_name: 'Sofőr neve',
+  notes: 'Megjegyzés',
+  avatar_path: 'Profilkép',
+  email_verified_at: 'E-mail megerősítve',
+  password: 'Jelszó',
+  remember_token: 'Munkamenet-token',
+  role_id: 'Szerepkör',
+  code: 'Kód',
+  starts_at: 'Kezdés időpontja',
+  ends_at: 'Befejezés időpontja',
+  vehicle_id: 'Jármű',
+  last_lat: 'Utolsó pozíció (szélesség)',
+  last_lng: 'Utolsó pozíció (hosszúság)',
+  last_position_at: 'Utolsó pozíció időpontja',
+  origin: 'Indulási pont',
+  destination: 'Célállomás',
+  escort_name: 'Kísérő neve',
+  departure_planned_at: 'Tervezett indulás',
+  arrival_planned_at: 'Tervezett érkezés',
+  delay_minutes: 'Késés (perc)',
+  route_change_note: 'Útvonalváltozás megjegyzés',
+  transport_id: 'Jármű/szállítás',
+  boarded_at: 'Felszállás időpontja',
+  boarded_by: 'Felszállást rögzítette',
+  alighted_at: 'Leszállás időpontja',
+  alighted_by: 'Leszállást rögzítette',
+  family_code: 'Család kód',
+  primary_contact_person_id: 'Elsődleges kapcsolattartó',
+  category: 'Kategória',
+  severity: 'Súlyosság',
+  description: 'Leírás',
+  reported_by: 'Bejelentette',
+  resolved_by: 'Lezárta',
+  resolved_at: 'Lezárás időpontja',
+  lat: 'Szélesség',
+  lng: 'Hosszúság',
+  public_id: 'Nyilvános azonosító',
+  token_hash: 'Token (kódolt)',
+  delivery_method: 'Átadás módja',
+  delivered_at: 'Átadás időpontja',
+  delivered_by: 'Átadta',
+  issued_by: 'Kiállította',
+  county: 'Vármegye',
+  postal_code: 'Irányítószám',
+  type: 'Típus',
+  priority: 'Prioritás',
+  animal_type: 'Állat típusa',
+  count: 'Darabszám',
+  stays_at_address: 'A címen marad',
+  note: 'Megjegyzés',
+  recorded_by: 'Rögzítette',
+  recorded_at: 'Rögzítés időpontja',
+  capacity_limit: 'Kapacitáskorlát',
+  checked_in_count: 'Jelenlegi létszám',
+};
+
+const HIDDEN_FIELDS = new Set(['id']);
+const ALWAYS_MASKED_FIELDS = new Set(['password', 'token_hash', 'remember_token']);
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
+
+function fieldLabel(key: string): string {
+  return FIELD_LABELS[key] ?? key;
+}
+
+function formatValue(key: string, value: unknown): string {
+  if (ALWAYS_MASKED_FIELDS.has(key)) return value ? '•••• (rejtve)' : '–';
   if (value === null || value === undefined || value === '') return '–';
+  if (typeof value === 'boolean') return value ? 'igen' : 'nem';
+  if (typeof value === 'string') {
+    if (ISO_DATE_RE.test(value)) {
+      const date = new Date(value);
+      if (!Number.isNaN(date.getTime())) return date.toLocaleString('hu-HU');
+    }
+    if (UUID_RE.test(value)) return `${value.slice(0, 8)}…`;
+  }
   if (typeof value === 'object') return JSON.stringify(value);
   return String(value);
 }
 
 function FieldDiff({ before, after }: { before: Record<string, unknown> | null; after: Record<string, unknown> | null }) {
-  const keys = Array.from(new Set([...(before ? Object.keys(before) : []), ...(after ? Object.keys(after) : [])])).sort();
+  const keys = Array.from(new Set([...(before ? Object.keys(before) : []), ...(after ? Object.keys(after) : [])]))
+    .filter((k) => !HIDDEN_FIELDS.has(k))
+    .sort((a, b) => fieldLabel(a).localeCompare(fieldLabel(b), 'hu'));
   const changed = keys.filter((k) => JSON.stringify(before?.[k] ?? null) !== JSON.stringify(after?.[k] ?? null));
 
   if (changed.length === 0) {
@@ -106,18 +239,28 @@ function FieldDiff({ before, after }: { before: Record<string, unknown> | null; 
   }
 
   return (
-    <Stack spacing={0.75}>
-      {changed.map((key) => (
-        <Stack key={key} direction="row" spacing={1} alignItems="baseline" flexWrap="wrap">
-          <Typography variant="body2" fontWeight={700} sx={{ minWidth: 180 }}>{key}</Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ textDecoration: before ? 'line-through' : 'none' }}>
-            {before ? formatValue(before[key]) : '–'}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">→</Typography>
-          <Typography variant="body2" fontWeight={600}>{after ? formatValue(after[key]) : '–'}</Typography>
-        </Stack>
-      ))}
-    </Stack>
+    <Table size="small">
+      <TableHead>
+        <TableRow>
+          <TableCell sx={{ border: 0, pl: 0 }}>Mező</TableCell>
+          <TableCell sx={{ border: 0 }}>Régi érték</TableCell>
+          <TableCell sx={{ border: 0, width: 32 }} />
+          <TableCell sx={{ border: 0 }}>Új érték</TableCell>
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {changed.map((key) => (
+          <TableRow key={key} sx={{ '&:nth-of-type(odd)': { bgcolor: 'action.hover' } }}>
+            <TableCell sx={{ border: 0, pl: 0, fontWeight: 700, whiteSpace: 'nowrap' }}>{fieldLabel(key)}</TableCell>
+            <TableCell sx={{ border: 0, color: 'text.secondary' }}>
+              {before ? formatValue(key, before[key]) : '–'}
+            </TableCell>
+            <TableCell sx={{ border: 0, color: 'text.secondary', textAlign: 'center' }}>→</TableCell>
+            <TableCell sx={{ border: 0, fontWeight: 600 }}>{after ? formatValue(key, after[key]) : '–'}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }
 
@@ -218,88 +361,90 @@ export function AuditLogPage() {
         </Typography>
       )}
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 1.5 }} alignItems={{ xs: 'stretch', sm: 'flex-end' }} flexWrap="wrap" useFlexGap>
-        <DateTimePicker
-          label="Kezdő időpont"
-          value={dateFrom}
-          onChange={setDateFrom}
-          ampm={false}
-          format="yyyy.MM.dd HH:mm"
-          slotProps={{ textField: { size: 'small' } }}
-        />
-        <DateTimePicker
-          label="Záró időpont"
-          value={dateTo}
-          onChange={setDateTo}
-          ampm={false}
-          format="yyyy.MM.dd HH:mm"
-          slotProps={{ textField: { size: 'small' } }}
-        />
-        <TextField select label="Művelet" size="small" value={action} onChange={(e) => setAction(e.target.value)} sx={{ minWidth: 180 }}>
-          <MenuItem value="">Összes</MenuItem>
-          {Object.entries(actionMeta).map(([value, meta]) => (
-            <MenuItem key={value} value={value}>{meta.label}</MenuItem>
-          ))}
-        </TextField>
-        <TextField
-          select
-          label="Felhasználó"
-          size="small"
-          value={userId}
-          onChange={(e) => setUserId(e.target.value ? Number(e.target.value) : '')}
-          sx={{ minWidth: 180 }}
-        >
-          <MenuItem value="">Összes</MenuItem>
-          {filterOptions.users.map((u) => (
-            <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
-          ))}
-        </TextField>
-        <TextField
-          select
-          label="Esemény"
-          size="small"
-          value={eventId}
-          onChange={(e) => setEventId(e.target.value)}
-          sx={{ minWidth: 200 }}
-        >
-          <MenuItem value="">Összes</MenuItem>
-          {filterOptions.events.map((ev) => (
-            <MenuItem key={ev.id} value={ev.id}>{ev.code} — {ev.name}</MenuItem>
-          ))}
-        </TextField>
-      </Stack>
+      <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 2 }} alignItems={{ xs: 'stretch', sm: 'flex-end' }} flexWrap="wrap" useFlexGap>
+          <DateTimePicker
+            label="Kezdő időpont"
+            value={dateFrom}
+            onChange={setDateFrom}
+            ampm={false}
+            format="yyyy.MM.dd HH:mm"
+            slotProps={{ textField: { size: 'small' } }}
+          />
+          <DateTimePicker
+            label="Záró időpont"
+            value={dateTo}
+            onChange={setDateTo}
+            ampm={false}
+            format="yyyy.MM.dd HH:mm"
+            slotProps={{ textField: { size: 'small' } }}
+          />
+          <TextField select label="Művelet" size="small" value={action} onChange={(e) => setAction(e.target.value)} sx={{ minWidth: 180, flex: 1 }}>
+            <MenuItem value="">Összes</MenuItem>
+            {Object.entries(actionMeta).map(([value, meta]) => (
+              <MenuItem key={value} value={value}>{meta.label}</MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            label="Felhasználó"
+            size="small"
+            value={userId}
+            onChange={(e) => setUserId(e.target.value ? Number(e.target.value) : '')}
+            sx={{ minWidth: 180, flex: 1 }}
+          >
+            <MenuItem value="">Összes</MenuItem>
+            {filterOptions.users.map((u) => (
+              <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            label="Esemény"
+            size="small"
+            value={eventId}
+            onChange={(e) => setEventId(e.target.value)}
+            sx={{ minWidth: 200, flex: 1 }}
+          >
+            <MenuItem value="">Összes</MenuItem>
+            {filterOptions.events.map((ev) => (
+              <MenuItem key={ev.id} value={ev.id}>{ev.code} — {ev.name}</MenuItem>
+            ))}
+          </TextField>
+        </Stack>
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 2 }} alignItems={{ xs: 'stretch', sm: 'center' }} flexWrap="wrap" useFlexGap>
-        <TextField
-          label="Szabad szöveges keresés"
-          size="small"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Felhasználó neve, entitás azonosítója…"
-          sx={{ minWidth: 240 }}
-        />
-        <FormControlLabel
-          control={<Switch checked={significantOnly} onChange={(e) => setSignificantOnly(e.target.checked)} size="small" />}
-          label="Csak jelentős változások"
-        />
-        <Button variant="contained" onClick={applyFilters}>Szűrés</Button>
-        {hasActiveFilters && <Button color="inherit" onClick={clearFilters}>Törlés</Button>}
-        <Button
-          variant="text"
-          startIcon={<DownloadIcon />}
-          component="a"
-          href={auditLogExportUrl(currentFilters())}
-          target="_blank"
-          rel="noopener"
-        >
-          CSV export
-        </Button>
-        <FormControlLabel
-          control={<Switch checked={showRawJson} onChange={(e) => setShowRawJson(e.target.checked)} size="small" />}
-          label="Nyers JSON nézet"
-          sx={{ ml: { sm: 'auto' } }}
-        />
-      </Stack>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', sm: 'center' }} flexWrap="wrap" useFlexGap>
+          <TextField
+            label="Szabad szöveges keresés"
+            size="small"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Felhasználó neve, entitás azonosítója…"
+            sx={{ minWidth: 240, flex: 1 }}
+          />
+          <FormControlLabel
+            control={<Switch checked={significantOnly} onChange={(e) => setSignificantOnly(e.target.checked)} size="small" />}
+            label="Csak jelentős változások"
+          />
+          <Button variant="contained" onClick={applyFilters}>Szűrés</Button>
+          {hasActiveFilters && <Button color="inherit" onClick={clearFilters}>Törlés</Button>}
+          <Button
+            variant="text"
+            startIcon={<DownloadIcon />}
+            component="a"
+            href={auditLogExportUrl(currentFilters())}
+            target="_blank"
+            rel="noopener"
+          >
+            CSV export
+          </Button>
+          <FormControlLabel
+            control={<Switch checked={showRawJson} onChange={(e) => setShowRawJson(e.target.checked)} size="small" />}
+            label="Nyers JSON nézet"
+            sx={{ ml: { sm: 'auto' } }}
+          />
+        </Stack>
+      </Paper>
 
       {isLoading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>
