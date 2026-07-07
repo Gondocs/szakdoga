@@ -1,7 +1,8 @@
 import { apiClient, ensureCsrfCookie } from './client';
 import type {
   AssemblyPoint,
-  AuditLogEntry,
+  AuditLogFilterOptions,
+  AuditLogListResponse,
   CheckInRecord,
   DashboardData,
   EvacuationEvent,
@@ -612,9 +613,37 @@ export async function addReunificationNote(
   return data.data;
 }
 
-export async function fetchAuditLogs(params: { entity_type?: string; action?: string; date_from?: string; date_to?: string; page?: number } = {}) {
-  const { data } = await apiClient.get<Paginated<AuditLogEntry>>('/api/audit-logs', { params });
+export interface AuditLogFilters {
+  entity_type?: string;
+  action?: string;
+  user_id?: number;
+  event_id?: string;
+  q?: string;
+  significant_only?: boolean;
+  date_from?: string;
+  date_to?: string;
+  page?: number;
+}
+
+export async function fetchAuditLogs(params: AuditLogFilters = {}): Promise<AuditLogListResponse> {
+  const { data } = await apiClient.get<AuditLogListResponse>('/api/audit-logs', { params });
   return data;
+}
+
+export async function fetchAuditLogFilterOptions(): Promise<AuditLogFilterOptions> {
+  const { data } = await apiClient.get<{ data: AuditLogFilterOptions }>('/api/audit-logs/filter-options');
+  return data.data;
+}
+
+export function auditLogExportUrl(params: AuditLogFilters = {}): string {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      query.set(key, String(value));
+    }
+  });
+  const queryString = query.toString();
+  return `${apiClient.defaults.baseURL}/api/audit-logs/export${queryString ? `?${queryString}` : ''}`;
 }
 
 // A municipalities/shelters törzsadat-végpontok nincsenek a projektleírás
