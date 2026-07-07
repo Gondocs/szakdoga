@@ -66,7 +66,12 @@ class DashboardController extends Controller
 
         $registeredCount = (clone $registrations)->count();
         $familiesCount = $event->families()->count();
-        $arrivedCount = $event->checkins()->count();
+        // Nem a checkins tábla sorainak száma (egy személynek áthelyezés vagy
+        // ismételt érkeztetés esetén több checkin-rekordja is lehet), hanem a
+        // ténylegesen jelenleg befogadóhelyen tartózkodó, egyedi személyek
+        // száma — ugyanaz a definíció, mint amit a KPI-kártya kattintáskor
+        // szűrésként (status=arrived_shelter) használ.
+        $arrivedCount = (clone $registrations)->where('status', RegistrationStatus::ArrivedShelter->value)->count();
         $centralTransportCount = (clone $registrations)->where('central_transport_required', true)->count();
         $centralAccommodationCount = (clone $registrations)->where('central_accommodation_required', true)->count();
 
