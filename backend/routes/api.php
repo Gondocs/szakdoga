@@ -126,6 +126,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/vehicles/{vehicle}', [VehicleController::class, 'destroy']);
 
     Route::get('/audit-logs', [AuditLogController::class, 'index']);
+    Route::get('/audit-logs/filter-options', [AuditLogController::class, 'filterOptions']);
+    Route::get('/audit-logs/export', [AuditLogController::class, 'exportCsv']);
 
     Route::get('/users', [UserController::class, 'index']);
     Route::post('/users', [UserController::class, 'store']);

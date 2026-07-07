@@ -197,6 +197,38 @@
                         }
                     },
                     {
+                        "name": "user_id",
+                        "in": "query",
+                        "description": "Végrehajtó felhasználó szerinti szűrés",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "event_id",
+                        "in": "query",
+                        "description": "Esemény szerinti szűrés",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "description": "Szabad szöveges keresés (felhasználó neve, entitás azonosítója)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "significant_only",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
                         "name": "date_from",
                         "in": "query",
                         "description": "Kezdő dátum/időpont (naptár szerinti szűrés)",
@@ -225,7 +257,112 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Napló lapozott listája"
+                        "description": "Napló lapozott listája, benne egy napi összesítővel (meta.summary)"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/audit-logs/filter-options": {
+            "get": {
+                "tags": [
+                    "Audit"
+                ],
+                "summary": "A naplóban ténylegesen előforduló felhasználók és események listája szűrőmenükhöz",
+                "operationId": "9c7dbc1c14960303b1fc08513528a63d",
+                "responses": {
+                    "200": {
+                        "description": "Szűrőopciók"
+                    },
+                    "403": {
+                        "description": "Nincs jogosultság"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
+        "/api/audit-logs/export": {
+            "get": {
+                "tags": [
+                    "Audit"
+                ],
+                "summary": "Műveleti napló exportálása CSV formátumban (az aktuális szűrésnek megfelelően)",
+                "operationId": "defa9c5e6d1b03212cc1c5ee86fb4fe0",
+                "parameters": [
+                    {
+                        "name": "entity_type",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "action",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "user_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "event_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "significant_only",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "CSV fájl letöltése"
                     },
                     "403": {
                         "description": "Nincs jogosultság"
