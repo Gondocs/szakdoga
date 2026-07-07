@@ -57,6 +57,17 @@ export async function updateProfile(payload: UpdateProfilePayload): Promise<User
   return data.data;
 }
 
+export interface LoginHistoryEntry {
+  id: number;
+  action: 'login' | 'logout' | 'login_failed';
+  created_at: string;
+}
+
+export async function fetchLoginHistory(): Promise<LoginHistoryEntry[]> {
+  const { data } = await apiClient.get<{ data: LoginHistoryEntry[] }>('/api/me/login-history');
+  return data.data;
+}
+
 export async function fetchEvents(): Promise<Paginated<EvacuationEvent>> {
   const { data } = await apiClient.get<Paginated<EvacuationEvent>>('/api/events');
   return data;
@@ -267,6 +278,10 @@ export interface CitizenHistory {
 export async function fetchCitizenHistory(citizenId: string): Promise<CitizenHistory> {
   const { data } = await apiClient.get<{ data: CitizenHistory }>(`/api/citizens/${citizenId}/history`);
   return data.data;
+}
+
+export function apiBaseUrl(): string {
+  return apiClient.defaults.baseURL ?? '';
 }
 
 export function personsExportUrl(eventId: string): string {

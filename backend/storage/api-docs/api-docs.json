@@ -551,6 +551,26 @@
                 ]
             }
         },
+        "/api/me/login-history": {
+            "get": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Saját legutóbbi bejelentkezési/kijelentkezési előzmények",
+                "description": "Minden szerepkör lekérheti a saját fiókjához tartozó bejegyzéseket, függetlenül attól, hogy jogosult-e az általános műveleti napló megtekintésére.",
+                "operationId": "8951111a85fd147de9441cc84a877db1",
+                "responses": {
+                    "200": {
+                        "description": "Legutóbbi bejelentkezési előzmények (max. 10 bejegyzés)"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctumSession": []
+                    }
+                ]
+            }
+        },
         "/api/persons/{person}/care-events": {
             "get": {
                 "tags": [
