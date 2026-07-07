@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Typography,
@@ -13,6 +13,7 @@ import {
   DialogContent,
   DialogActions,
   IconButton,
+  InputAdornment,
   MenuItem,
   Table,
   TableHead,
@@ -20,6 +21,7 @@ import {
   TableRow,
   TableCell,
   TableContainer,
+  TableSortLabel,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
@@ -27,6 +29,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DirectionsBusIcon from '@mui/icons-material/DirectionsBus';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import SearchIcon from '@mui/icons-material/Search';
 import { Link as RouterLink } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
@@ -63,6 +66,9 @@ export function VehicleListPage() {
   const [editVehicle, setEditVehicle] = useState<Vehicle | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Vehicle | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<'plate' | 'label' | 'type' | 'capacity'>('label');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   function load() {
     setIsLoading(true);
@@ -70,6 +76,40 @@ export function VehicleListPage() {
   }
 
   useEffect(load, []);
+
+  function handleSort(column: typeof sortBy) {
+    if (sortBy === column) {
+      setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(column);
+      setSortDir('asc');
+    }
+  }
+
+  const displayedVehicles = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const filtered = term
+      ? vehicles.filter((v) => v.label.toLowerCase().includes(term) || v.plate_number.toLowerCase().includes(term))
+      : vehicles;
+
+    return [...filtered].sort((a, b) => {
+      let result = 0;
+      switch (sortBy) {
+        case 'plate':
+          result = a.plate_number.localeCompare(b.plate_number, 'hu');
+          break;
+        case 'type':
+          result = vehicleTypeLabels[a.vehicle_type].localeCompare(vehicleTypeLabels[b.vehicle_type], 'hu');
+          break;
+        case 'capacity':
+          result = (a.capacity ?? 0) - (b.capacity ?? 0);
+          break;
+        default:
+          result = a.label.localeCompare(b.label, 'hu');
+      }
+      return sortDir === 'asc' ? result : -result;
+    });
+  }, [vehicles, search, sortBy, sortDir]);
 
   async function handleDelete() {
     if (!deleteTarget) return;
@@ -109,9 +149,21 @@ export function VehicleListPage() {
         rendelve, másik aktív eseményhez nem foglalható le újra.
       </Typography>
 
+      <TextField
+        placeholder="Keresés megnevezés vagy rendszám alapján…"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        size="small"
+        sx={{ mb: 2, maxWidth: 360 }}
+        fullWidth
+        InputProps={{
+          startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>,
+        }}
+      />
+
       {isMobile ? (
         <Stack spacing={1.5}>
-          {vehicles.map((v) => (
+          {displayedVehicles.map((v) => (
             <Paper key={v.id} variant="outlined" sx={{ p: 2 }}>
               <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
                 <Box>
@@ -144,24 +196,40 @@ export function VehicleListPage() {
               </Box>
             </Paper>
           ))}
-          {vehicles.length === 0 && <Typography color="text.secondary" textAlign="center">Még nincs felvéve jármű.</Typography>}
+          {displayedVehicles.length === 0 && <Typography color="text.secondary" textAlign="center">Még nincs felvéve jármű.</Typography>}
         </Stack>
       ) : (
         <TableContainer component={Paper} variant="outlined">
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Rendszám</TableCell>
-                <TableCell>Megnevezés</TableCell>
-                <TableCell>Típus</TableCell>
-                <TableCell>Kapacitás</TableCell>
+                <TableCell sortDirection={sortBy === 'plate' ? sortDir : false}>
+                  <TableSortLabel active={sortBy === 'plate'} direction={sortBy === 'plate' ? sortDir : 'asc'} onClick={() => handleSort('plate')}>
+                    Rendszám
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sortDirection={sortBy === 'label' ? sortDir : false}>
+                  <TableSortLabel active={sortBy === 'label'} direction={sortBy === 'label' ? sortDir : 'asc'} onClick={() => handleSort('label')}>
+                    Megnevezés
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sortDirection={sortBy === 'type' ? sortDir : false}>
+                  <TableSortLabel active={sortBy === 'type'} direction={sortBy === 'type' ? sortDir : 'asc'} onClick={() => handleSort('type')}>
+                    Típus
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sortDirection={sortBy === 'capacity' ? sortDir : false}>
+                  <TableSortLabel active={sortBy === 'capacity'} direction={sortBy === 'capacity' ? sortDir : 'asc'} onClick={() => handleSort('capacity')}>
+                    Kapacitás
+                  </TableSortLabel>
+                </TableCell>
                 <TableCell>Sofőr</TableCell>
                 <TableCell>Állapot</TableCell>
                 {canManage && <TableCell align="right"></TableCell>}
               </TableRow>
             </TableHead>
             <TableBody>
-              {vehicles.map((v) => (
+              {displayedVehicles.map((v) => (
                 <TableRow key={v.id} hover>
                   <TableCell>{v.plate_number}</TableCell>
                   <TableCell>{v.label}</TableCell>
@@ -190,7 +258,7 @@ export function VehicleListPage() {
                   )}
                 </TableRow>
               ))}
-              {vehicles.length === 0 && (
+              {displayedVehicles.length === 0 && (
                 <TableRow><TableCell colSpan={canManage ? 7 : 6} align="center">Még nincs felvéve jármű.</TableCell></TableRow>
               )}
             </TableBody>
