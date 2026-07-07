@@ -26,11 +26,17 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import LocationCityIcon from '@mui/icons-material/LocationCity';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import type { Marker as LeafletMarker } from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import '../../lib/leafletIcons';
 import { toast } from 'react-toastify';
 import { useAuth } from '../auth/AuthContext';
 import type { Municipality } from '../../types';
 import { createMunicipality, deleteMunicipality, fetchMunicipalities, updateMunicipality } from '../../lib/api/endpoints';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+
+const GYMS_CENTER: [number, number] = [47.75, 17.35];
 
 export function MunicipalityManagementPage() {
   const { user } = useAuth();
@@ -170,6 +176,13 @@ export function MunicipalityManagementPage() {
   );
 }
 
+function MapClickCatcher({ onClick }: { onClick: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click: (e) => onClick(e.latlng.lat, e.latlng.lng),
+  });
+  return null;
+}
+
 function MunicipalityDialog({
   municipality,
   onClose,
@@ -214,8 +227,12 @@ function MunicipalityDialog({
     }
   }
 
+  const markerPosition: [number, number] | null = lat && lng && !Number.isNaN(Number(lat)) && !Number.isNaN(Number(lng))
+    ? [Number(lat), Number(lng)]
+    : null;
+
   return (
-    <Dialog open onClose={onClose} fullWidth maxWidth="xs" fullScreen={isMobile}>
+    <Dialog open onClose={onClose} fullWidth maxWidth="sm" fullScreen={isMobile}>
       <Box component="form" onSubmit={handleSubmit}>
         <DialogTitle>{municipality ? 'Település szerkesztése' : 'Új település'}</DialogTitle>
         <DialogContent>
@@ -228,8 +245,32 @@ function MunicipalityDialog({
               <TextField label="Hosszúság (lng, opcionális)" fullWidth value={lng} onChange={(e) => setLng(e.target.value)} />
             </Stack>
             <Typography variant="caption" color="text.secondary">
-              A szélesség/hosszúság megadása esetén a település megjelenik a térképes nézeteken is.
+              A szélesség/hosszúság megadása esetén a település megjelenik a térképes nézeteken is. Kattintson a
+              térképre a koordináták kiválasztásához, vagy húzza a jelölőt a pontosításhoz.
             </Typography>
+            <Paper variant="outlined" sx={{ overflow: 'hidden', height: 260 }}>
+              <MapContainer center={markerPosition ?? GYMS_CENTER} zoom={markerPosition ? 12 : 9} style={{ height: '100%', width: '100%' }}>
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> közreműködők'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                <MapClickCatcher onClick={(clickedLat, clickedLng) => { setLat(clickedLat.toFixed(6)); setLng(clickedLng.toFixed(6)); }} />
+                {markerPosition && (
+                  <Marker
+                    position={markerPosition}
+                    draggable
+                    eventHandlers={{
+                      dragend: (e) => {
+                        const marker = e.target as LeafletMarker;
+                        const position = marker.getLatLng();
+                        setLat(position.lat.toFixed(6));
+                        setLng(position.lng.toFixed(6));
+                      },
+                    }}
+                  />
+                )}
+              </MapContainer>
+            </Paper>
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
