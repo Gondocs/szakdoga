@@ -260,13 +260,23 @@ export interface CheckInRecord {
 
 export interface AuditLogEntry {
   id: number;
+  user_id: number | null;
   user: string | null;
+  event_id: string | null;
+  event?: { id: string; code: string; name: string } | null;
   action: string;
   entity_type: string;
   entity_id: string;
+  significant: boolean;
   before: Record<string, unknown> | null;
   after: Record<string, unknown> | null;
+  data_masked?: boolean;
   created_at: string;
+}
+
+export interface AuditLogFilterOptions {
+  users: { id: number; name: string }[];
+  events: { id: string; code: string; name: string }[];
 }
 
 export interface FamilyReunificationEntry {
@@ -326,6 +336,12 @@ export interface Paginated<T> {
     per_page: number;
   };
   links?: unknown;
+}
+
+export interface AuditLogListResponse extends Paginated<AuditLogEntry> {
+  meta?: Paginated<AuditLogEntry>['meta'] & {
+    summary?: { today_count: number; today_significant_count: number };
+  };
 }
 
 export interface ApiError {
