@@ -369,6 +369,12 @@ export function PersonDetailPage() {
         )}
       </Stack>
 
+      {person.data_masked && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Az Ön szerepköre miatt egyes érzékeny adatok (okmányadatok és/vagy elérhetőségi adatok) el vannak rejtve.
+        </Alert>
+      )}
+
       <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
         <Grid container spacing={3}>
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
