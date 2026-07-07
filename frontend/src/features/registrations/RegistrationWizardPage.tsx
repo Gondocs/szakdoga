@@ -38,6 +38,7 @@ export function RegistrationWizardPage() {
   const [street, setStreet] = useState('');
   const [houseNumber, setHouseNumber] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
 
   const [familyChoice, setFamilyChoice] = useState<'none' | 'new' | string>('none');
 
@@ -74,6 +75,7 @@ export function RegistrationWizardPage() {
         address_street: street || undefined,
         address_house_number: houseNumber || undefined,
         phone: phone || undefined,
+        email: email || undefined,
         family_id: familyChoice !== 'none' && familyChoice !== 'new' ? familyChoice : null,
         create_new_family: familyChoice === 'new',
         is_primary_contact: familyChoice === 'new',
@@ -175,6 +177,9 @@ export function RegistrationWizardPage() {
           </Grid>
           <Grid size={{ xs: 12, sm: 6, md: 4 }}>
             <TextField label="Telefon" fullWidth value={phone} onChange={(e) => setPhone(e.target.value)} />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+            <TextField label="E-mail" type="email" fullWidth value={email} onChange={(e) => setEmail(e.target.value)} />
           </Grid>
         </Grid>
 
