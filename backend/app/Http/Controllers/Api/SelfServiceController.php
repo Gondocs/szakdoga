@@ -144,7 +144,7 @@ class SelfServiceController extends Controller
             return $person;
         }
 
-        return new PersonResource($person->load(['municipality', 'registration', 'specialNeeds']));
+        return new PersonResource($person->load(['municipality', 'registration', 'specialNeeds']), bypassMasking: true);
     }
 
     #[OA\Put(
@@ -211,7 +211,7 @@ class SelfServiceController extends Controller
 
         $auditService->log('self_update', $person, $system, $before, $person->toArray());
 
-        return new PersonResource($person);
+        return new PersonResource($person, bypassMasking: true);
     }
 
     #[OA\Post(
@@ -252,7 +252,7 @@ class SelfServiceController extends Controller
 
         $auditService->log('self_arrival_confirmed', $person->registration, $system, $before, $person->registration->fresh()->toArray());
 
-        return new PersonResource($person->fresh(['municipality', 'registration', 'specialNeeds']));
+        return new PersonResource($person->fresh(['municipality', 'registration', 'specialNeeds']), bypassMasking: true);
     }
 
     #[OA\Post(
@@ -302,7 +302,7 @@ class SelfServiceController extends Controller
 
         $auditService->log('self_return_confirmed', $person->registration, $system, null, ['status' => RegistrationStatus::ReturnedHome->value]);
 
-        return new PersonResource($person->fresh(['municipality', 'registration', 'specialNeeds']));
+        return new PersonResource($person->fresh(['municipality', 'registration', 'specialNeeds']), bypassMasking: true);
     }
 
     private function resolveEditablePerson(string $publicId, QrTokenService $qrTokenService)
