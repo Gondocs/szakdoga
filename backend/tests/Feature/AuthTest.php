@@ -85,4 +85,47 @@ class AuthTest extends TestCase
 
         $this->assertTrue(\Illuminate\Support\Facades\Hash::check('ujjelszo123', $user->fresh()->password));
     }
+
+    public function test_login_history_is_available_even_to_roles_without_audit_log_access(): void
+    {
+        $role = Role::create(['code' => RoleCode::Registrar->value, 'name' => 'Registrar']);
+        $user = User::factory()->create([
+            'email' => 'registrar@example.com',
+            'password' => bcrypt('password'),
+            'role_id' => $role->id,
+        ]);
+
+        $this->withHeader('Referer', 'http://localhost:5173')->postJson('/api/login', [
+            'email' => 'registrar@example.com',
+            'password' => 'wrong-password',
+        ])->assertUnprocessable();
+
+        $this->withHeader('Referer', 'http://localhost:5173')->postJson('/api/login', [
+            'email' => 'registrar@example.com',
+            'password' => 'password',
+        ])->assertOk();
+
+        $this->assertDatabaseHas('audit_logs', ['user_id' => $user->id, 'action' => 'login']);
+        $this->assertDatabaseHas('audit_logs', ['user_id' => $user->id, 'action' => 'login_failed']);
+
+        // A tényleges bejelentkezés által beállított session-sütit a teszt-kliens
+        // nem viszi át automatikusan a következő hívásra, ezért a védett
+        // végpontokat explicit módon, a már autentikált felhasználóval hívjuk.
+        $this->actingAs($user);
+
+        $this->getJson('/api/audit-logs')->assertForbidden();
+
+        $history = $this->getJson('/api/me/login-history')->assertOk();
+        $actions = collect($history->json('data'))->pluck('action');
+        $this->assertTrue($actions->contains('login'));
+        $this->assertTrue($actions->contains('login_failed'));
+    }
+
+    public function test_login_history_only_shows_own_entries(): void
+    {
+        $this->actingAsRole(RoleCode::Admin);
+
+        $history = $this->getJson('/api/me/login-history')->assertOk();
+        $this->assertEmpty($history->json('data'));
+    }
 }
