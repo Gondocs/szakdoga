@@ -65,6 +65,53 @@ class PersonSearchAndMapTest extends TestCase
         $this->assertEquals($person['id'], $response->json('data.0.id'));
     }
 
+    public function test_sort_by_name_status_and_municipality(): void
+    {
+        $this->actingAsRole(RoleCode::Admin);
+        $municipalityA = Municipality::factory()->create(['name' => 'Alfafalva']);
+        $municipalityZ = Municipality::factory()->create(['name' => 'Zetafalva']);
+
+        $eventId = $this->postJson('/api/events', [
+            'code' => 'EVT-SORT-1',
+            'name' => 'Teszt esemény',
+            'status' => 'active',
+        ])->assertCreated()->json('data.id');
+
+        // Nem ékezetes vezetéknevek, hogy a rendezés eredménye ne függjön az
+        // adatbázis-motor (SQLite a tesztekben, MySQL éles környezetben)
+        // eltérő ékezet-kollációjától.
+        $this->actingAsRole(RoleCode::Registrar);
+        $zoltan = $this->postJson("/api/events/{$eventId}/persons", [
+            'last_name' => 'Zoltan', 'first_name' => 'Elek', 'municipality_id' => $municipalityA->id,
+        ])->assertCreated()->json('data.id');
+        $arpad = $this->postJson("/api/events/{$eventId}/persons", [
+            'last_name' => 'Arpad', 'first_name' => 'Elek', 'municipality_id' => $municipalityZ->id,
+        ])->assertCreated()->json('data.id');
+
+        // Név szerint növekvő: Arpad előbb, mint Zoltan.
+        $byNameAsc = $this->getJson("/api/events/{$eventId}/persons?sort_by=name&sort_dir=asc")->assertOk();
+        $this->assertSame([$arpad, $zoltan], $byNameAsc->json('data.*.id'));
+
+        // Név szerint csökkenő: Zoltan előbb.
+        $byNameDesc = $this->getJson("/api/events/{$eventId}/persons?sort_by=name&sort_dir=desc")->assertOk();
+        $this->assertSame([$zoltan, $arpad], $byNameDesc->json('data.*.id'));
+
+        // Település szerint növekvő: Ács (Zoltan) előbb, mint Zirc (Arpad).
+        $byMunicipalityAsc = $this->getJson("/api/events/{$eventId}/persons?sort_by=municipality&sort_dir=asc")->assertOk();
+        $this->assertSame([$zoltan, $arpad], $byMunicipalityAsc->json('data.*.id'));
+
+        $this->actingAsRole(RoleCode::Admin);
+        $this->putJson("/api/registrations/{$this->registrationId($arpad)}/status", ['status' => 'arrived_shelter'])->assertOk();
+
+        $byStatusAsc = $this->getJson("/api/events/{$eventId}/persons?sort_by=status&sort_dir=asc")->assertOk();
+        $this->assertCount(2, $byStatusAsc->json('data'));
+    }
+
+    private function registrationId(string $personId): string
+    {
+        return $this->getJson("/api/persons/{$personId}")->json('data.registration.id');
+    }
+
     public function test_municipality_summary_only_returns_municipalities_with_coordinates(): void
     {
         $this->actingAsRole(RoleCode::Admin);
