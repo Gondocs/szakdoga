@@ -103,6 +103,7 @@ export interface Person {
   };
   phone: string | null;
   email: string | null;
+  data_masked?: boolean;
   registration?: Registration | null;
   current_shelter?: { id: string; name: string } | null;
   special_needs?: SpecialNeed[];
