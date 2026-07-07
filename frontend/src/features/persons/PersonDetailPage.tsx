@@ -399,6 +399,9 @@ export function PersonDetailPage() {
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <InfoField label="Telefon" value={person.phone ?? '–'} />
           </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <InfoField label="E-mail" value={person.email ?? '–'} />
+          </Grid>
           {person.registration?.own_vehicle && (
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <InfoField
