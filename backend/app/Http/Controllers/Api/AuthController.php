@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LoginRequest;
 use App\Http\Resources\UserResource;
+use App\Models\AuditLog;
+use App\Models\User;
+use App\Services\AuditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -50,11 +53,23 @@ class AuthController extends Controller
             new OA\Response(response: 422, description: 'Hibás e-mail vagy jelszó'),
         ]
     )]
-    public function login(LoginRequest $request)
+    public function login(LoginRequest $request, AuditService $auditService)
     {
         $credentials = $request->validated();
 
         if (! Auth::attempt($credentials, remember: false)) {
+            $attemptedUser = User::where('email', $credentials['email'])->first();
+
+            AuditLog::create([
+                'user_id' => $attemptedUser?->id,
+                'action' => 'login_failed',
+                'entity_type' => 'User',
+                'entity_id' => $attemptedUser ? (string) $attemptedUser->id : $credentials['email'],
+                'before_json' => null,
+                'after_json' => ['email' => $credentials['email']],
+                'significant' => true,
+            ]);
+
             throw ValidationException::withMessages([
                 'email' => 'A megadott hitelesítő adatok nem egyeznek a nyilvántartással.',
             ]);
@@ -62,7 +77,10 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
 
-        return new UserResource($request->user()->load(['role', 'shelter']));
+        $user = $request->user();
+        $auditService->log('login', $user, $user, null, null);
+
+        return new UserResource($user->load(['role', 'shelter']));
     }
 
     #[OA\Post(
@@ -75,12 +93,18 @@ class AuthController extends Controller
             new OA\Response(response: 401, description: 'Nincs bejelentkezve'),
         ]
     )]
-    public function logout(Request $request)
+    public function logout(Request $request, AuditService $auditService)
     {
+        $user = $request->user();
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
+        if ($user) {
+            $auditService->log('logout', $user, $user, null, null);
+        }
 
         return response()->noContent();
     }
