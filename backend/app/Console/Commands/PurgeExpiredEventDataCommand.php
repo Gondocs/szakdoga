@@ -72,11 +72,13 @@ class PurgeExpiredEventDataCommand extends Command
 
             AuditLog::create([
                 'user_id' => null,
+                'event_id' => $event->id,
                 'action' => 'data_retention_purge',
                 'entity_type' => 'EvacuationEvent',
                 'entity_id' => (string) $event->id,
                 'before_json' => ['person_count' => $personCount],
                 'after_json' => ['retention_days' => $retentionDays, 'purged_at' => now()->toIso8601String()],
+                'significant' => true,
             ]);
         }
 
