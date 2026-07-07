@@ -189,8 +189,8 @@ export function EventMapPage() {
             <CircleMarker
               key={m.municipality_id}
               center={[m.lat, m.lng]}
-              radius={Math.min(10 + Math.sqrt(m.person_count) * 4, 40)}
-              pathOptions={{ color: '#a3172b', fillColor: '#a3172b', fillOpacity: 0.35, weight: 1 }}
+              radius={Math.min(6 + Math.sqrt(m.person_count) * 2, 22)}
+              pathOptions={{ color: '#a3172b', fillColor: '#a3172b', fillOpacity: 0.3, weight: 1 }}
               eventHandlers={{
                 click: () => navigate(`/esemenyek/${eventId}/szemelyek?municipality_id=${m.municipality_id}`),
               }}
