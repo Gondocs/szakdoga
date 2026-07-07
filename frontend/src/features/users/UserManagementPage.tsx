@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import {
   Box,
   Typography,
@@ -22,6 +22,8 @@ import {
   IconButton,
   Tooltip,
   Avatar,
+  InputAdornment,
+  TableSortLabel,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
@@ -29,6 +31,7 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import PersonIcon from '@mui/icons-material/Person';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import SearchIcon from '@mui/icons-material/Search';
 import { toast } from 'react-toastify';
 import type { Role, Shelter, User } from '../../types';
 import { createUser, deleteUserAvatar, fetchAllShelters, fetchRoles, fetchUsers, updateUser, uploadUserAvatar } from '../../lib/api/endpoints';
@@ -49,6 +52,9 @@ export function UserManagementPage() {
   const [shelters, setShelters] = useState<Shelter[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dialogUser, setDialogUser] = useState<User | 'new' | null>(null);
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<'name' | 'email' | 'role'>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   function load() {
     setIsLoading(true);
@@ -63,6 +69,37 @@ export function UserManagementPage() {
 
   useEffect(load, []);
 
+  function handleSort(column: typeof sortBy) {
+    if (sortBy === column) {
+      setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(column);
+      setSortDir('asc');
+    }
+  }
+
+  const displayedUsers = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const filtered = term
+      ? users.filter((u) => u.name.toLowerCase().includes(term) || u.email.toLowerCase().includes(term))
+      : users;
+
+    return [...filtered].sort((a, b) => {
+      let result = 0;
+      switch (sortBy) {
+        case 'email':
+          result = a.email.localeCompare(b.email, 'hu');
+          break;
+        case 'role':
+          result = (roleLabels[a.role?.code ?? ''] ?? a.role?.name ?? '').localeCompare(roleLabels[b.role?.code ?? ''] ?? b.role?.name ?? '', 'hu');
+          break;
+        default:
+          result = a.name.localeCompare(b.name, 'hu');
+      }
+      return sortDir === 'asc' ? result : -result;
+    });
+  }, [users, search, sortBy, sortDir]);
+
   return (
     <Box>
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={1.5} sx={{ mb: 3 }}>
@@ -72,11 +109,23 @@ export function UserManagementPage() {
         </Button>
       </Stack>
 
+      <TextField
+        placeholder="Keresés név vagy e-mail alapján…"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        size="small"
+        sx={{ mb: 2, maxWidth: 360 }}
+        fullWidth
+        InputProps={{
+          startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>,
+        }}
+      />
+
       {isLoading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>
       ) : isMobile ? (
         <Stack spacing={1.5}>
-          {users.map((u) => (
+          {displayedUsers.map((u) => (
             <Paper key={u.id} variant="outlined" sx={{ p: 2 }}>
               <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
                 <Stack direction="row" spacing={1.5} alignItems="center">
@@ -103,15 +152,27 @@ export function UserManagementPage() {
             <TableHead>
               <TableRow>
                 <TableCell width={48}></TableCell>
-                <TableCell>Név</TableCell>
-                <TableCell>E-mail</TableCell>
-                <TableCell>Szerepkör</TableCell>
+                <TableCell sortDirection={sortBy === 'name' ? sortDir : false}>
+                  <TableSortLabel active={sortBy === 'name'} direction={sortBy === 'name' ? sortDir : 'asc'} onClick={() => handleSort('name')}>
+                    Név
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sortDirection={sortBy === 'email' ? sortDir : false}>
+                  <TableSortLabel active={sortBy === 'email'} direction={sortBy === 'email' ? sortDir : 'asc'} onClick={() => handleSort('email')}>
+                    E-mail
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sortDirection={sortBy === 'role' ? sortDir : false}>
+                  <TableSortLabel active={sortBy === 'role'} direction={sortBy === 'role' ? sortDir : 'asc'} onClick={() => handleSort('role')}>
+                    Szerepkör
+                  </TableSortLabel>
+                </TableCell>
                 <TableCell>Befogadóhely</TableCell>
                 <TableCell align="right"></TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {users.map((u) => (
+              {displayedUsers.map((u) => (
                 <TableRow key={u.id} hover>
                   <TableCell>
                     <Avatar src={u.avatar_url ?? undefined} sx={{ width: 32, height: 32, bgcolor: 'secondary.main' }}>
