@@ -160,6 +160,15 @@ export function AppLayout() {
                 </Box>
               </MenuItem>
               <Divider />
+              <MenuItem
+                onClick={() => {
+                  setAnchorEl(null);
+                  navigate('/beallitasok');
+                }}
+              >
+                <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
+                Beállítások
+              </MenuItem>
               <MenuItem component="label" disabled={isUploadingAvatar}>
                 <ListItemIcon><PhotoCameraIcon fontSize="small" /></ListItemIcon>
                 {isUploadingAvatar ? 'Feltöltés…' : 'Profilkép módosítása'}
