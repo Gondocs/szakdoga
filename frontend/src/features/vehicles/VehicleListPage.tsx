@@ -22,6 +22,7 @@ import {
   TableCell,
   TableContainer,
   TableSortLabel,
+  Tooltip,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
@@ -53,6 +54,29 @@ const vehicleTypeLabels: Record<VehicleType, string> = {
   truck: 'Teherautó',
   other: 'Egyéb',
 };
+
+function VehicleStatusChip({ vehicle }: { vehicle: Vehicle }) {
+  if (!vehicle.active_assignment) {
+    return <Chip size="small" color="success" variant="outlined" label="Szabad" />;
+  }
+
+  const { event_name, event_id, transport_code } = vehicle.active_assignment;
+
+  return (
+    <Tooltip title={`Használatban: ${event_name ?? 'ismeretlen esemény'} — ${transport_code}`}>
+      <Chip
+        size="small"
+        color="warning"
+        variant="outlined"
+        label={`Használatban: ${transport_code}`}
+        component={RouterLink}
+        to={`/esemenyek/${event_id}/szallitas`}
+        clickable
+        sx={{ maxWidth: 220, '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis' } }}
+      />
+    </Tooltip>
+  );
+}
 
 export function VehicleListPage() {
   const { user } = useAuth();
@@ -181,18 +205,7 @@ export function VehicleListPage() {
                 )}
               </Stack>
               <Box sx={{ mt: 1 }}>
-                {v.active_assignment ? (
-                  <Chip
-                    size="small"
-                    color="warning"
-                    label={`Használatban: ${v.active_assignment.event_name} (${v.active_assignment.transport_code})`}
-                    component={RouterLink}
-                    to={`/esemenyek/${v.active_assignment.event_id}/szallitas`}
-                    clickable
-                  />
-                ) : (
-                  <Chip size="small" color="success" variant="outlined" label="Szabad" />
-                )}
+                <VehicleStatusChip vehicle={v} />
               </Box>
             </Paper>
           ))}
@@ -237,18 +250,7 @@ export function VehicleListPage() {
                   <TableCell>{v.capacity ?? '–'}</TableCell>
                   <TableCell>{v.driver_name ?? '–'}</TableCell>
                   <TableCell>
-                    {v.active_assignment ? (
-                      <Chip
-                        size="small"
-                        color="warning"
-                        label={`Használatban: ${v.active_assignment.event_name} (${v.active_assignment.transport_code})`}
-                        component={RouterLink}
-                        to={`/esemenyek/${v.active_assignment.event_id}/szallitas`}
-                        clickable
-                      />
-                    ) : (
-                      <Chip size="small" color="success" variant="outlined" label="Szabad" />
-                    )}
+                    <VehicleStatusChip vehicle={v} />
                   </TableCell>
                   {canManage && (
                     <TableCell align="right">
