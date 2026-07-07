@@ -23,6 +23,7 @@ import {
   Collapse,
   Grid,
   Pagination,
+  TableSortLabel,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
@@ -170,6 +171,8 @@ export function PersonListPage() {
   const [perPage, setPerPage] = useState(25);
   const [total, setTotal] = useState(0);
   const [lastPage, setLastPage] = useState(1);
+  const [sortBy, setSortBy] = useState<'name' | 'status' | 'municipality' | 'created_at'>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   const canBulkEdit = user?.role?.code === 'admin' || user?.role?.code === 'manager' || user?.role?.code === 'registrar';
   const activeFilterLabel = filterDescription(searchParams, shelters, municipalities);
@@ -198,6 +201,8 @@ export function PersonListPage() {
       central_accommodation_required: searchParams.get('central_accommodation_required') === '1' ? true : undefined,
       shelter_id: searchParams.get('shelter_id') ?? undefined,
       municipality_id: municipalityIdParam ? Number(municipalityIdParam) : undefined,
+      sort_by: sortBy,
+      sort_dir: sortDir,
       page,
       per_page: perPage,
     })
@@ -209,7 +214,23 @@ export function PersonListPage() {
         setLastPage(res.meta?.last_page ?? 1);
       })
       .finally(() => setIsLoading(false));
-  }, [eventId, search, searchParams, refreshKey, page, perPage]);
+  }, [eventId, search, searchParams, refreshKey, page, perPage, sortBy, sortDir]);
+
+  function handleSort(column: 'name' | 'status' | 'municipality') {
+    if (sortBy === column) {
+      setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(column);
+      setSortDir('asc');
+    }
+  }
+
+  function updateFilterParam(key: string, value: string) {
+    const next = new URLSearchParams(searchParams);
+    if (value) next.set(key, value);
+    else next.delete(key);
+    setSearchParams(next, { replace: true });
+  }
 
   function toggleSelected(personId: string) {
     setSelected((prev) => {
@@ -362,6 +383,81 @@ export function PersonListPage() {
         )}
       </Stack>
 
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 2 }} flexWrap="wrap" useFlexGap>
+        <TextField
+          select
+          size="small"
+          label="Státusz"
+          value={searchParams.get('status') ?? ''}
+          onChange={(e) => updateFilterParam('status', e.target.value)}
+          sx={{ minWidth: 180 }}
+        >
+          <MenuItem value="">Összes</MenuItem>
+          {Object.entries(statusLabels).map(([value, label]) => (
+            <MenuItem key={value} value={value}>{label}</MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          select
+          size="small"
+          label="Speciális igény"
+          value={searchParams.get('special_need_category') ?? ''}
+          onChange={(e) => updateFilterParam('special_need_category', e.target.value)}
+          sx={{ minWidth: 180 }}
+        >
+          <MenuItem value="">Összes</MenuItem>
+          {Object.entries(specialNeedCategoryLabels).map(([value, label]) => (
+            <MenuItem key={value} value={value}>{label}</MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          select
+          size="small"
+          label="Település"
+          value={searchParams.get('municipality_id') ?? ''}
+          onChange={(e) => updateFilterParam('municipality_id', e.target.value)}
+          sx={{ minWidth: 180 }}
+        >
+          <MenuItem value="">Összes</MenuItem>
+          {municipalities.map((m) => (
+            <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          select
+          size="small"
+          label="Befogadóhely"
+          value={searchParams.get('shelter_id') ?? ''}
+          onChange={(e) => updateFilterParam('shelter_id', e.target.value)}
+          sx={{ minWidth: 180 }}
+        >
+          <MenuItem value="">Összes</MenuItem>
+          {shelters.map((s) => (
+            <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
+          ))}
+        </TextField>
+        {isMobile && (
+          <TextField
+            select
+            size="small"
+            label="Rendezés"
+            value={`${sortBy}:${sortDir}`}
+            onChange={(e) => {
+              const [by, dir] = e.target.value.split(':') as ['name' | 'status' | 'municipality' | 'created_at', 'asc' | 'desc'];
+              setSortBy(by);
+              setSortDir(dir);
+            }}
+            sx={{ minWidth: 180 }}
+          >
+            <MenuItem value="name:asc">Név (A–Z)</MenuItem>
+            <MenuItem value="name:desc">Név (Z–A)</MenuItem>
+            <MenuItem value="status:asc">Státusz szerint</MenuItem>
+            <MenuItem value="municipality:asc">Település szerint</MenuItem>
+            <MenuItem value="created_at:desc">Legújabb elöl</MenuItem>
+          </TextField>
+        )}
+      </Stack>
+
       {canBulkEdit && selected.size > 0 && (
         <Alert severity="info" sx={{ mb: 2 }}>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', sm: 'center' }}>
@@ -472,10 +568,22 @@ export function PersonListPage() {
                     />
                   </TableCell>
                 )}
-                <TableCell>Név</TableCell>
-                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>Település</TableCell>
+                <TableCell sortDirection={sortBy === 'name' ? sortDir : false}>
+                  <TableSortLabel active={sortBy === 'name'} direction={sortBy === 'name' ? sortDir : 'asc'} onClick={() => handleSort('name')}>
+                    Név
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }} sortDirection={sortBy === 'municipality' ? sortDir : false}>
+                  <TableSortLabel active={sortBy === 'municipality'} direction={sortBy === 'municipality' ? sortDir : 'asc'} onClick={() => handleSort('municipality')}>
+                    Település
+                  </TableSortLabel>
+                </TableCell>
                 <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>Csatorna</TableCell>
-                <TableCell>Státusz</TableCell>
+                <TableCell sortDirection={sortBy === 'status' ? sortDir : false}>
+                  <TableSortLabel active={sortBy === 'status'} direction={sortBy === 'status' ? sortDir : 'asc'} onClick={() => handleSort('status')}>
+                    Státusz
+                  </TableSortLabel>
+                </TableCell>
                 <TableCell>Speciális igény</TableCell>
                 <TableCell>Család</TableCell>
               </TableRow>
