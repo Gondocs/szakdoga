@@ -158,7 +158,7 @@ class ExportController extends Controller
 
         $registeredCount = (clone $registrations)->count();
         $familiesCount = $event->families()->count();
-        $arrivedCount = $event->checkins()->count();
+        $arrivedCount = (clone $registrations)->where('status', 'arrived_shelter')->count();
         $centralTransportCount = (clone $registrations)->where('central_transport_required', true)->count();
         $centralAccommodationCount = (clone $registrations)->where('central_accommodation_required', true)->count();
 
