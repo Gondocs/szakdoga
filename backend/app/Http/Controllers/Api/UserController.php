@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateUserRequest;
 use App\Http\Resources\UserResource;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\AuditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use OpenApi\Attributes as OA;
@@ -57,12 +58,14 @@ class UserController extends Controller
             new OA\Response(response: 422, description: 'Validációs hiba'),
         ]
     )]
-    public function store(StoreUserRequest $request)
+    public function store(StoreUserRequest $request, AuditService $auditService)
     {
         $user = User::create([
             ...$request->safe()->only(['name', 'email', 'role_id', 'shelter_id']),
             'password' => bcrypt($request->validated('password')),
         ]);
+
+        $auditService->log('user_create', $user, $request->user(), null, $user->toArray());
 
         return (new UserResource($user->load(['role', 'shelter'])))->response()->setStatusCode(201);
     }
@@ -80,8 +83,11 @@ class UserController extends Controller
             new OA\Response(response: 403, description: 'Nincs jogosultság'),
         ]
     )]
-    public function update(UpdateUserRequest $request, User $targetUser)
+    public function update(UpdateUserRequest $request, User $targetUser, AuditService $auditService)
     {
+        $before = $targetUser->toArray();
+        $roleChanged = $request->filled('role_id') && (int) $request->validated('role_id') !== $targetUser->role_id;
+
         $data = $request->safe()->only(['name', 'email', 'role_id', 'shelter_id']);
 
         if ($request->filled('password')) {
@@ -89,6 +95,15 @@ class UserController extends Controller
         }
 
         $targetUser->update($data);
+
+        $auditService->log(
+            $roleChanged ? 'role_change' : 'user_update',
+            $targetUser,
+            $request->user(),
+            $before,
+            $targetUser->fresh()->toArray(),
+            forceSignificant: $roleChanged ?: null,
+        );
 
         return new UserResource($targetUser->fresh(['role', 'shelter']));
     }
