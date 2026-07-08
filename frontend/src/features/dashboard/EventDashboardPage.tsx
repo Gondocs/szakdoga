@@ -26,10 +26,8 @@ import {
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
 import GroupsIcon from '@mui/icons-material/Groups';
 import HomeIcon from '@mui/icons-material/Home';
-import HomeWorkIcon from '@mui/icons-material/HomeWork';
 import DirectionsBusIcon from '@mui/icons-material/DirectionsBus';
 import HotelIcon from '@mui/icons-material/Hotel';
-import MapIcon from '@mui/icons-material/Map';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import LinkIcon from '@mui/icons-material/Link';
@@ -49,6 +47,7 @@ import {
   updateEvent,
   type StockForecastData,
 } from '../../lib/api/endpoints';
+import { ErrorState } from '../../components/ui/ErrorState';
 import { KpiCard } from '../../components/ui/KpiCard';
 import { RiskBadge } from '../../components/ui/RiskBadge';
 import { EventStatusBadge } from '../events/EventStatusBadge';
@@ -56,6 +55,7 @@ import { useAuth } from '../auth/AuthContext';
 import { specialNeedCategoryLabels } from '../../constants/specialNeeds';
 import { SpecialNeedIcon } from '../../components/ui/SpecialNeedIcon';
 import { DashboardCharts } from './DashboardCharts';
+import { EventSubNav } from '../../components/layout/EventSubNav';
 
 export function EventDashboardPage() {
   const { eventId } = useParams<{ eventId: string }>();
@@ -101,18 +101,8 @@ export function EventDashboardPage() {
   }
 
   if (isLoading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
-  if (error) return <Typography color="error">{error}</Typography>;
+  if (error) return <ErrorState message={error} />;
   if (!data || !eventId) return null;
-
-  const navItems = [
-    { to: 'szemelyek', label: 'Regisztráltak', icon: <PeopleAltIcon fontSize="small" /> },
-    { to: 'befogadohelyek', label: 'Befogadóhelyek', icon: <HomeWorkIcon fontSize="small" /> },
-    { to: 'csaladok', label: 'Családok', icon: <GroupsIcon fontSize="small" /> },
-    { to: 'szallitas', label: 'Szállítás', icon: <DirectionsBusIcon fontSize="small" /> },
-    { to: 'terkep', label: 'Térkép', icon: <MapIcon fontSize="small" /> },
-    { to: 'rendkivuli-esemenyek', label: 'Rendkívüli események', icon: <WarningAmberIcon fontSize="small" /> },
-    { to: 'visszatelepites', label: 'Visszatelepítés', icon: <HomeIcon fontSize="small" /> },
-  ];
 
   return (
     <Box>
@@ -126,44 +116,30 @@ export function EventDashboardPage() {
         )}
       </Stack>
 
+      <EventSubNav eventId={eventId} />
+
       <Paper variant="outlined" sx={{ p: 1.5, mb: 3 }}>
-        <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', md: 'center' }} spacing={1.5}>
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            {navItems.map((item) => (
-              <Button
-                key={item.to}
-                variant="outlined"
-                size="small"
-                color="inherit"
-                startIcon={item.icon}
-                onClick={() => navigate(`/esemenyek/${eventId}/${item.to}`)}
-              >
-                {item.label}
-              </Button>
-            ))}
-          </Stack>
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            {canEditEvent && (
-              <Button
-                size="small"
-                variant="text"
-                color="inherit"
-                startIcon={<DownloadIcon />}
-                component="a"
-                href={summaryReportExportUrl(eventId!)}
-                target="_blank"
-                rel="noopener"
-              >
-                Összesítő jelentés
-              </Button>
-            )}
-            <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={() => navigate(`/esemenyek/${eventId}/uj-regisztracio`)}>
-              Új regisztráció
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap justifyContent="flex-end">
+          {canEditEvent && (
+            <Button
+              size="small"
+              variant="text"
+              color="inherit"
+              startIcon={<DownloadIcon />}
+              component="a"
+              href={summaryReportExportUrl(eventId!)}
+              target="_blank"
+              rel="noopener"
+            >
+              Összesítő jelentés
             </Button>
-            <Button variant="contained" size="small" startIcon={<QrCodeScannerIcon />} onClick={() => navigate(`/esemenyek/${eventId}/erkeztetes`)}>
-              QR érkeztetés
-            </Button>
-          </Stack>
+          )}
+          <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={() => navigate(`/esemenyek/${eventId}/uj-regisztracio`)}>
+            Új regisztráció
+          </Button>
+          <Button variant="contained" size="small" startIcon={<QrCodeScannerIcon />} onClick={() => navigate(`/esemenyek/${eventId}/erkeztetes`)}>
+            QR érkeztetés
+          </Button>
         </Stack>
       </Paper>
 
