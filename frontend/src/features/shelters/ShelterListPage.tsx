@@ -24,8 +24,11 @@ import AccessibleIcon from '@mui/icons-material/Accessible';
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
 import PrintIcon from '@mui/icons-material/Print';
 import type { ShelterWithRisk } from '../../types';
-import { fetchShelters, shelterRosterExportUrl } from '../../lib/api/endpoints';
+import { fetchShelters } from '../../lib/api/endpoints';
 import { RiskBadge } from '../../components/ui/RiskBadge';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { EventSubNav } from '../../components/layout/EventSubNav';
+import { ShelterRosterPrintDialog } from '../../components/ShelterRosterPrintDialog';
 import { useAuth } from '../auth/AuthContext';
 
 type SortKey = 'name' | 'utilization_desc' | 'risk_desc' | 'free_capacity_desc';
@@ -52,6 +55,7 @@ export function ShelterListPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('name');
+  const [rosterShelter, setRosterShelter] = useState<ShelterWithRisk | null>(null);
 
   useEffect(() => {
     if (!eventId) return;
@@ -87,6 +91,7 @@ export function ShelterListPage() {
 
   return (
     <Box>
+      {eventId && <EventSubNav eventId={eventId} />}
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={1.5} sx={{ mb: 3 }}>
         <Typography variant="h4" fontWeight={700}>Befogadóhelyek</Typography>
         <Button variant="contained" startIcon={<QrCodeScannerIcon />} onClick={() => navigate(`/esemenyek/${eventId}/erkeztetes`)}>
@@ -176,14 +181,8 @@ export function ShelterListPage() {
                     </IconButton>
                   </Tooltip>
                   {(user?.role?.code === 'admin' || user?.role?.code === 'manager' || user?.shelter_id === s.shelter.id) && eventId && (
-                    <Tooltip title="Névsor nyomtatása / letöltése">
-                      <IconButton
-                        size="small"
-                        component="a"
-                        href={shelterRosterExportUrl(eventId, s.shelter.id)}
-                        target="_blank"
-                        rel="noopener"
-                      >
+                    <Tooltip title="Nyomtatható névsor">
+                      <IconButton size="small" onClick={() => setRosterShelter(s)}>
                         <PrintIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
@@ -195,12 +194,21 @@ export function ShelterListPage() {
         })}
         {visibleShelters.length === 0 && (
           <Grid size={12}>
-            <Typography color="text.secondary">
-              {shelters.length === 0 ? 'Nincs befogadóhely hozzárendelve az eseményhez.' : 'Nincs a keresésnek megfelelő befogadóhely.'}
-            </Typography>
+            <EmptyState
+              title={shelters.length === 0 ? 'Nincs befogadóhely hozzárendelve az eseményhez' : 'Nincs a keresésnek megfelelő befogadóhely'}
+            />
           </Grid>
         )}
       </Grid>
+
+      {rosterShelter && eventId && (
+        <ShelterRosterPrintDialog
+          open
+          onClose={() => setRosterShelter(null)}
+          eventId={eventId}
+          shelter={rosterShelter}
+        />
+      )}
     </Box>
   );
 }
