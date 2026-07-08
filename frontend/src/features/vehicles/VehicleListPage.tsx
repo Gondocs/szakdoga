@@ -8,6 +8,7 @@ import {
   TextField,
   Chip,
   CircularProgress,
+  Alert,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -26,6 +27,9 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import { busIcon } from '../../lib/leafletIcons';
 import AddIcon from '@mui/icons-material/Add';
 import DirectionsBusIcon from '@mui/icons-material/DirectionsBus';
 import EditIcon from '@mui/icons-material/Edit';
@@ -44,6 +48,9 @@ import {
 } from '../../lib/api/endpoints';
 import { useAuth } from '../auth/AuthContext';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { EmptyState } from '../../components/ui/EmptyState';
+
+const GYMS_CENTER: [number, number] = [47.75, 17.35];
 
 const vehicleTypeLabels: Record<VehicleType, string> = {
   bus: 'Busz',
@@ -135,6 +142,11 @@ export function VehicleListPage() {
     });
   }, [vehicles, search, sortBy, sortDir]);
 
+  const vehiclesWithPosition = useMemo(
+    () => vehicles.filter((v) => v.active_assignment?.last_lat != null && v.active_assignment?.last_lng != null),
+    [vehicles]
+  );
+
   async function handleDelete() {
     if (!deleteTarget) return;
     setIsDeleting(true);
@@ -173,6 +185,36 @@ export function VehicleListPage() {
         rendelve, másik aktív eseményhez nem foglalható le újra.
       </Typography>
 
+      <Typography variant="h6" fontWeight={700} sx={{ mb: 1 }}>Járművek térképen</Typography>
+      {vehiclesWithPosition.length === 0 ? (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          Jelenleg egyik járműnek sincs ismert pozíciója. Csak az aktív eseményhez rendelt, pozícióadattal
+          rendelkező járművek jelennek meg a térképen (a pozíció az esemény térképes nézetén szimulálható).
+        </Alert>
+      ) : (
+        <Paper variant="outlined" sx={{ overflow: 'hidden', height: 360, mb: 3 }}>
+          <MapContainer center={GYMS_CENTER} zoom={9} style={{ height: '100%', width: '100%' }}>
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> közreműködők'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            {vehiclesWithPosition.map((v) => (
+              <Marker key={v.id} position={[v.active_assignment!.last_lat!, v.active_assignment!.last_lng!]} icon={busIcon}>
+                <Popup>
+                  <strong>{v.label}</strong> ({v.plate_number})
+                  <br />
+                  {v.active_assignment!.event_name ?? 'Ismeretlen esemény'} — {v.active_assignment!.transport_code}
+                  <br />
+                  Utolsó pozíció: {v.active_assignment!.last_position_at
+                    ? new Date(v.active_assignment!.last_position_at).toLocaleString('hu-HU')
+                    : '–'}
+                </Popup>
+              </Marker>
+            ))}
+          </MapContainer>
+        </Paper>
+      )}
+
       <TextField
         placeholder="Keresés megnevezés vagy rendszám alapján…"
         value={search}
@@ -209,7 +251,7 @@ export function VehicleListPage() {
               </Box>
             </Paper>
           ))}
-          {displayedVehicles.length === 0 && <Typography color="text.secondary" textAlign="center">Még nincs felvéve jármű.</Typography>}
+          {displayedVehicles.length === 0 && <EmptyState title="Még nincs felvéve jármű" />}
         </Stack>
       ) : (
         <TableContainer component={Paper} variant="outlined">
@@ -261,7 +303,7 @@ export function VehicleListPage() {
                 </TableRow>
               ))}
               {displayedVehicles.length === 0 && (
-                <TableRow><TableCell colSpan={canManage ? 7 : 6} align="center">Még nincs felvéve jármű.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={canManage ? 7 : 6}><EmptyState title="Még nincs felvéve jármű" /></TableCell></TableRow>
               )}
             </TableBody>
           </Table>
