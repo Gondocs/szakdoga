@@ -38,6 +38,7 @@ import { useAuth } from '../auth/AuthContext';
 import type { Municipality, Shelter } from '../../types';
 import { createShelter, deleteShelter, fetchAllShelters, fetchMunicipalities, updateShelter } from '../../lib/api/endpoints';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 const statusLabels: Record<string, string> = {
   planned: 'Tervezett',
@@ -204,7 +205,7 @@ export function ShelterManagementPage() {
               </Stack>
             </Paper>
           ))}
-          {displayedShelters.length === 0 && <Typography color="text.secondary">Nincs rögzített befogadóhely.</Typography>}
+          {displayedShelters.length === 0 && <EmptyState title="Nincs rögzített befogadóhely" />}
         </Stack>
       ) : (
         <TableContainer component={Paper} variant="outlined">
@@ -264,7 +265,7 @@ export function ShelterManagementPage() {
                 </TableRow>
               ))}
               {displayedShelters.length === 0 && (
-                <TableRow><TableCell colSpan={6} align="center">Nincs rögzített befogadóhely.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6}><EmptyState title="Nincs rögzített befogadóhely" /></TableCell></TableRow>
               )}
             </TableBody>
           </Table>
