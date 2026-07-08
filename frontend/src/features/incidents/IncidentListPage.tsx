@@ -24,6 +24,8 @@ import { toast } from 'react-toastify';
 import type { Incident, IncidentCategory, IncidentSeverity, ShelterWithRisk } from '../../types';
 import { createIncident, fetchIncidents, fetchShelters, resolveIncident } from '../../lib/api/endpoints';
 import { useAuth } from '../auth/AuthContext';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { EventSubNav } from '../../components/layout/EventSubNav';
 
 const categoryLabels: Record<IncidentCategory, string> = {
   complaint: 'Panasz',
@@ -77,6 +79,7 @@ export function IncidentListPage() {
 
   return (
     <Box>
+      {eventId && <EventSubNav eventId={eventId} />}
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={1.5} sx={{ mb: 3 }}>
         <Stack direction="row" alignItems="center" spacing={1}>
           <ReportProblemIcon color="primary" />
@@ -104,8 +107,8 @@ export function IncidentListPage() {
       {isLoading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>
       ) : incidents.length === 0 ? (
-        <Paper variant="outlined" sx={{ p: 3, textAlign: 'center' }}>
-          <Typography color="text.secondary">Nincs megjeleníthető bejegyzés.</Typography>
+        <Paper variant="outlined">
+          <EmptyState title="Nincs megjeleníthető bejegyzés" />
         </Paper>
       ) : (
         <Stack spacing={1.5}>
