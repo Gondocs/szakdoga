@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\RoleCode;
 use App\Models\EvacuationEvent;
+use App\Models\Transport;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -127,5 +128,30 @@ class VehicleFleetTest extends TestCase
         $this->deleteJson("/api/vehicles/{$vehicleId}")
             ->assertStatus(409)
             ->assertJsonPath('code', 'VEHICLE_IN_USE');
+    }
+
+    public function test_fleet_list_exposes_active_transport_position(): void
+    {
+        $event = $this->createEvent('EVT-VEH-F', 'active');
+
+        $this->actingAsRole(RoleCode::Admin);
+        $vehicleId = $this->postJson('/api/vehicles', ['plate_number' => 'GGG-444', 'label' => 'Busz'])
+            ->assertCreated()->json('data.id');
+
+        $transportId = $this->postJson("/api/events/{$event->id}/transports", [
+            'code' => '1. sz. busz',
+            'vehicle_id' => $vehicleId,
+        ])->assertCreated()->json('data.id');
+
+        Transport::whereKey($transportId)->update([
+            'last_lat' => 47.6875,
+            'last_lng' => 17.6504,
+            'last_position_at' => now(),
+        ]);
+
+        $response = $this->getJson('/api/vehicles')->assertOk();
+        $response->assertJsonPath('data.0.active_assignment.last_lat', 47.6875);
+        $response->assertJsonPath('data.0.active_assignment.last_lng', 17.6504);
+        $this->assertNotNull($response->json('data.0.active_assignment.last_position_at'));
     }
 }
