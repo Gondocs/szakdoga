@@ -298,8 +298,8 @@ export function summaryReportExportUrl(eventId: string): string {
   return `${apiClient.defaults.baseURL}/api/events/${eventId}/report-export`;
 }
 
-export async function issueQrToken(personId: string): Promise<QrTokenData> {
-  const { data } = await apiClient.post<{ data: QrTokenData }>(`/api/persons/${personId}/qr`);
+export async function issueQrToken(personId: string, reason?: 'lost'): Promise<QrTokenData> {
+  const { data } = await apiClient.post<{ data: QrTokenData }>(`/api/persons/${personId}/qr`, reason ? { reason } : undefined);
   return data.data;
 }
 
@@ -490,7 +490,15 @@ export interface Vehicle {
   capacity: number | null;
   driver_name: string | null;
   notes: string | null;
-  active_assignment: { transport_id: string; transport_code: string; event_id: string; event_name: string | null } | null;
+  active_assignment: {
+    transport_id: string;
+    transport_code: string;
+    event_id: string;
+    event_name: string | null;
+    last_lat: number | null;
+    last_lng: number | null;
+    last_position_at: string | null;
+  } | null;
 }
 
 export interface VehiclePayload {
@@ -566,9 +574,17 @@ export interface CheckInPayload {
   bed_label?: string | null;
 }
 
-export async function checkInPerson(shelterId: string, payload: CheckInPayload) {
-  const { data } = await apiClient.post(`/api/shelters/${shelterId}/checkins`, payload);
-  return data.data;
+export interface CheckInApiResult {
+  checkIn: CheckInRecord;
+  familySplitWarning: string | null;
+}
+
+export async function checkInPerson(shelterId: string, payload: CheckInPayload): Promise<CheckInApiResult> {
+  const { data } = await apiClient.post<{ data: CheckInRecord; family_split_warning: string | null }>(
+    `/api/shelters/${shelterId}/checkins`,
+    payload
+  );
+  return { checkIn: data.data, familySplitWarning: data.family_split_warning };
 }
 
 export async function transferPerson(
@@ -576,13 +592,16 @@ export async function transferPerson(
   shelterId: string,
   overrideCapacity = false,
   bedLabel?: string | null,
-): Promise<CheckInRecord> {
-  const { data } = await apiClient.post<{ data: CheckInRecord }>(`/api/persons/${personId}/transfer`, {
-    shelter_id: shelterId,
-    override_capacity: overrideCapacity,
-    bed_label: bedLabel,
-  });
-  return data.data;
+): Promise<CheckInApiResult> {
+  const { data } = await apiClient.post<{ data: CheckInRecord; family_split_warning: string | null }>(
+    `/api/persons/${personId}/transfer`,
+    {
+      shelter_id: shelterId,
+      override_capacity: overrideCapacity,
+      bed_label: bedLabel,
+    }
+  );
+  return { checkIn: data.data, familySplitWarning: data.family_split_warning };
 }
 
 export async function updateBedAssignment(personId: string, bedLabel: string | null): Promise<CheckInRecord> {
