@@ -22,8 +22,15 @@ class IssueQrTokenAction
     /**
      * QR-token csak aktív eseményhez és aktív (nem lezárt/törölt) regisztrációhoz
      * generálható, és személyenként csak egy aktív token lehet érvényben.
+     *
+     * A $reason='lost' paraméter az "elveszett kód bejelentése" funkciót jelöli
+     * (Interreg tanulmány 4. fejezet: "Kód aktiválása, újragenerálása,
+     * visszavonása és elveszett kód kezelése") — ilyenkor a korábbi token
+     * elveszettként (nem csak rutinszerű újragenerálásként) kerül visszavonásra
+     * és a naplóban is külön akcióként ("qr_reissue_lost") jelenik meg, hogy a
+     * gyakoriságuk utólag kimutatható/auditálható legyen.
      */
-    public function execute(Person $person, User $issuedBy): QrToken
+    public function execute(Person $person, User $issuedBy, ?string $reason = null): QrToken
     {
         $event = $person->event;
         $registration = $person->registration;
@@ -43,7 +50,15 @@ class IssueQrTokenAction
 
         $token = $this->qrTokenService->issue($event, $issuedBy, person: $person);
 
-        $this->auditService->log('qr_issue', $token, $issuedBy, null, ['public_id' => $token->public_id]);
+        $isLost = $reason === 'lost';
+        $this->auditService->log(
+            $isLost ? 'qr_reissue_lost' : 'qr_issue',
+            $token,
+            $issuedBy,
+            $existingActive ? ['previous_public_id' => $existingActive->public_id] : null,
+            ['public_id' => $token->public_id],
+            forceSignificant: $isLost ?: null,
+        );
 
         return $token;
     }
