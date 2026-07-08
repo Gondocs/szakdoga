@@ -20,12 +20,19 @@ class QrController extends Controller
     #[OA\Post(
         path: '/api/persons/{person}/qr',
         summary: 'QR-token generálása egy regisztrált személyhez',
-        description: 'Csak aktív eseményhez és aktív regisztrációhoz generálható. Egy már meglévő aktív token visszavonásra kerül.',
+        description: 'Csak aktív eseményhez és aktív regisztrációhoz generálható. Egy már meglévő aktív token visszavonásra kerül. '.
+            'A "reason":"lost" paraméterrel az elveszett kód bejelentése és pótlása külön, kiemelt naplóbejegyzésként rögzül.',
         security: [['sanctumSession' => []]],
         tags: ['Qr'],
         parameters: [
             new OA\Parameter(name: 'person', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid')),
         ],
+        requestBody: new OA\RequestBody(
+            required: false,
+            content: new OA\JsonContent(properties: [
+                new OA\Property(property: 'reason', type: 'string', nullable: true, enum: ['lost'], description: 'Elveszett kód bejelentése esetén: "lost"'),
+            ])
+        ),
         responses: [
             new OA\Response(
                 response: 201,
@@ -45,7 +52,8 @@ class QrController extends Controller
     {
         $this->authorize('issueQr', $person);
 
-        $token = $action->execute($person, $request->user());
+        $reason = $request->string('reason')->value() ?: null;
+        $token = $action->execute($person, $request->user(), $reason);
 
         return (new QrTokenResource($token))->response()->setStatusCode(201);
     }
