@@ -28,6 +28,8 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import type { FamilySummary } from '../../types';
 import { fetchFamilies } from '../../lib/api/endpoints';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { EventSubNav } from '../../components/layout/EventSubNav';
 
 const SPLIT_TOOLTIP = 'A család tagjai jelenleg különböző befogadóhelyeken tartózkodnak.';
 
@@ -75,6 +77,7 @@ export function FamilyListPage() {
 
   return (
     <Box>
+      {eventId && <EventSubNav eventId={eventId} />}
       <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 3 }}>
         <GroupsIcon color="primary" />
         <Typography variant="h4" fontWeight={700}>Családok / csoportok</Typography>
@@ -129,7 +132,7 @@ export function FamilyListPage() {
               </Stack>
             </Paper>
           ))}
-          {filtered.length === 0 && <Typography color="text.secondary" textAlign="center">Nincs találat.</Typography>}
+          {filtered.length === 0 && <EmptyState title="Nincs találat" />}
         </Stack>
       ) : (
         <TableContainer component={Paper} variant="outlined">
@@ -164,7 +167,7 @@ export function FamilyListPage() {
                 </TableRow>
               ))}
               {filtered.length === 0 && (
-                <TableRow><TableCell colSpan={3} align="center">Nincs találat.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={3}><EmptyState title="Nincs találat" /></TableCell></TableRow>
               )}
             </TableBody>
           </Table>
