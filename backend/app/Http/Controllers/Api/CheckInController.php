@@ -14,6 +14,7 @@ use App\Models\CheckIn;
 use App\Models\EvacuationEvent;
 use App\Models\Person;
 use App\Models\Shelter;
+use App\Services\FamilySplitWarningService;
 use App\Services\QrTokenService;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
@@ -43,14 +44,19 @@ class CheckInController extends Controller
             )
         ),
         responses: [
-            new OA\Response(response: 201, description: 'Sikeres érkeztetés'),
+            new OA\Response(response: 201, description: 'Sikeres érkeztetés. A válasz "family_split_warning" mezője nem null, ha a család más tagjai jelenleg más befogadóhelyen vannak.'),
             new OA\Response(response: 403, description: 'EVENT_MISMATCH — az esemény nem aktív vagy a kód más eseményhez tartozik'),
             new OA\Response(response: 404, description: 'QR_TOKEN_NOT_FOUND — a kód vagy a személy nem található'),
             new OA\Response(response: 409, description: 'ALREADY_CHECKED_IN vagy SHELTER_FULL'),
         ]
     )]
-    public function store(CheckInRequest $request, Shelter $shelter, CheckInPersonAction $action, QrTokenService $qrTokenService)
-    {
+    public function store(
+        CheckInRequest $request,
+        Shelter $shelter,
+        CheckInPersonAction $action,
+        QrTokenService $qrTokenService,
+        FamilySplitWarningService $familySplitWarningService
+    ) {
         $event = EvacuationEvent::findOrFail($request->validated('event_id'));
 
         if (! $event->isActive()) {
@@ -96,6 +102,7 @@ class CheckInController extends Controller
         }
 
         return (new CheckInResource($checkIn->load(['person', 'shelter', 'checkedInBy'])))
+            ->additional(['family_split_warning' => $familySplitWarningService->detect($checkIn->person)])
             ->response()
             ->setStatusCode(201);
     }
@@ -122,13 +129,13 @@ class CheckInController extends Controller
             )
         ),
         responses: [
-            new OA\Response(response: 201, description: 'Sikeres áthelyezés'),
+            new OA\Response(response: 201, description: 'Sikeres áthelyezés. A válasz "family_split_warning" mezője nem null, ha a család más tagjai jelenleg más befogadóhelyen vannak.'),
             new OA\Response(response: 403, description: 'Nincs jogosultság'),
             new OA\Response(response: 409, description: 'SHELTER_FULL'),
             new OA\Response(response: 422, description: 'A személy nincs befogadóhelyen, vagy már ott van'),
         ]
     )]
-    public function transfer(Request $request, Person $person, TransferPersonAction $action)
+    public function transfer(Request $request, Person $person, TransferPersonAction $action, FamilySplitWarningService $familySplitWarningService)
     {
         $data = $request->validate([
             'shelter_id' => ['required', 'uuid', 'exists:shelters,id'],
@@ -149,6 +156,7 @@ class CheckInController extends Controller
         }
 
         return (new CheckInResource($checkIn->load(['person', 'shelter', 'checkedInBy'])))
+            ->additional(['family_split_warning' => $familySplitWarningService->detect($checkIn->person)])
             ->response()
             ->setStatusCode(201);
     }
