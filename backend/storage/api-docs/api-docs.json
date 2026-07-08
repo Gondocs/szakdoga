@@ -724,7 +724,7 @@
                 },
                 "responses": {
                     "201": {
-                        "description": "Sikeres érkeztetés"
+                        "description": "Sikeres érkeztetés. A válasz \"family_split_warning\" mezője nem null, ha a család más tagjai jelenleg más befogadóhelyen vannak."
                     },
                     "403": {
                         "description": "EVENT_MISMATCH — az esemény nem aktív vagy a kód más eseményhez tartozik"
@@ -791,7 +791,7 @@
                 },
                 "responses": {
                     "201": {
-                        "description": "Sikeres áthelyezés"
+                        "description": "Sikeres áthelyezés. A válasz \"family_split_warning\" mezője nem null, ha a család más tagjai jelenleg más befogadóhelyen vannak."
                     },
                     "403": {
                         "description": "Nincs jogosultság"
@@ -2644,7 +2644,7 @@
                     "Qr"
                 ],
                 "summary": "QR-token generálása egy regisztrált személyhez",
-                "description": "Csak aktív eseményhez és aktív regisztrációhoz generálható. Egy már meglévő aktív token visszavonásra kerül.",
+                "description": "Csak aktív eseményhez és aktív regisztrációhoz generálható. Egy már meglévő aktív token visszavonásra kerül. A \"reason\":\"lost\" paraméterrel az elveszett kód bejelentése és pótlása külön, kiemelt naplóbejegyzésként rögzül.",
                 "operationId": "83650aee5b2bc248fd2e0a2a57b530c3",
                 "parameters": [
                     {
@@ -2657,6 +2657,26 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "reason": {
+                                        "description": "Elveszett kód bejelentése esetén: \"lost\"",
+                                        "type": "string",
+                                        "nullable": true,
+                                        "enum": [
+                                            "lost"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "201": {
                         "description": "Létrehozott QR-token",
