@@ -32,7 +32,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { busIcon } from '../../lib/leafletIcons';
 import { toast } from 'react-toastify';
@@ -57,6 +57,16 @@ import { SpecialNeedIcon } from '../../components/ui/SpecialNeedIcon';
 import { useAuth } from '../auth/AuthContext';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { QrScannerDialog } from '../../components/QrScannerDialog';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { EventSubNav } from '../../components/layout/EventSubNav';
+
+function MapRecenter({ lat, lng }: { lat: number; lng: number }) {
+  const map = useMap();
+  useEffect(() => {
+    map.flyTo([lat, lng], map.getZoom());
+  }, [lat, lng, map]);
+  return null;
+}
 
 export function TransportPage() {
   const { eventId } = useParams<{ eventId: string }>();
@@ -239,6 +249,7 @@ export function TransportPage() {
 
   return (
     <Box>
+      {eventId && <EventSubNav eventId={eventId} />}
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={1.5} sx={{ mb: 3 }}>
         <Typography variant="h4" fontWeight={700}>Szállítás nyomon követése</Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>
@@ -305,7 +316,7 @@ export function TransportPage() {
             </Paper>
           ))}
           {transports.length === 0 && (
-            <Typography color="text.secondary">Még nincs felvéve szállítóeszköz ehhez az eseményhez.</Typography>
+            <EmptyState title="Még nincs felvéve szállítóeszköz ehhez az eseményhez" />
           )}
         </Stack>
 
@@ -339,6 +350,7 @@ export function TransportPage() {
                       attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> közreműködők'
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     />
+                    <MapRecenter lat={selectedTransport.last_lat} lng={selectedTransport.last_lng} />
                     <Marker position={[selectedTransport.last_lat, selectedTransport.last_lng]} icon={busIcon}>
                       <Popup>
                         <strong>{selectedTransport.code}</strong>
