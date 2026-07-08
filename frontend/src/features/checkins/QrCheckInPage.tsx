@@ -88,12 +88,15 @@ export function QrCheckInPage() {
     if (!eventId || !shelterId) return;
     setIsBusy(true);
     try {
-      await checkInPerson(shelterId, {
+      const { familySplitWarning } = await checkInPerson(shelterId, {
         event_id: eventId,
         public_id: publicId.trim(),
         bed_label: bedLabel.trim() || undefined,
       });
       toast.success(`${previewPerson?.full_name ?? 'A személy'} sikeresen érkeztetve.`);
+      if (familySplitWarning) {
+        toast.warning(familySplitWarning, { autoClose: 10000 });
+      }
       setPreviewPerson(null);
       setPublicId('');
       setBedLabel('');
