@@ -50,6 +50,8 @@ import DownloadIcon from '@mui/icons-material/Download';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import type { AuditLogEntry, AuditLogFilterOptions } from '../../types';
 import { auditLogExportUrl, fetchAuditLogFilterOptions, fetchAuditLogs, type AuditLogFilters } from '../../lib/api/endpoints';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { ErrorState } from '../../components/ui/ErrorState';
 
 const actionMeta: Record<string, { label: string; icon: ReactNode; color: ChipProps['color'] }> = {
   create: { label: 'Létrehozás', icon: <AddCircleIcon fontSize="small" />, color: 'success' },
@@ -59,6 +61,7 @@ const actionMeta: Record<string, { label: string; icon: ReactNode; color: ChipPr
   status_update: { label: 'Státuszváltás', icon: <SwapHorizIcon fontSize="small" />, color: 'secondary' },
   shelter_transfer: { label: 'Áthelyezés', icon: <SwapHorizIcon fontSize="small" />, color: 'secondary' },
   qr_issue: { label: 'QR-kód kiadás', icon: <QrCode2Icon fontSize="small" />, color: 'default' },
+  qr_reissue_lost: { label: 'Elveszett kód pótlása', icon: <WarningAmberIcon fontSize="small" />, color: 'warning' },
   transport_board: { label: 'Felszállás', icon: <DirectionsBusIcon fontSize="small" />, color: 'primary' },
   transport_alight: { label: 'Leszállás', icon: <DirectionsBusIcon fontSize="small" />, color: 'primary' },
   transport_import: { label: 'Manifeszt import', icon: <UploadFileIcon fontSize="small" />, color: 'default' },
@@ -185,6 +188,7 @@ const FIELD_LABELS: Record<string, string> = {
   lat: 'Szélesség',
   lng: 'Hosszúság',
   public_id: 'Nyilvános azonosító',
+  previous_public_id: 'Korábbi azonosító (visszavont)',
   token_hash: 'Token (kódolt)',
   delivery_method: 'Átadás módja',
   delivered_at: 'Átadás időpontja',
@@ -349,7 +353,7 @@ export function AuditLogPage() {
 
   const hasActiveFilters = dateFrom || dateTo || action || userId || eventId || search || significantOnly;
 
-  if (error) return <Typography color="error">{error}</Typography>;
+  if (error) return <ErrorState message={error} />;
 
   return (
     <Box>
@@ -504,7 +508,7 @@ export function AuditLogPage() {
               </Paper>
             );
           })}
-          {logs.length === 0 && <Typography color="text.secondary">Nincs naplóbejegyzés.</Typography>}
+          {logs.length === 0 && <EmptyState title="Nincs naplóbejegyzés" description="A jelenlegi szűrésnek megfelelő időszakban nem történt rögzített művelet." />}
         </Stack>
       ) : (
         <TableContainer component={Paper} variant="outlined">
@@ -590,7 +594,11 @@ export function AuditLogPage() {
                 );
               })}
               {logs.length === 0 && (
-                <TableRow><TableCell colSpan={5} align="center">Nincs naplóbejegyzés.</TableCell></TableRow>
+                <TableRow>
+                  <TableCell colSpan={5}>
+                    <EmptyState title="Nincs naplóbejegyzés" description="A jelenlegi szűrésnek megfelelő időszakban nem történt rögzített művelet." />
+                  </TableCell>
+                </TableRow>
               )}
             </TableBody>
           </Table>
