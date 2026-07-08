@@ -54,6 +54,9 @@ class VehicleController extends Controller
                 'transport_code' => $assignment->code,
                 'event_id' => $assignment->event_id,
                 'event_name' => $assignment->event?->name,
+                'last_lat' => $assignment->last_lat,
+                'last_lng' => $assignment->last_lng,
+                'last_position_at' => $assignment->last_position_at?->toIso8601String(),
             ] : null,
         ];
     }
