@@ -173,4 +173,55 @@ class ShelterTransferTest extends TestCase
 
         $this->assertDatabaseHas('checkins', ['person_id' => $personId, 'bed_label' => 'C terem, 1. ágy']);
     }
+
+    public function test_family_split_warning_is_returned_on_checkin_and_cleared_after_transfer_to_same_shelter(): void
+    {
+        $this->actingAsRole(RoleCode::Admin);
+        $municipality = Municipality::factory()->create();
+        $shelterA = Shelter::factory()->create(['capacity_total' => 50]);
+        $shelterB = Shelter::factory()->create(['capacity_total' => 50]);
+
+        $eventId = $this->postJson('/api/events', [
+            'code' => 'EVT-SPLIT-1',
+            'name' => 'Teszt esemény',
+            'status' => 'active',
+            'shelters' => [
+                ['shelter_id' => $shelterA->id, 'capacity_limit' => 10],
+                ['shelter_id' => $shelterB->id, 'capacity_limit' => 10],
+            ],
+        ])->assertCreated()->json('data.id');
+
+        $this->actingAsRole(RoleCode::Registrar);
+        $primary = $this->postJson("/api/events/{$eventId}/persons", [
+            'last_name' => 'Nagy', 'first_name' => 'Elek', 'municipality_id' => $municipality->id,
+            'create_new_family' => true,
+            'is_primary_contact' => true,
+        ])->assertCreated()->json('data');
+        $familyId = $primary['family_id'];
+        $primaryPublicId = $this->postJson("/api/persons/{$primary['id']}/qr")->assertCreated()->json('data.public_id');
+
+        $member = $this->postJson("/api/events/{$eventId}/persons", [
+            'last_name' => 'Nagy', 'first_name' => 'Ibolya', 'municipality_id' => $municipality->id,
+            'family_id' => $familyId,
+        ])->assertCreated()->json('data');
+        $memberPublicId = $this->postJson("/api/persons/{$member['id']}/qr")->assertCreated()->json('data.public_id');
+
+        $this->actingAsRole(RoleCode::Admin);
+
+        // Az elsődleges kapcsolattartó az A befogadóhelyre érkezik — még nincs kivel szétválnia.
+        $primaryCheckIn = $this->postJson("/api/shelters/{$shelterA->id}/checkins", ['event_id' => $eventId, 'public_id' => $primaryPublicId]);
+        $primaryCheckIn->assertCreated();
+        $this->assertNull($primaryCheckIn->json('family_split_warning'));
+
+        // A családtag a B befogadóhelyre érkezik — a válasznak jeleznie kell a szétválást.
+        $memberCheckIn = $this->postJson("/api/shelters/{$shelterB->id}/checkins", ['event_id' => $eventId, 'public_id' => $memberPublicId]);
+        $memberCheckIn->assertCreated();
+        $this->assertNotNull($memberCheckIn->json('family_split_warning'));
+        $this->assertStringContainsString('Nagy Elek', $memberCheckIn->json('family_split_warning'));
+
+        // Áthelyezés ugyanoda, ahol a család többi tagja van — a figyelmeztetésnek el kell tűnnie.
+        $transferResponse = $this->postJson("/api/persons/{$member['id']}/transfer", ['shelter_id' => $shelterA->id]);
+        $transferResponse->assertCreated();
+        $this->assertNull($transferResponse->json('family_split_warning'));
+    }
 }
