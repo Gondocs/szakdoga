@@ -14,12 +14,14 @@
   body * {
     visibility: hidden;
   }
-  .printable-id-card, .printable-id-card * {
+  .printable-id-card, .printable-id-card *,
+  .printable-roster, .printable-roster * {
     visibility: visible;
   }
-  .printable-id-card {
+  .printable-id-card, .printable-roster {
     position: absolute;
     top: 0;
     left: 0;
+    width: 100%;
   }
 }
