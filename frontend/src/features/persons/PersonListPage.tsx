@@ -41,6 +41,8 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { specialNeedCategoryLabels, specialNeedOptions } from '../../constants/specialNeeds';
 import { SpecialNeedIcon } from '../../components/ui/SpecialNeedIcon';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { EventSubNav } from '../../components/layout/EventSubNav';
 import { useAuth } from '../auth/AuthContext';
 
 const statusLabels: Record<string, string> = {
@@ -304,6 +306,7 @@ export function PersonListPage() {
 
   return (
     <Box>
+      {eventId && <EventSubNav eventId={eventId} />}
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2} sx={{ mb: 3 }}>
         <Typography variant="h4" fontWeight={700}>Regisztrált személyek</Typography>
         <Stack direction="row" spacing={1}>
@@ -550,7 +553,7 @@ export function PersonListPage() {
               </Collapse>
             </Paper>
           ))}
-          {persons.length === 0 && <Typography color="text.secondary" textAlign="center">Nincs találat.</Typography>}
+          {persons.length === 0 && <EmptyState title="Nincs találat" description="A keresésnek/szűrésnek megfelelő regisztrált személy nem található." />}
         </Stack>
       ) : (
         <TableContainer component={Paper} variant="outlined" sx={{ overflowX: 'auto' }}>
@@ -654,7 +657,11 @@ export function PersonListPage() {
                 </Fragment>
               ))}
               {persons.length === 0 && (
-                <TableRow><TableCell colSpan={canBulkEdit ? 8 : 7} align="center">Nincs találat.</TableCell></TableRow>
+                <TableRow>
+                  <TableCell colSpan={canBulkEdit ? 8 : 7}>
+                    <EmptyState title="Nincs találat" description="A keresésnek/szűrésnek megfelelő regisztrált személy nem található." />
+                  </TableCell>
+                </TableRow>
               )}
             </TableBody>
           </Table>
