@@ -32,6 +32,7 @@ import GroupsIcon from '@mui/icons-material/Groups';
 import WorkHistoryIcon from '@mui/icons-material/WorkHistory';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import DeleteIcon from '@mui/icons-material/Delete';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { QRCodeCanvas } from 'qrcode.react';
 import { toast } from 'react-toastify';
 import type { CareEvent, CareEventCategory, CheckInRecord, Person, QrDeliveryMethod, QrTokenData, RegistrationStatus, ShelterWithRisk, StatusHistoryEntry } from '../../types';
@@ -112,6 +113,7 @@ export function PersonDetailPage() {
   const [person, setPerson] = useState<Person | null>(null);
   const [qr, setQr] = useState<QrTokenData | null>(null);
   const [isIssuing, setIsIssuing] = useState(false);
+  const [pendingLostQr, setPendingLostQr] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [history, setHistory] = useState<StatusHistoryEntry[]>([]);
@@ -174,17 +176,18 @@ export function PersonDetailPage() {
     }
   }
 
-  async function handleIssueQr() {
+  async function handleIssueQr(reason?: 'lost') {
     if (!personId) return;
     setIsIssuing(true);
     try {
-      const token = await issueQrToken(personId);
+      const token = await issueQrToken(personId, reason);
       setQr(token);
-      toast.success('QR-kód sikeresen generálva.');
+      toast.success(reason === 'lost' ? 'Elveszett kód bejelentve, új kód generálva.' : 'QR-kód sikeresen generálva.');
     } catch {
       toast.error('A QR-kód generálása nem sikerült (lehet, hogy az esemény nem aktív).');
     } finally {
       setIsIssuing(false);
+      setPendingLostQr(false);
     }
   }
 
@@ -283,9 +286,12 @@ export function PersonDetailPage() {
     if (!personId || !transferShelterId) return;
     setIsTransferring(true);
     try {
-      const checkIn = await transferPerson(personId, transferShelterId, false, transferBedLabel.trim() || undefined);
+      const { checkIn, familySplitWarning } = await transferPerson(personId, transferShelterId, false, transferBedLabel.trim() || undefined);
       setLastCheckIn(checkIn);
       toast.success('Áthelyezés rögzítve.');
+      if (familySplitWarning) {
+        toast.warning(familySplitWarning, { autoClose: 10000 });
+      }
       setTransferOpen(false);
       setTransferShelterId('');
       setTransferBedLabel('');
@@ -636,14 +642,37 @@ export function PersonDetailPage() {
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           A QR-kód csak egy nem kitalálható azonosítót tartalmaz, személyes adatot nem.
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<QrCode2Icon />}
-          onClick={handleIssueQr}
-          disabled={isIssuing}
-        >
-          {isIssuing ? 'Generálás…' : 'QR-kód generálása / újragenerálása'}
-        </Button>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <Button
+            variant="contained"
+            startIcon={<QrCode2Icon />}
+            onClick={() => handleIssueQr()}
+            disabled={isIssuing}
+          >
+            {isIssuing ? 'Generálás…' : 'QR-kód generálása / újragenerálása'}
+          </Button>
+          {qr && (
+            <Button
+              variant="outlined"
+              color="warning"
+              startIcon={<WarningAmberIcon />}
+              onClick={() => setPendingLostQr(true)}
+              disabled={isIssuing}
+            >
+              Elveszett kód bejelentése
+            </Button>
+          )}
+        </Stack>
+        <ConfirmDialog
+          open={pendingLostQr}
+          title="Elveszett kód bejelentése"
+          description="A jelenlegi kód azonnal érvénytelenné válik, és a rendszer újat generál. Ezt az eseményt a műveleti napló elveszettként, kiemelten rögzíti."
+          confirmLabel="Bejelentés és új kód generálása"
+          severity="warning"
+          isSubmitting={isIssuing}
+          onCancel={() => setPendingLostQr(false)}
+          onConfirm={() => handleIssueQr('lost')}
+        />
         {qr && (
           <>
             <Divider sx={{ my: 2 }} />
