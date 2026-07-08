@@ -35,6 +35,7 @@ import { useAuth } from '../auth/AuthContext';
 import type { Municipality } from '../../types';
 import { createMunicipality, deleteMunicipality, fetchMunicipalities, updateMunicipality } from '../../lib/api/endpoints';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 const GYMS_CENTER: [number, number] = [47.75, 17.35];
 
@@ -110,7 +111,7 @@ export function MunicipalityManagementPage() {
               </Stack>
             </Paper>
           ))}
-          {municipalities.length === 0 && <Typography color="text.secondary">Nincs rögzített település.</Typography>}
+          {municipalities.length === 0 && <EmptyState title="Nincs rögzített település" />}
         </Stack>
       ) : (
         <TableContainer component={Paper} variant="outlined">
@@ -144,7 +145,7 @@ export function MunicipalityManagementPage() {
                 </TableRow>
               ))}
               {municipalities.length === 0 && (
-                <TableRow><TableCell colSpan={4} align="center">Nincs rögzített település.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={4}><EmptyState title="Nincs rögzített település" /></TableCell></TableRow>
               )}
             </TableBody>
           </Table>
