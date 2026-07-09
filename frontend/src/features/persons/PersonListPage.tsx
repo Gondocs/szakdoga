@@ -54,6 +54,7 @@ import { specialNeedCategoryLabels, specialNeedOptions } from '../../constants/s
 import { SpecialNeedIcon } from '../../components/ui/SpecialNeedIcon';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { MunicipalityAutocomplete } from '../../components/ui/MunicipalityAutocomplete';
 import { EventSubNav } from '../../components/layout/EventSubNav';
 import { useAuth } from '../auth/AuthContext';
 
@@ -498,19 +499,14 @@ export function PersonListPage() {
             <MenuItem key={value} value={value}>{label}</MenuItem>
           ))}
         </TextField>
-        <TextField
-          select
-          size="small"
+        <MunicipalityAutocomplete
           label="Település"
-          value={searchParams.get('municipality_id') ?? ''}
-          onChange={(e) => updateFilterParam('municipality_id', e.target.value)}
+          size="small"
+          municipalities={municipalities}
+          value={searchParams.get('municipality_id') ? Number(searchParams.get('municipality_id')) : ''}
+          onChange={(id) => updateFilterParam('municipality_id', id === '' ? '' : String(id))}
           sx={{ minWidth: 180 }}
-        >
-          <MenuItem value="">Összes</MenuItem>
-          {municipalities.map((m) => (
-            <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
-          ))}
-        </TextField>
+        />
         <TextField
           select
           size="small"
