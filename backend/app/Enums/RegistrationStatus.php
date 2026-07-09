@@ -12,4 +12,18 @@ enum RegistrationStatus: string
     case ReturnedHome = 'returned_home';
     case Missing = 'missing';
     case Cancelled = 'cancelled';
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::Registered => 'Regisztrált',
+            self::CheckedInAssembly => 'Megjelent a gyülekezőponton',
+            self::InTransport => 'Szállítás alatt',
+            self::ArrivedShelter => 'Megérkezett',
+            self::LeftShelter => 'Befogadóhelyet elhagyta',
+            self::ReturnedHome => 'Visszatelepült',
+            self::Missing => 'Hiányzik',
+            self::Cancelled => 'Törölt',
+        };
+    }
 }
