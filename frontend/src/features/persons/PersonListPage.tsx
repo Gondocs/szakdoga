@@ -34,9 +34,21 @@ import FilterAltOffIcon from '@mui/icons-material/FilterAltOff';
 import PersonIcon from '@mui/icons-material/Person';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import MapIcon from '@mui/icons-material/Map';
+import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
 import { toast } from 'react-toastify';
 import type { Municipality, Person, RegistrationStatus, Shelter } from '../../types';
-import { bulkImportPersons, bulkUpdateRegistrationStatus, fetchAllShelters, fetchMunicipalities, fetchPersons, personsExportUrl } from '../../lib/api/endpoints';
+import {
+  bulkImportPersons,
+  bulkUpdateRegistrationStatus,
+  fetchAllShelters,
+  fetchMunicipalities,
+  fetchPersonMunicipalitySummary,
+  fetchPersons,
+  personsExportUrl,
+  type MunicipalityPersonSummary,
+} from '../../lib/api/endpoints';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { specialNeedCategoryLabels, specialNeedOptions } from '../../constants/specialNeeds';
 import { SpecialNeedIcon } from '../../components/ui/SpecialNeedIcon';
@@ -63,6 +75,7 @@ const channelLabels: Record<string, string> = {
 
 const PER_PAGE_OPTIONS = [25, 50, 100, 200];
 const PER_PAGE_ALL = 1000;
+const GYMS_CENTER: [number, number] = [47.75, 17.35];
 
 function filterDescription(searchParams: URLSearchParams, shelters: Shelter[], municipalities: Municipality[]): string | null {
   const category = searchParams.get('special_need_category');
@@ -175,14 +188,31 @@ export function PersonListPage() {
   const [lastPage, setLastPage] = useState(1);
   const [sortBy, setSortBy] = useState<'name' | 'status' | 'municipality' | 'created_at'>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [showTransportMap, setShowTransportMap] = useState(false);
+  const [transportMapData, setTransportMapData] = useState<MunicipalityPersonSummary[]>([]);
+  const [isLoadingTransportMap, setIsLoadingTransportMap] = useState(false);
 
   const canBulkEdit = user?.role?.code === 'admin' || user?.role?.code === 'manager' || user?.role?.code === 'registrar';
   const activeFilterLabel = filterDescription(searchParams, shelters, municipalities);
+  const isTransportFilterActive = searchParams.get('central_transport_required') === '1';
 
   useEffect(() => {
     fetchAllShelters().then(setShelters).catch(() => setShelters([]));
     fetchMunicipalities().then(setMunicipalities).catch(() => setMunicipalities([]));
   }, []);
+
+  useEffect(() => {
+    setShowTransportMap(false);
+  }, [isTransportFilterActive, eventId]);
+
+  useEffect(() => {
+    if (!eventId || !isTransportFilterActive || !showTransportMap) return;
+    setIsLoadingTransportMap(true);
+    fetchPersonMunicipalitySummary(eventId, { central_transport_required: true })
+      .then(setTransportMapData)
+      .catch(() => setTransportMapData([]))
+      .finally(() => setIsLoadingTransportMap(false));
+  }, [eventId, isTransportFilterActive, showTransportMap, refreshKey]);
 
   // Szűrés/keresés/oldalméret változásakor vissza az első oldalra.
   useEffect(() => {
@@ -350,21 +380,76 @@ export function PersonListPage() {
             setSearchParams({}, { replace: true });
           }}
           action={
-            <Button
-              color="inherit"
-              size="small"
-              startIcon={<FilterAltOffIcon />}
-              onClick={() => {
-                setSearch('');
-                setSearchParams({}, { replace: true });
-              }}
-            >
-              Szűrő törlése
-            </Button>
+            <Stack direction="row" spacing={1}>
+              {isTransportFilterActive && (
+                <Button
+                  color="inherit"
+                  size="small"
+                  startIcon={<MapIcon />}
+                  onClick={() => setShowTransportMap((prev) => !prev)}
+                >
+                  {showTransportMap ? 'Térkép elrejtése' : 'Térkép mutatása'}
+                </Button>
+              )}
+              <Button
+                color="inherit"
+                size="small"
+                startIcon={<FilterAltOffIcon />}
+                onClick={() => {
+                  setSearch('');
+                  setSearchParams({}, { replace: true });
+                }}
+              >
+                Szűrő törlése
+              </Button>
+            </Stack>
           }
         >
           {activeFilterLabel}
         </Alert>
+      )}
+
+      {isTransportFilterActive && (
+        <Collapse in={showTransportMap} timeout="auto" unmountOnExit>
+          <Paper variant="outlined" sx={{ overflow: 'hidden', height: 360, mb: 2 }}>
+            {isLoadingTransportMap ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                <CircularProgress size={28} />
+              </Box>
+            ) : (
+              <MapContainer center={GYMS_CENTER} zoom={9} style={{ height: '100%', width: '100%' }}>
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> közreműködők'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                {transportMapData.map((m) => (
+                  <CircleMarker
+                    key={m.municipality_id}
+                    center={[m.lat, m.lng]}
+                    radius={Math.min(6 + Math.sqrt(m.person_count) * 2, 22)}
+                    pathOptions={{ color: '#a3172b', fillColor: '#a3172b', fillOpacity: 0.3, weight: 1 }}
+                    eventHandlers={{
+                      click: () => updateFilterParam('municipality_id', String(m.municipality_id)),
+                    }}
+                  >
+                    <Popup>
+                      <strong>{m.name}</strong>
+                      <br />
+                      Központi szállítást igénylők: {m.person_count} fő
+                      <br />
+                      <em>Kattintson a szűkítéshez</em>
+                    </Popup>
+                  </CircleMarker>
+                ))}
+              </MapContainer>
+            )}
+          </Paper>
+          {transportMapData.length === 0 && !isLoadingTransportMap && (
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Egyik érintett település sincs koordinátával ellátva.
+            </Typography>
+          )}
+        </Collapse>
       )}
 
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }} alignItems={{ xs: 'stretch', sm: 'center' }}>
