@@ -54,18 +54,18 @@ class ExportController extends Controller
                 fputcsv($handle, [
                     $person->last_name,
                     $person->first_name,
-                    $person->gender?->value,
+                    $person->gender?->label(),
                     $person->birth_place,
                     $person->birth_date?->toDateString(),
                     $person->municipality?->name,
                     trim("{$person->address_postal_code} {$person->address_settlement}, {$person->address_street} {$person->address_house_number}"),
                     $person->phone,
                     $person->family?->family_code,
-                    $person->registration?->channel?->value,
-                    $person->registration?->status?->value,
+                    $person->registration?->channel?->label(),
+                    $person->registration?->status?->label(),
                     $person->registration?->central_transport_required ? 'igen' : 'nem',
                     $person->registration?->central_accommodation_required ? 'igen' : 'nem',
-                    $person->specialNeeds->map(fn ($n) => $n->category->value)->implode(', '),
+                    $person->specialNeeds->map(fn ($n) => $n->category->label())->implode(', '),
                 ], ';');
             }
 
@@ -123,7 +123,7 @@ class ExportController extends Controller
                     trim("{$person->address_postal_code} {$person->address_settlement}, {$person->address_street} {$person->address_house_number}"),
                     $person->phone,
                     $person->family?->family_code,
-                    $person->specialNeeds->map(fn ($n) => $n->category->value)->implode(', '),
+                    $person->specialNeeds->map(fn ($n) => $n->category->label())->implode(', '),
                 ], ';');
             }
 
@@ -180,7 +180,7 @@ class ExportController extends Controller
                 'capacity_limit' => $es->capacity_limit,
                 'checked_in_count' => $es->checked_in_count,
                 'utilization' => round($risk['utilization'] * 100),
-                'risk_level' => $risk['level']->value,
+                'risk_level' => $risk['level']->label(),
             ];
         });
 
@@ -196,7 +196,7 @@ class ExportController extends Controller
             ->get()
             ->map(fn ($a) => [
                 'municipality' => $municipalityNames->get($a->municipality_id, '–'),
-                'status' => $a->status->value,
+                'status' => $a->status->label(),
                 'returned_count' => $returnedCounts->get($a->municipality_id, 0),
             ]);
 
@@ -233,13 +233,13 @@ class ExportController extends Controller
 
             fputcsv($handle, ['Regisztrációk státusz szerint'], ';');
             foreach (RegistrationStatus::cases() as $status) {
-                fputcsv($handle, [$status->value, $statusBreakdown->get($status->value, 0)], ';');
+                fputcsv($handle, [$status->label(), $statusBreakdown->get($status->value, 0)], ';');
             }
             fputcsv($handle, [], ';');
 
             fputcsv($handle, ['Speciális igények kategóriánként'], ';');
             foreach (SpecialNeedCategory::cases() as $category) {
-                fputcsv($handle, [$category->value, $specialNeedsByCategory->get($category->value, 0)], ';');
+                fputcsv($handle, [$category->label(), $specialNeedsByCategory->get($category->value, 0)], ';');
             }
             fputcsv($handle, [], ';');
 
