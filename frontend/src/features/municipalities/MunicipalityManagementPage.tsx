@@ -19,6 +19,7 @@ import {
   TextField,
   IconButton,
   Tooltip,
+  InputAdornment,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
@@ -26,6 +27,7 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import LocationCityIcon from '@mui/icons-material/LocationCity';
+import SearchIcon from '@mui/icons-material/Search';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import type { Marker as LeafletMarker } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -48,6 +50,16 @@ export function MunicipalityManagementPage() {
   const [dialogMunicipality, setDialogMunicipality] = useState<Municipality | 'new' | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Municipality | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const normalizedSearch = search.trim().toLowerCase();
+  const filteredMunicipalities = normalizedSearch
+    ? municipalities.filter((m) =>
+        m.name.toLowerCase().includes(normalizedSearch) ||
+        m.county.toLowerCase().includes(normalizedSearch) ||
+        m.postal_code.includes(normalizedSearch)
+      )
+    : municipalities;
 
   const canManage = user?.role?.code === 'admin' || user?.role?.code === 'manager';
   const isAdmin = user?.role?.code === 'admin';
@@ -89,11 +101,23 @@ export function MunicipalityManagementPage() {
         )}
       </Stack>
 
+      <TextField
+        placeholder="Keresés név, megye vagy irányítószám alapján…"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        size="small"
+        fullWidth
+        sx={{ mb: 2, maxWidth: { sm: 400 } }}
+        InputProps={{
+          startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>,
+        }}
+      />
+
       {isLoading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>
       ) : isMobile ? (
         <Stack spacing={1.5}>
-          {municipalities.map((m) => (
+          {filteredMunicipalities.map((m) => (
             <Paper key={m.id} variant="outlined" sx={{ p: 2 }}>
               <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
                 <Box>
@@ -111,7 +135,9 @@ export function MunicipalityManagementPage() {
               </Stack>
             </Paper>
           ))}
-          {municipalities.length === 0 && <EmptyState title="Nincs rögzített település" />}
+          {filteredMunicipalities.length === 0 && (
+            <EmptyState title={normalizedSearch ? 'Nincs a keresésnek megfelelő település' : 'Nincs rögzített település'} />
+          )}
         </Stack>
       ) : (
         <TableContainer component={Paper} variant="outlined">
@@ -125,7 +151,7 @@ export function MunicipalityManagementPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {municipalities.map((m) => (
+              {filteredMunicipalities.map((m) => (
                 <TableRow key={m.id} hover>
                   <TableCell>{m.name}</TableCell>
                   <TableCell>{m.county}</TableCell>
@@ -144,8 +170,12 @@ export function MunicipalityManagementPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {municipalities.length === 0 && (
-                <TableRow><TableCell colSpan={4}><EmptyState title="Nincs rögzített település" /></TableCell></TableRow>
+              {filteredMunicipalities.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={4}>
+                    <EmptyState title={normalizedSearch ? 'Nincs a keresésnek megfelelő település' : 'Nincs rögzített település'} />
+                  </TableCell>
+                </TableRow>
               )}
             </TableBody>
           </Table>
