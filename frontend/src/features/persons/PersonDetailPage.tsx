@@ -62,6 +62,7 @@ import type { Municipality } from '../../types';
 import { specialNeedCategoryLabels, specialNeedOptions } from '../../constants/specialNeeds';
 import { SpecialNeedIcon } from '../../components/ui/SpecialNeedIcon';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { MunicipalityAutocomplete } from '../../components/ui/MunicipalityAutocomplete';
 import { IdCardDialog } from '../../components/IdCardDialog';
 import PrintIcon from '@mui/icons-material/Print';
 
@@ -921,11 +922,7 @@ function EditPersonDialog({ person, onClose, onSaved }: { person: Person; onClos
               <MenuItem value="other">Egyéb</MenuItem>
             </TextField>
             <TextField label="Okmányszám" fullWidth value={idDocumentNumber} onChange={(e) => setIdDocumentNumber(e.target.value)} />
-            <TextField select label="Település" fullWidth value={municipalityId} onChange={(e) => setMunicipalityId(e.target.value ? Number(e.target.value) : '')}>
-              {municipalities.map((m) => (
-                <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
-              ))}
-            </TextField>
+            <MunicipalityAutocomplete municipalities={municipalities} value={municipalityId} onChange={setMunicipalityId} sx={{ width: '100%' }} />
             <TextField label="Telefon" fullWidth value={phone} onChange={(e) => setPhone(e.target.value)} />
             <TextField label="E-mail" type="email" fullWidth value={email} onChange={(e) => setEmail(e.target.value)} />
           </Stack>
