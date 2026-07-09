@@ -53,7 +53,6 @@ const navItems = [
   { to: '/telepulesek', label: 'Települések', icon: <LocationCityIcon fontSize="small" /> },
   { to: '/jarmuvek', label: 'Járművek', icon: <DirectionsBusIcon fontSize="small" /> },
   { to: '/naplo', label: 'Napló', icon: <HistoryEduIcon fontSize="small" /> },
-  { to: '/beallitasok', label: 'Beállítások', icon: <SettingsIcon fontSize="small" /> },
 ];
 
 export function AppLayout() {
