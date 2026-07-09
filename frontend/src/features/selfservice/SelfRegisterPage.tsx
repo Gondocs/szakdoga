@@ -35,6 +35,7 @@ import {
 } from '../../lib/api/endpoints';
 import { SpecialNeedsEditor, type SpecialNeedRow } from '../persons/SpecialNeedsEditor';
 import { IdCardDialog } from '../../components/IdCardDialog';
+import { MunicipalityAutocomplete } from '../../components/ui/MunicipalityAutocomplete';
 
 export function SelfRegisterPage() {
   const { eventCode } = useParams<{ eventCode: string }>();
@@ -220,12 +221,7 @@ export function SelfRegisterPage() {
                 <TextField label="Személyazonosító okmány száma" fullWidth value={idDocumentNumber} onChange={(e) => setIdDocumentNumber(e.target.value)} />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField select label="Település" required fullWidth value={municipalityId} onChange={(e) => setMunicipalityId(e.target.value ? Number(e.target.value) : '')}>
-                  <MenuItem value="">Válasszon…</MenuItem>
-                  {municipalities.map((m) => (
-                    <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
-                  ))}
-                </TextField>
+                <MunicipalityAutocomplete municipalities={municipalities} value={municipalityId} onChange={setMunicipalityId} required sx={{ width: '100%' }} />
               </Grid>
               <Grid size={{ xs: 12, sm: 4 }}>
                 <TextField label="Utca" fullWidth value={street} onChange={(e) => setStreet(e.target.value)} />

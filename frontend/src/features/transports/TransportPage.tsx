@@ -53,6 +53,7 @@ import {
   type Vehicle,
 } from '../../lib/api/endpoints';
 import { specialNeedCategoryLabels } from '../../constants/specialNeeds';
+import { registrationStatusLabels } from '../../constants/registrationStatus';
 import { SpecialNeedIcon } from '../../components/ui/SpecialNeedIcon';
 import { useAuth } from '../auth/AuthContext';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
@@ -449,7 +450,11 @@ export function TransportPage() {
                   <Stack spacing={1}>
                     <Typography fontWeight={700}>{previewPerson.full_name}</Typography>
                     <Typography variant="body2">Település: {previewPerson.municipality?.name ?? '–'}</Typography>
-                    <Typography variant="body2">Státusz: {previewPerson.registration?.status ?? '–'}</Typography>
+                    <Typography variant="body2">Telefon: {previewPerson.phone ?? '–'}</Typography>
+                    <Typography variant="body2">Okmányszám: {previewPerson.id_document_number ?? '–'}</Typography>
+                    <Typography variant="body2">
+                      Státusz: {previewPerson.registration ? registrationStatusLabels[previewPerson.registration.status] : '–'}
+                    </Typography>
                     {previewPerson.special_needs && previewPerson.special_needs.length > 0 && (
                       <Stack direction="row" spacing={1} flexWrap="wrap">
                         {previewPerson.special_needs.map((n) => (
@@ -534,7 +539,11 @@ export function TransportPage() {
               <Typography variant="h6" fontWeight={700}>{detailsPerson.full_name}</Typography>
               <Typography variant="body2">Település: {detailsPerson.municipality?.name ?? '–'}</Typography>
               <Typography variant="body2">Telefon: {detailsPerson.phone ?? '–'}</Typography>
-              <Typography variant="body2">Státusz: {detailsPerson.registration?.status ?? '–'}</Typography>
+              <Typography variant="body2">Okmányszám: {detailsPerson.id_document_number ?? '–'}</Typography>
+              <Typography variant="body2">Születési hely/idő: {detailsPerson.birth_place ?? '–'} / {detailsPerson.birth_date ?? '–'}</Typography>
+              <Typography variant="body2">
+                Státusz: {detailsPerson.registration ? registrationStatusLabels[detailsPerson.registration.status] : '–'}
+              </Typography>
               {detailsPerson.special_needs && detailsPerson.special_needs.length > 0 && (
                 <Box>
                   <Typography variant="body2" fontWeight={700} sx={{ mb: 0.5 }}>Egyedi igények:</Typography>
