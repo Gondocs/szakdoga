@@ -115,17 +115,22 @@ class PersonController extends Controller
         tags: ['Persons'],
         parameters: [
             new OA\Parameter(name: 'event', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid')),
+            new OA\Parameter(name: 'central_transport_required', in: 'query', required: false, schema: new OA\Schema(type: 'boolean'), description: 'Ha true, csak a központi szállítást igénylőket összesíti.'),
         ],
         responses: [
             new OA\Response(response: 200, description: 'Településenkénti összesítés koordinátákkal'),
         ]
     )]
-    public function municipalitySummary(EvacuationEvent $event)
+    public function municipalitySummary(Request $request, EvacuationEvent $event)
     {
         $this->authorize('viewAny', Person::class);
 
         $rows = $event->persons()
             ->join('municipalities', 'persons.municipality_id', '=', 'municipalities.id')
+            ->when($request->boolean('central_transport_required'), fn ($q) => $q->whereHas(
+                'registration',
+                fn ($r) => $r->where('central_transport_required', true)
+            ))
             ->whereNotNull('municipalities.lat')
             ->whereNotNull('municipalities.lng')
             ->selectRaw('municipalities.id as municipality_id, municipalities.name as name, municipalities.lat as lat, municipalities.lng as lng, count(*) as person_count')
