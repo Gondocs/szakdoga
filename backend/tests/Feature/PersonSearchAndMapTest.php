@@ -142,6 +142,36 @@ class PersonSearchAndMapTest extends TestCase
         $response->assertJsonPath('data.0.person_count', 2);
     }
 
+    public function test_municipality_summary_can_be_filtered_to_central_transport_required(): void
+    {
+        $this->actingAsRole(RoleCode::Admin);
+        $municipality = Municipality::factory()->create(['lat' => 47.6875, 'lng' => 17.6504]);
+
+        $eventId = $this->postJson('/api/events', [
+            'code' => 'EVT-MAP-2',
+            'name' => 'Teszt esemény',
+            'status' => 'active',
+        ])->assertCreated()->json('data.id');
+
+        $this->actingAsRole(RoleCode::Registrar);
+        $withTransport = $this->postJson("/api/events/{$eventId}/persons", [
+            'last_name' => 'Első', 'first_name' => 'Teszt', 'municipality_id' => $municipality->id,
+            'central_transport_required' => true,
+        ])->assertCreated()->json('data');
+        $this->postJson("/api/events/{$eventId}/persons", [
+            'last_name' => 'Második', 'first_name' => 'Teszt', 'municipality_id' => $municipality->id,
+        ])->assertCreated();
+
+        $unfiltered = $this->getJson("/api/events/{$eventId}/persons/municipality-summary")->assertOk();
+        $unfiltered->assertJsonPath('data.0.person_count', 2);
+
+        $filtered = $this->getJson("/api/events/{$eventId}/persons/municipality-summary?central_transport_required=1")->assertOk();
+        $filtered->assertJsonCount(1, 'data');
+        $filtered->assertJsonPath('data.0.person_count', 1);
+
+        $this->assertNotNull($withTransport['registration']);
+    }
+
     public function test_municipality_filter_narrows_person_list(): void
     {
         $this->actingAsRole(RoleCode::Admin);
