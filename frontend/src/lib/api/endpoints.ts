@@ -424,8 +424,14 @@ export interface MunicipalityPersonSummary {
   person_count: number;
 }
 
-export async function fetchPersonMunicipalitySummary(eventId: string): Promise<MunicipalityPersonSummary[]> {
-  const { data } = await apiClient.get<{ data: MunicipalityPersonSummary[] }>(`/api/events/${eventId}/persons/municipality-summary`);
+export async function fetchPersonMunicipalitySummary(
+  eventId: string,
+  filters?: { central_transport_required?: boolean }
+): Promise<MunicipalityPersonSummary[]> {
+  const { data } = await apiClient.get<{ data: MunicipalityPersonSummary[] }>(
+    `/api/events/${eventId}/persons/municipality-summary`,
+    { params: filters }
+  );
   return data.data;
 }
 
