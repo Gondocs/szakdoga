@@ -282,7 +282,13 @@ export interface AuditLogFilterOptions {
 export interface FamilyReunificationEntry {
   id: string;
   family_code: string;
-  members: { id: string; full_name: string; current_shelter: string | null }[];
+  members: {
+    id: string;
+    full_name: string;
+    current_shelter: string | null;
+    shelter_id: string | null;
+    shelter_coordinates: { lat: number; lng: number } | null;
+  }[];
   latest_note: { note: string; resolved: boolean } | null;
   notes_count: number;
 }
