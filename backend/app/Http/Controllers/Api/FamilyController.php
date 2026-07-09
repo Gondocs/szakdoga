@@ -85,7 +85,11 @@ class FamilyController extends Controller
     public function reunificationWorklist(EvacuationEvent $event)
     {
         $families = $event->families()
-            ->with(['members.checkins.shelter', 'reunificationNotes.createdBy'])
+            ->with([
+                'members.checkins' => fn ($q) => $q->orderByDesc('checked_in_at')->orderByDesc('id'),
+                'members.checkins.shelter.municipality',
+                'reunificationNotes.createdBy',
+            ])
             ->orderBy('family_code')
             ->get()
             ->filter(fn ($f) => $this->isSplit($f))
@@ -98,11 +102,19 @@ class FamilyController extends Controller
                 return [
                     'id' => $f->id,
                     'family_code' => $f->family_code,
-                    'members' => $f->members->map(fn ($m) => [
-                        'id' => $m->id,
-                        'full_name' => $m->fullName(),
-                        'current_shelter' => optional($m->checkins->sortByDesc('checked_in_at')->first())->shelter?->name,
-                    ]),
+                    'members' => $f->members->map(function ($m) {
+                        $shelter = $m->checkins->first()?->shelter;
+
+                        return [
+                            'id' => $m->id,
+                            'full_name' => $m->fullName(),
+                            'current_shelter' => $shelter?->name,
+                            'shelter_id' => $shelter?->id,
+                            'shelter_coordinates' => $shelter?->municipality && $shelter->municipality->lat !== null && $shelter->municipality->lng !== null
+                                ? ['lat' => (float) $shelter->municipality->lat, 'lng' => (float) $shelter->municipality->lng]
+                                : null,
+                        ];
+                    }),
                     'latest_note' => $latestNote ? ['note' => $latestNote->note, 'resolved' => $latestNote->resolved] : null,
                     'notes_count' => $f->reunificationNotes->count(),
                 ];
