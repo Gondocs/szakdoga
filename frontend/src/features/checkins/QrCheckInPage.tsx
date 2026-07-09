@@ -21,6 +21,7 @@ import type { Person, ShelterWithRisk } from '../../types';
 import { checkInPerson, fetchShelters, resolveQrToken } from '../../lib/api/endpoints';
 import { useAuth } from '../auth/AuthContext';
 import { specialNeedCategoryLabels } from '../../constants/specialNeeds';
+import { registrationStatusLabels } from '../../constants/registrationStatus';
 import { SpecialNeedIcon } from '../../components/ui/SpecialNeedIcon';
 import { QrScannerDialog } from '../../components/QrScannerDialog';
 
@@ -164,7 +165,11 @@ export function QrCheckInPage() {
               <Stack spacing={1}>
                 <Typography fontWeight={700}>{previewPerson.full_name}</Typography>
                 <Typography variant="body2">Település: {previewPerson.municipality?.name ?? '–'}</Typography>
-                <Typography variant="body2">Státusz: {previewPerson.registration?.status ?? '–'}</Typography>
+                <Typography variant="body2">Telefon: {previewPerson.phone ?? '–'}</Typography>
+                <Typography variant="body2">Okmányszám: {previewPerson.id_document_number ?? '–'}</Typography>
+                <Typography variant="body2">
+                  Státusz: {previewPerson.registration ? registrationStatusLabels[previewPerson.registration.status] : '–'}
+                </Typography>
                 {previewPerson.special_needs && previewPerson.special_needs.length > 0 && (
                   <Box>
                     <Typography variant="body2" fontWeight={700}>Egyedi igények:</Typography>
