@@ -2338,6 +2338,15 @@
                             "type": "string",
                             "format": "uuid"
                         }
+                    },
+                    {
+                        "name": "central_transport_required",
+                        "in": "query",
+                        "description": "Ha true, csak a központi szállítást igénylőket összesíti.",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
                     }
                 ],
                 "responses": {
