@@ -119,8 +119,8 @@ class AuditLogController extends Controller
                 fputcsv($handle, [
                     $log->created_at?->toDateTimeString(),
                     $log->user?->name ?? '–',
-                    $log->action,
-                    $log->entity_type,
+                    $this->actionLabel($log->action),
+                    $this->entityTypeLabel($log->entity_type),
                     $canViewSensitive ? $log->entity_id : substr($log->entity_id, 0, 8),
                     $log->significant ? 'igen' : 'nem',
                 ], ';');
@@ -130,6 +130,55 @@ class AuditLogController extends Controller
         }, 'muveleti-naplo.csv', [
             'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
+    }
+
+    private function actionLabel(string $action): string
+    {
+        return match ($action) {
+            'create' => 'Létrehozás',
+            'update' => 'Módosítás',
+            'delete' => 'Törlés',
+            'checkin' => 'Érkeztetés',
+            'status_update' => 'Státuszváltás',
+            'shelter_transfer' => 'Áthelyezés',
+            'qr_issue' => 'QR-kód kiadás',
+            'qr_reissue_lost' => 'Elveszett kód pótlása',
+            'transport_board' => 'Felszállás',
+            'transport_alight' => 'Leszállás',
+            'transport_import' => 'Manifeszt import',
+            'self_update' => 'Önkiszolgáló frissítés',
+            'self_arrival_confirmed' => 'Érkezés megerősítve',
+            'self_return_confirmed' => 'Hazatérés megerősítve',
+            'data_retention_purge' => 'Adatmegőrzési törlés',
+            'login' => 'Bejelentkezés',
+            'logout' => 'Kijelentkezés',
+            'login_failed' => 'Sikertelen bejelentkezés',
+            'user_create' => 'Felhasználó létrehozása',
+            'user_update' => 'Felhasználó módosítása',
+            'role_change' => 'Szerepkör módosítása',
+            default => $action,
+        };
+    }
+
+    private function entityTypeLabel(string $entityType): string
+    {
+        return match ($entityType) {
+            'Person' => 'Személy',
+            'Family' => 'Család',
+            'EvacuationEvent' => 'Esemény',
+            'Shelter' => 'Befogadóhely',
+            'Registration' => 'Regisztráció',
+            'QrToken' => 'QR-kód',
+            'Transport' => 'Szállítóeszköz',
+            'Vehicle' => 'Jármű',
+            'User' => 'Felhasználó',
+            'Incident' => 'Incidens',
+            'CareEvent' => 'Ellátási esemény',
+            'RepatriationAuthorization' => 'Visszatelepítési engedély',
+            'AssemblyPoint' => 'Gyülekezési pont',
+            'FamilyReunificationNote' => 'Családegyesítési bejegyzés',
+            default => $entityType,
+        };
     }
 
     private function filteredQuery(Request $request)
