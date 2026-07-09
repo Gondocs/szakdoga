@@ -11,4 +11,12 @@ enum RegistrationChannel: string
 {
     case Staff = 'staff';
     case SelfService = 'self_service';
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::Staff => 'Hatósági',
+            self::SelfService => 'Önkiszolgáló',
+        };
+    }
 }
