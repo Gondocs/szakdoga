@@ -39,6 +39,7 @@ import type { Municipality, Shelter } from '../../types';
 import { createShelter, deleteShelter, fetchAllShelters, fetchMunicipalities, updateShelter } from '../../lib/api/endpoints';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { MunicipalityAutocomplete } from '../../components/ui/MunicipalityAutocomplete';
 
 const statusLabels: Record<string, string> = {
   planned: 'Tervezett',
@@ -379,11 +380,7 @@ function ShelterDialog({
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField label="Név" required fullWidth value={name} onChange={(e) => setName(e.target.value)} />
-            <TextField select label="Település" required fullWidth value={municipalityId} onChange={(e) => setMunicipalityId(Number(e.target.value))}>
-              {municipalities.map((m) => (
-                <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
-              ))}
-            </TextField>
+            <MunicipalityAutocomplete municipalities={municipalities} value={municipalityId} onChange={setMunicipalityId} required sx={{ width: '100%' }} />
             <TextField label="Cím" required fullWidth value={address} onChange={(e) => setAddress(e.target.value)} />
             <Stack direction="row" spacing={2}>
               <TextField label="Teljes kapacitás" type="number" required fullWidth value={capacityTotal} onChange={(e) => setCapacityTotal(Number(e.target.value))} />
