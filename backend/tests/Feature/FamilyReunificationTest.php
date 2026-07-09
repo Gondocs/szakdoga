@@ -77,6 +77,52 @@ class FamilyReunificationTest extends TestCase
         $worklistAfterNote->assertJsonPath('data.0.latest_note.resolved', false);
     }
 
+    public function test_worklist_members_include_shelter_id_and_coordinates(): void
+    {
+        $this->actingAsRole(RoleCode::Admin);
+        $personMunicipality = Municipality::factory()->create();
+        $shelterMunicipality = Municipality::factory()->create(['lat' => 47.6875, 'lng' => 17.6504]);
+        $shelterA = Shelter::factory()->create(['municipality_id' => $shelterMunicipality->id]);
+        $shelterB = Shelter::factory()->create();
+
+        $eventId = $this->postJson('/api/events', [
+            'code' => 'EVT-REUNITE-3',
+            'name' => 'Teszt esemény',
+            'status' => 'active',
+            'shelters' => [
+                ['shelter_id' => $shelterA->id, 'capacity_limit' => 10],
+                ['shelter_id' => $shelterB->id, 'capacity_limit' => 10],
+            ],
+        ])->assertCreated()->json('data.id');
+
+        $this->actingAsRole(RoleCode::Registrar);
+        $memberA = $this->postJson("/api/events/{$eventId}/persons", [
+            'last_name' => 'Kis', 'first_name' => 'Anna', 'municipality_id' => $personMunicipality->id,
+            'create_new_family' => true, 'is_primary_contact' => true,
+        ])->assertCreated()->json('data');
+        $familyId = $memberA['family_id'];
+
+        $memberB = $this->postJson("/api/events/{$eventId}/persons", [
+            'last_name' => 'Kis', 'first_name' => 'Béla', 'municipality_id' => $personMunicipality->id,
+            'family_id' => $familyId,
+        ])->assertCreated()->json('data');
+
+        $publicIdA = $this->postJson("/api/persons/{$memberA['id']}/qr")->assertCreated()->json('data.public_id');
+        $publicIdB = $this->postJson("/api/persons/{$memberB['id']}/qr")->assertCreated()->json('data.public_id');
+
+        $this->actingAsRole(RoleCode::Admin);
+        $this->postJson("/api/shelters/{$shelterA->id}/checkins", ['event_id' => $eventId, 'public_id' => $publicIdA])->assertCreated();
+        $this->postJson("/api/shelters/{$shelterB->id}/checkins", ['event_id' => $eventId, 'public_id' => $publicIdB])->assertCreated();
+
+        $worklist = $this->getJson("/api/events/{$eventId}/families/reunification-worklist")->assertOk();
+        $members = collect($worklist->json('data.0.members'))->keyBy('id');
+
+        $this->assertSame($shelterA->id, $members[$memberA['id']]['shelter_id']);
+        $this->assertSame(47.6875, $members[$memberA['id']]['shelter_coordinates']['lat']);
+        $this->assertSame(17.6504, $members[$memberA['id']]['shelter_coordinates']['lng']);
+        $this->assertNull($members[$memberB['id']]['shelter_coordinates']);
+    }
+
     public function test_shelter_operator_cannot_add_a_reunification_note(): void
     {
         $this->actingAsRole(RoleCode::Admin);
