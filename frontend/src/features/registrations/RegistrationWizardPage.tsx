@@ -20,6 +20,7 @@ import { toast } from 'react-toastify';
 import type { FamilySummary, Municipality } from '../../types';
 import { createPerson, fetchFamilies, fetchMunicipalities } from '../../lib/api/endpoints';
 import { SpecialNeedsEditor, type SpecialNeedRow } from '../persons/SpecialNeedsEditor';
+import { MunicipalityAutocomplete } from '../../components/ui/MunicipalityAutocomplete';
 
 export function RegistrationWizardPage() {
   const { eventId } = useParams<{ eventId: string }>();
@@ -162,12 +163,7 @@ export function RegistrationWizardPage() {
             <TextField label="Okmányszám" fullWidth value={idDocumentNumber} onChange={(e) => setIdDocumentNumber(e.target.value)} />
           </Grid>
           <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-            <TextField select label="Település" required fullWidth value={municipalityId} onChange={(e) => setMunicipalityId(e.target.value ? Number(e.target.value) : '')}>
-              <MenuItem value="">Válasszon…</MenuItem>
-              {municipalities.map((m) => (
-                <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
-              ))}
-            </TextField>
+            <MunicipalityAutocomplete municipalities={municipalities} value={municipalityId} onChange={setMunicipalityId} required sx={{ width: '100%' }} />
           </Grid>
           <Grid size={{ xs: 12, sm: 6, md: 4 }}>
             <TextField label="Utca" fullWidth value={street} onChange={(e) => setStreet(e.target.value)} />
