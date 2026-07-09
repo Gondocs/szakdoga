@@ -250,12 +250,40 @@ export function EventDashboardPage() {
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             A jelenleg befogadóhelyen tartózkodók száma és egyedi igényei alapján becsült napi szükséglet.
           </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Kattintson egy mutatóra vagy táblázatsorra az érintettek listázásához.
+          </Typography>
           <Stack direction="row" flexWrap="wrap" gap={2} sx={{ mb: 2 }}>
-            <KpiCard label="Étkezési adag / nap" value={stockForecast.totals.meal_portions_per_day} icon={<PeopleAltIcon fontSize="small" />} />
-            <KpiCard label="Ebből speciális diéta" value={stockForecast.totals.special_diet_portions_per_day} icon={<PeopleAltIcon fontSize="small" />} />
-            <KpiCard label="Takaró" value={stockForecast.totals.blankets_needed} icon={<HotelIcon fontSize="small" />} />
-            <KpiCard label="Matrac" value={stockForecast.totals.mattresses_needed} icon={<HotelIcon fontSize="small" />} />
-            <KpiCard label="Gyógyszerre szoruló" value={stockForecast.totals.medicine_needed_count} icon={<WarningAmberIcon fontSize="small" />} />
+            <KpiCard
+              label="Étkezési adag / nap"
+              value={stockForecast.totals.meal_portions_per_day}
+              icon={<PeopleAltIcon fontSize="small" />}
+              onClick={() => navigate(`/esemenyek/${eventId}/szemelyek?status=arrived_shelter`)}
+            />
+            <KpiCard
+              label="Ebből speciális diéta"
+              value={stockForecast.totals.special_diet_portions_per_day}
+              icon={<PeopleAltIcon fontSize="small" />}
+              onClick={() => navigate(`/esemenyek/${eventId}/szemelyek?special_need_category=diet`)}
+            />
+            <KpiCard
+              label="Takaró"
+              value={stockForecast.totals.blankets_needed}
+              icon={<HotelIcon fontSize="small" />}
+              onClick={() => navigate(`/esemenyek/${eventId}/szemelyek?status=arrived_shelter`)}
+            />
+            <KpiCard
+              label="Matrac"
+              value={stockForecast.totals.mattresses_needed}
+              icon={<HotelIcon fontSize="small" />}
+              onClick={() => navigate(`/esemenyek/${eventId}/szemelyek?status=arrived_shelter`)}
+            />
+            <KpiCard
+              label="Gyógyszerre szoruló"
+              value={stockForecast.totals.medicine_needed_count}
+              icon={<WarningAmberIcon fontSize="small" />}
+              onClick={() => navigate(`/esemenyek/${eventId}/szemelyek?special_need_category=medical`)}
+            />
           </Stack>
           <TableContainer>
             <Table size="small">
@@ -272,14 +300,37 @@ export function EventDashboardPage() {
               </TableHead>
               <TableBody>
                 {stockForecast.by_shelter.map((row) => (
-                  <TableRow key={row.shelter_id}>
+                  <TableRow
+                    key={row.shelter_id}
+                    hover
+                    sx={{ cursor: 'pointer' }}
+                    onClick={() => navigate(`/esemenyek/${eventId}/szemelyek?shelter_id=${row.shelter_id}`)}
+                  >
                     <TableCell>{row.shelter_name}</TableCell>
                     <TableCell>{row.checked_in_count}</TableCell>
                     <TableCell>{row.meal_portions_per_day}</TableCell>
-                    <TableCell>{row.special_diet_portions_per_day}</TableCell>
+                    <TableCell
+                      sx={row.special_diet_portions_per_day > 0 ? { textDecoration: 'underline', textDecorationStyle: 'dotted' } : undefined}
+                      onClick={(e) => {
+                        if (row.special_diet_portions_per_day === 0) return;
+                        e.stopPropagation();
+                        navigate(`/esemenyek/${eventId}/szemelyek?shelter_id=${row.shelter_id}&special_need_category=diet`);
+                      }}
+                    >
+                      {row.special_diet_portions_per_day}
+                    </TableCell>
                     <TableCell>{row.blankets_needed}</TableCell>
                     <TableCell>{row.mattresses_needed}</TableCell>
-                    <TableCell>{row.medicine_needed_count}</TableCell>
+                    <TableCell
+                      sx={row.medicine_needed_count > 0 ? { textDecoration: 'underline', textDecorationStyle: 'dotted' } : undefined}
+                      onClick={(e) => {
+                        if (row.medicine_needed_count === 0) return;
+                        e.stopPropagation();
+                        navigate(`/esemenyek/${eventId}/szemelyek?shelter_id=${row.shelter_id}&special_need_category=medical`);
+                      }}
+                    >
+                      {row.medicine_needed_count}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
