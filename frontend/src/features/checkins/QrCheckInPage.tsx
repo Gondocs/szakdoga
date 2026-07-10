@@ -20,7 +20,7 @@ import { toast } from 'react-toastify';
 import type { Person, ShelterWithRisk } from '../../types';
 import { checkInPerson, fetchShelters, resolveQrToken } from '../../lib/api/endpoints';
 import { useAuth } from '../auth/AuthContext';
-import { specialNeedCategoryLabels } from '../../constants/specialNeeds';
+import { specialNeedCategoryLabels, specialNeedDetailLabel } from '../../constants/specialNeeds';
 import { registrationStatusLabels } from '../../constants/registrationStatus';
 import { SpecialNeedIcon } from '../../components/ui/SpecialNeedIcon';
 import { QrScannerDialog } from '../../components/QrScannerDialog';
@@ -177,8 +177,8 @@ export function QrCheckInPage() {
                       {previewPerson.special_needs.map((n) => (
                         <Chip
                           key={n.id}
-                          icon={<SpecialNeedIcon category={n.category} fontSize="small" />}
-                          label={specialNeedCategoryLabels[n.category] ?? n.category}
+                          icon={<SpecialNeedIcon category={n.category} needType={n.type} needDescription={n.description} fontSize="small" />}
+                          label={specialNeedDetailLabel(n)}
                           size="small"
                           color="warning"
                         />
