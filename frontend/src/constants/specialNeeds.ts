@@ -14,6 +14,24 @@ export const specialNeedCategoryLabels: Record<SpecialNeedCategory, string> = {
   other: 'Egyéb',
 };
 
+export interface SpecialNeedLike {
+  category: SpecialNeedCategory;
+  type?: string | null;
+  description?: string | null;
+}
+
+/**
+ * Egy konkrét egyedi igény részletes, olvasható címkéje, pl. "Diétás igény
+ * (Vegán)". A típus (előre definiált katalógusból) elsőbbséget élvez a szabad
+ * szöveges megjegyzéssel szemben, de ha egyik sincs, csak a kategória nevét adja.
+ */
+export function specialNeedDetailLabel(need: SpecialNeedLike): string {
+  const categoryLabel = specialNeedCategoryLabels[need.category] ?? need.category;
+  const typeLabel = need.type ? specialNeedOptions[need.category]?.find((o) => o.value === need.type)?.label : null;
+  const detail = typeLabel ?? need.description;
+  return detail ? `${categoryLabel} (${detail})` : categoryLabel;
+}
+
 /**
  * Előre definiált, gyakori speciális igény katalógus, hogy a regisztráció
  * során ne kelljen szabad szöveget begépelni (kevesebb elírás, egységes
