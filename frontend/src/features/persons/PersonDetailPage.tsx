@@ -59,7 +59,7 @@ import {
   type UpdatePersonPayload,
 } from '../../lib/api/endpoints';
 import type { Municipality } from '../../types';
-import { specialNeedCategoryLabels, specialNeedOptions } from '../../constants/specialNeeds';
+import { specialNeedDetailLabel } from '../../constants/specialNeeds';
 import { SpecialNeedIcon } from '../../components/ui/SpecialNeedIcon';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { MunicipalityAutocomplete } from '../../components/ui/MunicipalityAutocomplete';
@@ -83,10 +83,6 @@ const qrDeliveryLabels: Record<QrDeliveryMethod, string> = {
   paper: 'Nyomtatott igazolás',
 };
 
-function findSpecialNeedLabel(category: keyof typeof specialNeedOptions, type: string | null): string {
-  if (!type) return '';
-  return specialNeedOptions[category]?.find((o) => o.value === type)?.label ?? type;
-}
 
 const statusLabels: Record<RegistrationStatus, string> = {
   registered: 'Regisztrált',
@@ -523,10 +519,10 @@ export function PersonDetailPage() {
             {person.special_needs.map((need) => (
               <ListItem key={need.id} disableGutters>
                 <ListItemIcon sx={{ minWidth: 36 }}>
-                  <SpecialNeedIcon category={need.category} color="secondary" />
+                  <SpecialNeedIcon category={need.category} needType={need.type} needDescription={need.description} color="secondary" />
                 </ListItemIcon>
                 <ListItemText
-                  primary={`${specialNeedCategoryLabels[need.category]}${need.type ? ` – ${findSpecialNeedLabel(need.category, need.type)}` : ''}`}
+                  primary={specialNeedDetailLabel(need)}
                   secondary={need.description ?? `Prioritás: ${need.priority}`}
                 />
               </ListItem>
