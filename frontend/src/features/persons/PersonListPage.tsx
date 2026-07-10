@@ -50,7 +50,7 @@ import {
   type MunicipalityPersonSummary,
 } from '../../lib/api/endpoints';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
-import { specialNeedCategoryLabels, specialNeedOptions } from '../../constants/specialNeeds';
+import { specialNeedCategoryLabels, specialNeedDetailLabel, specialNeedOptions } from '../../constants/specialNeeds';
 import { SpecialNeedIcon } from '../../components/ui/SpecialNeedIcon';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -151,7 +151,7 @@ function PersonQuickInfo({ person }: { person: Person }) {
             <Stack spacing={0.25}>
               {person.special_needs.map((n) => (
                 <Typography key={n.id} variant="body2">
-                  {specialNeedCategoryLabels[n.category] ?? n.category}{n.description ? ` — ${n.description}` : ''}
+                  {specialNeedDetailLabel(n)}{n.type && n.description ? ` — ${n.description}` : ''}
                 </Typography>
               ))}
             </Stack>
@@ -611,8 +611,8 @@ export function PersonListPage() {
                 {person.registration?.channel && (
                   <Chip size="small" variant="outlined" label={channelLabels[person.registration.channel] ?? person.registration.channel} />
                 )}
-                {[...new Set((person.special_needs ?? []).map((n) => n.category))].map((cat) => (
-                  <SpecialNeedIcon key={cat} category={cat} fontSize="small" color="secondary" />
+                {(person.special_needs ?? []).map((n) => (
+                  <SpecialNeedIcon key={n.id} category={n.category} needType={n.type} needDescription={n.description} fontSize="small" color="secondary" />
                 ))}
                 {person.family_id && (
                   <Chip
@@ -705,8 +705,8 @@ export function PersonListPage() {
                     <TableCell>
                       {person.special_needs?.length ? (
                         <Stack direction="row" spacing={0.5}>
-                          {[...new Set(person.special_needs.map((n) => n.category))].map((cat) => (
-                            <SpecialNeedIcon key={cat} category={cat} fontSize="small" color="secondary" />
+                          {person.special_needs.map((n) => (
+                            <SpecialNeedIcon key={n.id} category={n.category} needType={n.type} needDescription={n.description} fontSize="small" color="secondary" />
                           ))}
                         </Stack>
                       ) : '–'}
