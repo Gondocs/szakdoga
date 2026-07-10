@@ -97,8 +97,8 @@ export function FamilyDetailPage() {
                 {member.current_shelter && (
                   <Chip size="small" color={shelterSplit ? 'warning' : 'default'} variant="outlined" label={member.current_shelter.name} />
                 )}
-                {[...new Set((member.special_needs ?? []).map((n) => n.category))].map((cat) => (
-                  <SpecialNeedIcon key={cat} category={cat} fontSize="small" color="secondary" />
+                {(member.special_needs ?? []).map((n) => (
+                  <SpecialNeedIcon key={n.id} category={n.category} needType={n.type} needDescription={n.description} fontSize="small" color="secondary" />
                 ))}
               </Stack>
             </Paper>
@@ -137,8 +137,8 @@ export function FamilyDetailPage() {
                     <TableCell>
                       {member.special_needs?.length ? (
                         <Stack direction="row" spacing={0.5}>
-                          {[...new Set(member.special_needs.map((n) => n.category))].map((cat) => (
-                            <SpecialNeedIcon key={cat} category={cat} fontSize="small" color="secondary" />
+                          {member.special_needs.map((n) => (
+                            <SpecialNeedIcon key={n.id} category={n.category} needType={n.type} needDescription={n.description} fontSize="small" color="secondary" />
                           ))}
                         </Stack>
                       ) : '–'}
