@@ -52,7 +52,7 @@ import {
   type Transport,
   type Vehicle,
 } from '../../lib/api/endpoints';
-import { specialNeedCategoryLabels } from '../../constants/specialNeeds';
+import { specialNeedCategoryLabels, specialNeedDetailLabel } from '../../constants/specialNeeds';
 import { registrationStatusLabels } from '../../constants/registrationStatus';
 import { SpecialNeedIcon } from '../../components/ui/SpecialNeedIcon';
 import { useAuth } from '../auth/AuthContext';
@@ -382,8 +382,8 @@ export function TransportPage() {
                         primary={p.full_name}
                         secondary={p.municipality?.name ?? '–'}
                       />
-                      {[...new Set((p.special_needs ?? []).map((n) => n.category))].map((cat) => (
-                        <SpecialNeedIcon key={cat} category={cat} fontSize="small" color="secondary" />
+                      {(p.special_needs ?? []).map((n) => (
+                        <SpecialNeedIcon key={n.id} category={n.category} needType={n.type} needDescription={n.description} fontSize="small" color="secondary" />
                       ))}
                     </ListItemButton>
                   ))}
@@ -460,8 +460,8 @@ export function TransportPage() {
                         {previewPerson.special_needs.map((n) => (
                           <Chip
                             key={n.id}
-                            icon={<SpecialNeedIcon category={n.category} fontSize="small" />}
-                            label={specialNeedCategoryLabels[n.category] ?? n.category}
+                            icon={<SpecialNeedIcon category={n.category} needType={n.type} needDescription={n.description} fontSize="small" />}
+                            label={specialNeedDetailLabel(n)}
                             size="small"
                             color="warning"
                           />
@@ -550,10 +550,10 @@ export function TransportPage() {
                   <Stack spacing={0.5}>
                     {detailsPerson.special_needs.map((n) => (
                       <Stack key={n.id} direction="row" spacing={1} alignItems="center">
-                        <SpecialNeedIcon category={n.category} fontSize="small" color="secondary" />
+                        <SpecialNeedIcon category={n.category} needType={n.type} needDescription={n.description} fontSize="small" color="secondary" />
                         <Typography variant="body2">
-                          {specialNeedCategoryLabels[n.category] ?? n.category}
-                          {n.description ? ` — ${n.description}` : ''}
+                          {specialNeedDetailLabel(n)}
+                          {n.type && n.description ? ` — ${n.description}` : ''}
                         </Typography>
                       </Stack>
                     ))}
