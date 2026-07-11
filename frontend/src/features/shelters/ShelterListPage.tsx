@@ -3,18 +3,20 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   Box,
   Typography,
-  Grid,
   Paper,
   Stack,
   Button,
-  LinearProgress,
   Chip,
+  LinearProgress,
   CircularProgress,
   TextField,
   MenuItem,
   InputAdornment,
   IconButton,
   Tooltip,
+  Menu,
+  ListItemIcon,
+  ListItemText,
 } from '@mui/material';
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
@@ -22,11 +24,15 @@ import SearchIcon from '@mui/icons-material/Search';
 import PhoneIcon from '@mui/icons-material/Phone';
 import AccessibleIcon from '@mui/icons-material/Accessible';
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
+import HomeWorkIcon from '@mui/icons-material/HomeWork';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import PrintIcon from '@mui/icons-material/Print';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import type { ShelterWithRisk } from '../../types';
 import { fetchShelters } from '../../lib/api/endpoints';
-import { RiskBadge } from '../../components/ui/RiskBadge';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { KpiCard } from '../../components/ui/KpiCard';
+import { RiskBadge } from '../../components/ui/RiskBadge';
 import { ShelterRosterPrintDialog } from '../../components/ShelterRosterPrintDialog';
 import { useAuth } from '../auth/AuthContext';
 
@@ -46,6 +52,13 @@ const riskRank: Record<ShelterWithRisk['risk_level'], number> = {
   critical: 3,
 };
 
+const progressColor: Record<ShelterWithRisk['risk_level'], 'success' | 'warning' | 'error'> = {
+  low: 'success',
+  medium: 'warning',
+  high: 'error',
+  critical: 'error',
+};
+
 export function ShelterListPage() {
   const { eventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
@@ -55,6 +68,7 @@ export function ShelterListPage() {
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [rosterShelter, setRosterShelter] = useState<ShelterWithRisk | null>(null);
+  const [menuState, setMenuState] = useState<{ anchor: HTMLElement; shelter: ShelterWithRisk } | null>(null);
 
   useEffect(() => {
     if (!eventId) return;
@@ -86,6 +100,18 @@ export function ShelterListPage() {
     return sorted;
   }, [shelters, search, sortKey]);
 
+  const summary = useMemo(() => {
+    const totalCapacity = shelters.reduce((sum, s) => sum + s.capacity_limit, 0);
+    const totalOccupied = shelters.reduce((sum, s) => sum + s.checked_in_count, 0);
+    return {
+      count: shelters.length,
+      totalCapacity,
+      totalOccupied,
+      warnCount: shelters.filter((s) => s.risk_level === 'medium').length,
+      critCount: shelters.filter((s) => s.risk_level === 'high' || s.risk_level === 'critical').length,
+    };
+  }, [shelters]);
+
   if (isLoading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
 
   return (
@@ -96,6 +122,15 @@ export function ShelterListPage() {
           QR érkeztetés
         </Button>
       </Stack>
+
+      {shelters.length > 0 && (
+        <Stack direction="row" flexWrap="wrap" gap={2} sx={{ mb: 3 }}>
+          <KpiCard label="Helyszín" value={summary.count} icon={<HomeWorkIcon fontSize="small" />} />
+          <KpiCard label="Foglalt / Kapacitás" value={`${summary.totalOccupied} / ${summary.totalCapacity}`} icon={<PeopleAltIcon fontSize="small" />} />
+          <KpiCard label="Közepes kockázatú" value={summary.warnCount} icon={<WarningAmberIcon fontSize="small" />} />
+          <KpiCard label="Magas/kritikus kockázatú" value={summary.critCount} icon={<WarningAmberIcon fontSize="small" />} />
+        </Stack>
+      )}
 
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 3 }}>
         <TextField
@@ -116,88 +151,115 @@ export function ShelterListPage() {
         </TextField>
       </Stack>
 
-      <Grid container spacing={2}>
+      <Stack spacing={1.25}>
         {visibleShelters.map((s) => {
-          const freeCapacity = Math.max(s.capacity_limit - s.checked_in_count, 0);
+          const utilizationPct = Math.round(s.utilization * 100);
           return (
-            <Grid key={s.event_shelter_id} size={{ xs: 12, sm: 6, md: 4 }}>
-              <Paper
-                variant="outlined"
-                sx={{ p: 2.5, height: '100%', cursor: 'pointer', transition: 'box-shadow 0.15s', '&:hover': { boxShadow: 2 } }}
-                onClick={() => navigate(`/esemenyek/${eventId}/szemelyek?shelter_id=${s.shelter.id}`)}
+            <Paper
+              key={s.event_shelter_id}
+              variant="outlined"
+              sx={{
+                p: 2.5,
+                cursor: 'pointer',
+                transition: 'box-shadow 0.15s, border-color 0.15s',
+                '&:hover': { boxShadow: 2, borderColor: 'primary.main' },
+              }}
+              onClick={() => navigate(`/esemenyek/${eventId}/szemelyek?shelter_id=${s.shelter.id}`)}
+            >
+              <Stack
+                direction={{ xs: 'column', md: 'row' }}
+                spacing={{ xs: 2, md: 3 }}
+                alignItems={{ xs: 'stretch', md: 'center' }}
               >
-                <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 1 }}>
-                  <Typography variant="h6" fontWeight={700}>{s.shelter.name}</Typography>
+                <Box sx={{ flex: '1 1 220px', minWidth: 0 }}>
+                  <Tooltip title={s.shelter.name}>
+                    <Typography variant="subtitle1" fontWeight={700} noWrap>{s.shelter.name}</Typography>
+                  </Tooltip>
+                  <Typography variant="body2" color="text.secondary" noWrap>
+                    {s.shelter.municipality ? `${s.shelter.municipality}, ` : ''}{s.shelter.address}
+                  </Typography>
+                </Box>
+
+                <Box sx={{ flex: '1 1 240px', minWidth: 0 }}>
+                  <Typography variant="body2" sx={{ mb: 0.5 }}>
+                    Foglalt / Kapacitás: <strong>{s.checked_in_count} / {s.capacity_limit}</strong> ({utilizationPct}%)
+                  </Typography>
+                  <LinearProgress
+                    variant="determinate"
+                    value={Math.min(utilizationPct, 100)}
+                    color={progressColor[s.risk_level]}
+                    sx={{ height: 6, borderRadius: 3 }}
+                  />
+                </Box>
+
+                <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap alignItems="center" sx={{ flex: '1 1 260px', rowGap: 1 }}>
                   <RiskBadge level={s.risk_level} />
-                </Stack>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                  {s.shelter.municipality ? `${s.shelter.municipality}, ` : ''}{s.shelter.address}
-                </Typography>
-
-                <Typography variant="body2" sx={{ mb: 0.5 }}>
-                  Foglaltság: <strong>{s.checked_in_count} / {s.capacity_limit}</strong> ({Math.round(s.utilization * 100)}%)
-                </Typography>
-                <LinearProgress
-                  variant="determinate"
-                  value={Math.min(s.utilization * 100, 100)}
-                  sx={{ height: 6, borderRadius: 3, mb: 1 }}
-                  color={s.risk_level === 'low' ? 'success' : s.risk_level === 'medium' ? 'warning' : 'error'}
-                />
-                <Stack direction="row" justifyContent="space-between" sx={{ mb: 1.5 }}>
-                  <Typography variant="caption" color="text.secondary">Szabad hely: {freeCapacity} fő</Typography>
-                  <Typography variant="caption" color="text.secondary">Kockázati pontszám: {s.risk_score}</Typography>
-                </Stack>
-
-                <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center" sx={{ mb: 1.5, rowGap: 1 }}>
                   {s.shelter.medical_support_available && (
-                    <Chip icon={<LocalHospitalIcon />} label="Egészségügyi támogatás" size="small" variant="outlined" />
+                    <Chip icon={<LocalHospitalIcon />} label="Egészségügyi" size="small" />
                   )}
                   {s.shelter.accessible_capacity > 0 && (
-                    <Chip icon={<AccessibleIcon />} label={`${s.shelter.accessible_capacity} akadálymentes`} size="small" variant="outlined" />
+                    <Chip icon={<AccessibleIcon />} label={`${s.shelter.accessible_capacity} akadálymentes`} size="small" />
                   )}
                   {s.shelter.contact_phone && (
                     <Chip icon={<PhoneIcon />} label={s.shelter.contact_phone} size="small" variant="outlined" />
                   )}
                 </Stack>
 
-                <Stack direction="row" spacing={1} onClick={(e) => e.stopPropagation()}>
+                <Stack
+                  direction="row"
+                  spacing={0.5}
+                  alignItems="center"
+                  justifyContent={{ xs: 'flex-end', md: 'flex-start' }}
+                  sx={{ flexShrink: 0 }}
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <Button
-                    size="small"
                     variant="outlined"
+                    size="small"
                     startIcon={<PeopleAltIcon fontSize="small" />}
                     onClick={() => navigate(`/esemenyek/${eventId}/szemelyek?shelter_id=${s.shelter.id}`)}
                   >
                     Kik vannak itt
                   </Button>
-                  <Tooltip title="QR érkeztetés ehhez a befogadóhelyhez">
-                    <IconButton
-                      size="small"
-                      color="primary"
-                      onClick={() => navigate(`/esemenyek/${eventId}/erkeztetes?shelter_id=${s.shelter.id}`)}
-                    >
-                      <QrCodeScannerIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  {(user?.role?.code === 'admin' || user?.role?.code === 'manager' || user?.shelter_id === s.shelter.id) && eventId && (
-                    <Tooltip title="Nyomtatható névsor">
-                      <IconButton size="small" onClick={() => setRosterShelter(s)}>
-                        <PrintIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  )}
+                  <IconButton size="small" onClick={(e) => setMenuState({ anchor: e.currentTarget, shelter: s })}>
+                    <MoreVertIcon fontSize="small" />
+                  </IconButton>
                 </Stack>
-              </Paper>
-            </Grid>
+              </Stack>
+            </Paper>
           );
         })}
         {visibleShelters.length === 0 && (
-          <Grid size={12}>
+          <Paper variant="outlined">
             <EmptyState
               title={shelters.length === 0 ? 'Nincs befogadóhely hozzárendelve az eseményhez' : 'Nincs a keresésnek megfelelő befogadóhely'}
             />
-          </Grid>
+          </Paper>
         )}
-      </Grid>
+      </Stack>
+
+      <Menu anchorEl={menuState?.anchor ?? null} open={!!menuState} onClose={() => setMenuState(null)}>
+        <MenuItem
+          onClick={() => {
+            if (menuState) navigate(`/esemenyek/${eventId}/erkeztetes?shelter_id=${menuState.shelter.shelter.id}`);
+            setMenuState(null);
+          }}
+        >
+          <ListItemIcon><QrCodeScannerIcon fontSize="small" /></ListItemIcon>
+          <ListItemText>QR érkeztetés</ListItemText>
+        </MenuItem>
+        {menuState && (user?.role?.code === 'admin' || user?.role?.code === 'manager' || user?.shelter_id === menuState.shelter.shelter.id) && (
+          <MenuItem
+            onClick={() => {
+              setRosterShelter(menuState.shelter);
+              setMenuState(null);
+            }}
+          >
+            <ListItemIcon><PrintIcon fontSize="small" /></ListItemIcon>
+            <ListItemText>Nyomtatható névsor</ListItemText>
+          </MenuItem>
+        )}
+      </Menu>
 
       {rosterShelter && eventId && (
         <ShelterRosterPrintDialog
