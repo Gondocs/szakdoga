@@ -102,6 +102,9 @@ class RegistrationController extends Controller
         $updated = [];
         $failed = [];
 
+        // Regisztrációnként külön-külön hívjuk a státuszváltó Action-t, hogy
+        // egy hibás/érvénytelen átmenet ne akassza meg a teljes tömeges
+        // műveletet — a sikertelen elemeket külön gyűjtjük össze
         foreach ($registrations as $registration) {
             try {
                 $action->execute($registration, $status, $request->user());
