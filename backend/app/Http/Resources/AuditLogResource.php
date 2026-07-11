@@ -52,6 +52,12 @@ class AuditLogResource extends JsonResource
         ];
     }
 
+    /**
+     * Megvizsgálja, hogy a napló előtte/utána állapota tartalmaz-e legalább
+     * egy érzékeny mezőt — ez alapján jelzi a kliens felé a "data_masked"
+     * jelzőt, hogy a felület mutathasson egy figyelmeztetést a maszkolt
+     * adatokról.
+     */
     private function containsSensitiveFields(): bool
     {
         foreach (self::SENSITIVE_KEYS as $key) {
@@ -63,6 +69,11 @@ class AuditLogResource extends JsonResource
         return false;
     }
 
+    /**
+     * Ha a felhasználó nem jogosult érzékeny adatok megtekintésére, az
+     * érzékeny mezők értékét null-ra cseréli, de a mező kulcsát (és így a
+     * "mi változott" tényét) megtartja a naplóban.
+     */
     private function maskSensitiveFields(?array $data, bool $canViewSensitive): ?array
     {
         if (! $data || $canViewSensitive) {
