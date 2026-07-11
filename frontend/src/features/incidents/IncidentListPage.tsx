@@ -25,7 +25,6 @@ import type { Incident, IncidentCategory, IncidentSeverity, ShelterWithRisk } fr
 import { createIncident, fetchIncidents, fetchShelters, resolveIncident } from '../../lib/api/endpoints';
 import { useAuth } from '../auth/AuthContext';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { EventSubNav } from '../../components/layout/EventSubNav';
 
 const categoryLabels: Record<IncidentCategory, string> = {
   complaint: 'Panasz',
@@ -79,7 +78,6 @@ export function IncidentListPage() {
 
   return (
     <Box>
-      {eventId && <EventSubNav eventId={eventId} />}
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={1.5} sx={{ mb: 3 }}>
         <Stack direction="row" alignItems="center" spacing={1}>
           <ReportProblemIcon color="primary" />
