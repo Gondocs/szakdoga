@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link as RouterLink, Outlet, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   AppBar,
   Toolbar,
@@ -38,6 +38,20 @@ import { useAuth } from '../../features/auth/AuthContext';
 import { uploadUserAvatar } from '../../lib/api/endpoints';
 import { AppBreadcrumbs } from './AppBreadcrumbs';
 
+/**
+ * Az esemény aloldalai (attekintes, szemelyek, befogadohelyek, stb.) egy közös
+ * EventLayout alatt, állandó EventSubNav-val élnek. Ha itt a teljes pathname
+ * lenne a kulcs, minden aloldalváltás újra létrehozná az EventLayout-ot is —
+ * ami lenullázná az EventSubNav állandóságát, és emiatt megint ugrásszerű
+ * lenne az aktív gomb kiemelésének váltása lágy átmenet helyett. Ezért egy
+ * eseményen belüli navigáció csak az esemény-szekció szintjén kap új kulcsot,
+ * a tényleges aloldal-tartalom átváltását maga az EventLayout animálja.
+ */
+function getPageTransitionKey(pathname: string): string {
+  const eventSection = pathname.match(/^\/esemenyek\/[^/]+/);
+  return eventSection ? eventSection[0] : pathname;
+}
+
 const roleLabels: Record<string, string> = {
   admin: 'Rendszergazda',
   manager: 'Vezető',
@@ -58,6 +72,7 @@ const navItems = [
 export function AppLayout() {
   const { user, logout, setUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -206,7 +221,9 @@ export function AppLayout() {
 
       <Container maxWidth="lg" sx={{ flex: 1, py: { xs: 2, sm: 4 }, px: { xs: 1.5, sm: 3 } }}>
         <AppBreadcrumbs />
-        <Outlet />
+        <Box key={getPageTransitionKey(location.pathname)} className="page-transition">
+          <Outlet />
+        </Box>
       </Container>
     </Box>
   );
