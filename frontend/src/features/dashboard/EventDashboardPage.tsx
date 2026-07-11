@@ -55,7 +55,6 @@ import { useAuth } from '../auth/AuthContext';
 import { specialNeedCategoryLabels } from '../../constants/specialNeeds';
 import { SpecialNeedIcon } from '../../components/ui/SpecialNeedIcon';
 import { DashboardCharts } from './DashboardCharts';
-import { EventSubNav } from '../../components/layout/EventSubNav';
 
 export function EventDashboardPage() {
   const { eventId } = useParams<{ eventId: string }>();
@@ -115,8 +114,6 @@ export function EventDashboardPage() {
           </Tooltip>
         )}
       </Stack>
-
-      <EventSubNav eventId={eventId} />
 
       <Paper variant="outlined" sx={{ p: 1.5, mb: 3 }}>
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap justifyContent="flex-end">
