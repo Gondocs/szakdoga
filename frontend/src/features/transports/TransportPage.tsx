@@ -59,7 +59,6 @@ import { useAuth } from '../auth/AuthContext';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { QrScannerDialog } from '../../components/QrScannerDialog';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { EventSubNav } from '../../components/layout/EventSubNav';
 
 function MapRecenter({ lat, lng }: { lat: number; lng: number }) {
   const map = useMap();
@@ -250,7 +249,6 @@ export function TransportPage() {
 
   return (
     <Box>
-      {eventId && <EventSubNav eventId={eventId} />}
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={1.5} sx={{ mb: 3 }}>
         <Typography variant="h4" fontWeight={700}>Szállítás nyomon követése</Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>
