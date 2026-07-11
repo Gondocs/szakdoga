@@ -114,6 +114,11 @@ class DashboardController extends Controller
         $totalCheckedIn = (clone $event->eventShelters())->sum('checked_in_count');
         $remainingCapacity = max($totalCapacity - $totalCheckedIn, 0);
 
+        // Az érkeztetési ütem (intake rate) becslése az elmúlt 2 óra
+        // bejelentkezéseiből. Ha az esemény ennél rövidebb ideje fut, a
+        // ténylegesen eltelt időt (effectiveWindowHours) használjuk
+        // időablaknak, hogy egy frissen indult eseménynél ne torzítson a
+        // számítás egy még be nem telt 2 órás ablak miatt.
         $forecastWindowHours = 2;
         $recentCheckins = CheckIn::where('event_id', $event->id)
             ->where('checked_in_at', '>=', now()->subHours($forecastWindowHours))
@@ -121,6 +126,8 @@ class DashboardController extends Controller
         $effectiveWindowHours = min($forecastWindowHours, max($event->created_at->diffInMinutes(now()) / 60, 1 / 60));
         $intakeRatePerHour = $recentCheckins / $effectiveWindowHours;
 
+        // A jelenlegi érkeztetési ütem alapján megbecsüljük, hány óra
+        // múlva telik be a teljes szabad kapacitás
         $forecastHoursToFull = null;
         if ($remainingCapacity <= 0) {
             $forecastHoursToFull = 0;
@@ -190,6 +197,10 @@ class DashboardController extends Controller
 
         $timestamps = $event->registrations()->orderBy('created_at')->pluck('created_at');
 
+        // Minden regisztráció időbélyegét a kiválasztott felbontású
+        // (15 perces / órás / napos) időintervallum-"vödörbe" (bucket)
+        // soroljuk: az epoch másodperceket lefelé kerekítjük a legközelebbi
+        // bucketMinutes-es határra, így kapjuk az intervallum kezdetét
         $buckets = [];
         foreach ($timestamps as $createdAt) {
             $carbon = Carbon::parse($createdAt);
