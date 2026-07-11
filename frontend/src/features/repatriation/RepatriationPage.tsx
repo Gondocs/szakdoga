@@ -21,7 +21,6 @@ import { toast } from 'react-toastify';
 import type { RepatriationAuthorization, RepatriationStatus } from '../../types';
 import { fetchRepatriationAuthorizations, upsertRepatriationAuthorization } from '../../lib/api/endpoints';
 import { useAuth } from '../auth/AuthContext';
-import { EventSubNav } from '../../components/layout/EventSubNav';
 
 const statusLabels: Record<RepatriationStatus, string> = {
   not_permitted: 'Nem engedélyezett',
@@ -66,7 +65,6 @@ export function RepatriationPage() {
 
   return (
     <Box>
-      {eventId && <EventSubNav eventId={eventId} />}
       <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
         <HomeIcon color="primary" />
         <Typography variant="h4" fontWeight={700}>Visszatelepítés</Typography>
