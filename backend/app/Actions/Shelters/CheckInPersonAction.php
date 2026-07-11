@@ -28,6 +28,9 @@ class CheckInPersonAction
     public function execute(EvacuationEvent $event, Person $person, Shelter $shelter, User $operator, bool $overrideCapacity = false, ?string $bedLabel = null): CheckIn
     {
         return DB::transaction(function () use ($event, $person, $shelter, $operator, $overrideCapacity, $bedLabel) {
+            // Sorzárolás (lockForUpdate), hogy két párhuzamos érkeztetés
+            // ugyanarra a személyre/szálláshelyre ne okozhasson hibás,
+            // versenyhelyzetből (race condition) fakadó állapotot
             $registration = $person->registration()->lockForUpdate()->firstOrFail();
 
             if ($registration->status === RegistrationStatus::ArrivedShelter) {
@@ -39,6 +42,9 @@ class CheckInPersonAction
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            // Kapacitás-ellenőrzés: ha a szálláshely betelt, csak akkor
+            // engedélyezzük a bejelentkezést, ha az operátor explicit
+            // felülbírálta (overrideCapacity) a korlátot
             if (! $overrideCapacity && $eventShelter->checked_in_count >= $eventShelter->capacity_limit) {
                 throw new ShelterFullException();
             }
