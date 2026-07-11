@@ -94,6 +94,10 @@ class ExportController extends Controller
     {
         $this->authorize('printRoster', $shelter);
 
+        // Az esemény összes megérkezett személyét lekérjük, majd PHP-oldalon
+        // szűrjük azokra, akiknek a legutolsó bejelentkezése pont erre a
+        // szálláshelyre mutat (egy személynek több checkin-rekordja is
+        // lehet áthelyezés miatt, ezért nem elég a shelter_id-re szűrni)
         $persons = $event->persons()
             ->whereHas('registration', fn ($q) => $q->where('status', 'arrived_shelter'))
             ->with(['municipality', 'registration', 'specialNeeds', 'family', 'checkins' => fn ($q) => $q->orderByDesc('checked_in_at')])
@@ -184,6 +188,8 @@ class ExportController extends Controller
             ];
         });
 
+        // Visszatelepítési engedélyezési státuszok és a ténylegesen
+        // hazatért személyek számának összepárosítása településenként
         $municipalityIds = $event->persons()->distinct()->pluck('municipality_id');
         $municipalityNames = Municipality::whereIn('id', $municipalityIds)->pluck('name', 'id');
         $returnedCounts = $event->persons()
