@@ -1,5 +1,6 @@
 import { createBrowserRouter } from 'react-router-dom';
 import { AppLayout } from '../components/layout/AppLayout';
+import { EventLayout } from '../components/layout/EventLayout';
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
 import { LoginPage } from '../features/auth/LoginPage';
 import { HomePage } from '../features/home/HomePage';
@@ -41,17 +42,23 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <HomePage /> },
       { path: 'esemenyek', element: <EventListPage /> },
-      { path: 'esemenyek/:eventId/attekintes', element: <EventDashboardPage /> },
-      { path: 'esemenyek/:eventId/szemelyek', element: <PersonListPage /> },
       { path: 'esemenyek/:eventId/uj-regisztracio', element: <RegistrationWizardPage /> },
-      { path: 'esemenyek/:eventId/befogadohelyek', element: <ShelterListPage /> },
       { path: 'esemenyek/:eventId/erkeztetes', element: <QrCheckInPage /> },
-      { path: 'esemenyek/:eventId/szallitas', element: <TransportPage /> },
-      { path: 'esemenyek/:eventId/terkep', element: <EventMapPage /> },
-      { path: 'esemenyek/:eventId/csaladok', element: <FamilyListPage /> },
-      { path: 'esemenyek/:eventId/csaladok/egyesites', element: <FamilyReunificationPage /> },
-      { path: 'esemenyek/:eventId/rendkivuli-esemenyek', element: <IncidentListPage /> },
-      { path: 'esemenyek/:eventId/visszatelepites', element: <RepatriationPage /> },
+      {
+        path: 'esemenyek/:eventId',
+        element: <EventLayout />,
+        children: [
+          { path: 'attekintes', element: <EventDashboardPage /> },
+          { path: 'szemelyek', element: <PersonListPage /> },
+          { path: 'befogadohelyek', element: <ShelterListPage /> },
+          { path: 'szallitas', element: <TransportPage /> },
+          { path: 'terkep', element: <EventMapPage /> },
+          { path: 'csaladok', element: <FamilyListPage /> },
+          { path: 'csaladok/egyesites', element: <FamilyReunificationPage /> },
+          { path: 'rendkivuli-esemenyek', element: <IncidentListPage /> },
+          { path: 'visszatelepites', element: <RepatriationPage /> },
+        ],
+      },
       { path: 'szemelyek/:personId', element: <PersonDetailPage /> },
       { path: 'csaladok/:familyId', element: <FamilyDetailPage /> },
       { path: 'befogadohelyek', element: <ShelterManagementPage /> },
