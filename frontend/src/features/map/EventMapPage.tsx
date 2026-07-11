@@ -26,7 +26,6 @@ import 'leaflet/dist/leaflet.css';
 import { assemblyPointIcon, busIcon, shelterIcon } from '../../lib/leafletIcons';
 import type { AssemblyPoint, ShelterWithRisk } from '../../types';
 import { useAuth } from '../auth/AuthContext';
-import { EventSubNav } from '../../components/layout/EventSubNav';
 import {
   createAssemblyPoint,
   deleteAssemblyPoint,
@@ -114,7 +113,6 @@ export function EventMapPage() {
 
   return (
     <Box>
-      {eventId && <EventSubNav eventId={eventId} />}
       <Typography variant="h4" fontWeight={700} sx={{ mb: 1 }}>Térképes áttekintés</Typography>
       <Alert severity="info" sx={{ mb: 2 }}>
         A befogadóhelyek a település valós koordinátái alapján jelennek meg. Mivel a járművekhez nincs
