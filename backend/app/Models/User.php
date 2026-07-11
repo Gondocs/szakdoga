@@ -53,6 +53,11 @@ class User extends Authenticatable
         return $this->avatar_path ? asset('storage/'.$this->avatar_path) : null;
     }
 
+    /**
+     * Megvizsgálja, hogy a felhasználó szerepköre megegyezik-e a megadott
+     * szerepkörök (RoleCode) valamelyikével — tetszőleges számú szerepkör
+     * adható meg, pl. hasRole(RoleCode::Admin, RoleCode::Leader).
+     */
     public function hasRole(RoleCode ...$codes): bool
     {
         if (! $this->role) {
