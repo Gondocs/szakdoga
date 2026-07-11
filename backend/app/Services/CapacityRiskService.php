@@ -32,6 +32,10 @@ class CapacityRiskService
         return ($capacityUtilization * 70) + ($specialNeedRatio * 20) + ($pendingTransportRatio * 10);
     }
 
+    /**
+     * A számított kockázati pontszámot sávokba (RiskLevel) sorolja a
+     * projektleírásban rögzített küszöbértékek alapján.
+     */
     public function levelFromScore(float $score): RiskLevel
     {
         return match (true) {
@@ -42,15 +46,24 @@ class CapacityRiskService
         };
     }
 
+    /**
+     * Egy adott befogadóhely (esemény + szállás páros) kockázati mutatóit
+     * számolja ki: összegyűjti a bejelentkezettek, a különleges igényűek és
+     * a még szállításra váró regisztrációk számát, majd ebből képzi a
+     * kockázati pontszámot és a kihasználtsági arányt.
+     */
     public function forEventShelter(EventShelter $eventShelter): array
     {
         $event = $eventShelter->event ?? $eventShelter->event()->first();
         $totalRegistered = $event?->registrations()->count() ?? 0;
+        // A központi szállítást igénylő, még nem célba ért regisztrációk száma
         $pendingTransport = $event?->registrations()
             ->where('central_transport_required', true)
             ->whereIn('status', [\App\Enums\RegistrationStatus::Registered, \App\Enums\RegistrationStatus::InTransport])
             ->count() ?? 0;
 
+        // Az adott eseményhez és szálláshelyhez bejelentkezett, különleges
+        // igényű személyek száma
         $specialNeedsCount = SpecialNeed::whereHas('person.checkins', function ($query) use ($eventShelter) {
             $query->where('shelter_id', $eventShelter->shelter_id)
                 ->where('event_id', $eventShelter->event_id);
@@ -73,6 +86,12 @@ class CapacityRiskService
         ];
     }
 
+    /**
+     * A teljes evakuációs esemény összesített kockázatát számolja ki az
+     * összes hozzá tartozó szálláshely kapacitás- és létszámadatainak
+     * összegzésével (aggregálásával), majd ugyanazzal a képlettel, mint az
+     * egyedi szálláshelyeknél.
+     */
     public function forEvent(EvacuationEvent $event): array
     {
         $eventShelters = $event->eventShelters()->get();
