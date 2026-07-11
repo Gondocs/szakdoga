@@ -268,6 +268,10 @@ class PersonController extends Controller
         $created = [];
         $errors = [];
 
+        // Soronként dolgozzuk fel a CSV-t: kikeressük a település nevéhez
+        // tartozó törzsadatot (kis-nagybetű érzéketlenül), majd létrehozzuk
+        // a regisztrációt és rögtön ki is bocsátunk hozzá egy QR-kódot, hogy
+        // a tényleges kitelepítéskor már csak a kód beolvasása kelljen
         foreach ($rows as $row) {
             [$lastName, $firstName, $docNumber, $municipalityName, $phone] = array_pad($row, 5, null);
             $lastName = trim((string) $lastName);
