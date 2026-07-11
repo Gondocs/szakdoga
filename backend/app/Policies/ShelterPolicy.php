@@ -18,6 +18,10 @@ class ShelterPolicy
         return true;
     }
 
+    /**
+     * Admin és vezető bármely befogadóhelyen érkeztethet, míg a
+     * befogadóhelyi kezelő csak a saját, hozzá rendelt befogadóhelyén.
+     */
     public function checkIn(User $user, Shelter $shelter): bool
     {
         if ($user->hasRole(RoleCode::Admin, RoleCode::Manager)) {
@@ -32,6 +36,11 @@ class ShelterPolicy
         return $user->hasRole(RoleCode::Admin, RoleCode::Manager, RoleCode::ShelterOperator);
     }
 
+    /**
+     * Ugyanaz a jogosultsági szabály, mint az érkeztetésnél: a
+     * befogadóhelyi kezelő csak a saját szálláshelyének névsorát
+     * nyomtathatja.
+     */
     public function printRoster(User $user, Shelter $shelter): bool
     {
         if ($user->hasRole(RoleCode::Admin, RoleCode::Manager)) {
