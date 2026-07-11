@@ -27,6 +27,9 @@ class UpdateRegistrationStatusAction
         return DB::transaction(function () use ($registration, $newStatus, $actor) {
             $oldStatus = $registration->status;
 
+            // Ha a személy eddig befogadóhelyen tartózkodott, de a státusza
+            // most már nem "megérkezett" (pl. visszatelepült, elszállítva),
+            // akkor a szálláshely nyilvántartott foglaltságát csökkenteni kell
             if ($oldStatus === RegistrationStatus::ArrivedShelter && $newStatus !== RegistrationStatus::ArrivedShelter) {
                 $lastCheckIn = CheckIn::where('person_id', $registration->person_id)
                     ->where('event_id', $registration->event_id)
