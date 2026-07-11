@@ -42,6 +42,8 @@ class TransferPersonAction
                 abort(422, 'A személy már ezen a befogadóhelyen tartózkodik.');
             }
 
+            // Az új szálláshely kapacitásának ellenőrzése, mielőtt bármilyen
+            // adatot módosítanánk
             $newEventShelter = EventShelter::where('event_id', $registration->event_id)
                 ->where('shelter_id', $newShelter->id)
                 ->lockForUpdate()
@@ -51,6 +53,8 @@ class TransferPersonAction
                 throw new ShelterFullException();
             }
 
+            // A régi szálláshely foglaltságát csökkentjük, hiszen a személy
+            // onnan távozik
             $oldEventShelter = EventShelter::where('event_id', $registration->event_id)
                 ->where('shelter_id', $currentCheckIn->shelter_id)
                 ->lockForUpdate()
