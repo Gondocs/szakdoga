@@ -55,7 +55,6 @@ import { SpecialNeedIcon } from '../../components/ui/SpecialNeedIcon';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { MunicipalityAutocomplete } from '../../components/ui/MunicipalityAutocomplete';
-import { EventSubNav } from '../../components/layout/EventSubNav';
 import { useAuth } from '../auth/AuthContext';
 
 const statusLabels: Record<string, string> = {
@@ -337,7 +336,6 @@ export function PersonListPage() {
 
   return (
     <Box>
-      {eventId && <EventSubNav eventId={eventId} />}
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2} sx={{ mb: 3 }}>
         <Typography variant="h4" fontWeight={700}>Regisztrált személyek</Typography>
         <Stack direction="row" spacing={1}>
