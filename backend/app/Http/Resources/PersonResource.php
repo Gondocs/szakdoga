@@ -81,6 +81,9 @@ class PersonResource extends JsonResource
                 'registered_at' => $this->registration->registered_at?->toIso8601String(),
                 'self_arrival_confirmed_at' => $this->registration->self_arrival_confirmed_at?->toIso8601String(),
             ] : null),
+            // A jelenlegi szálláshely a legutolsó (legfrissebb) bejelentkezés
+            // alapján derül ki, mivel egy személynek áthelyezés esetén több
+            // checkin-rekordja is lehet
             'current_shelter' => $this->whenLoaded('checkins', function () {
                 $latest = $this->checkins->sortByDesc('checked_in_at')->first();
 
