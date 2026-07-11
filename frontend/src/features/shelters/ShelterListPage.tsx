@@ -27,7 +27,6 @@ import type { ShelterWithRisk } from '../../types';
 import { fetchShelters } from '../../lib/api/endpoints';
 import { RiskBadge } from '../../components/ui/RiskBadge';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { EventSubNav } from '../../components/layout/EventSubNav';
 import { ShelterRosterPrintDialog } from '../../components/ShelterRosterPrintDialog';
 import { useAuth } from '../auth/AuthContext';
 
@@ -91,7 +90,6 @@ export function ShelterListPage() {
 
   return (
     <Box>
-      {eventId && <EventSubNav eventId={eventId} />}
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={1.5} sx={{ mb: 3 }}>
         <Typography variant="h4" fontWeight={700}>Befogadóhelyek</Typography>
         <Button variant="contained" startIcon={<QrCodeScannerIcon />} onClick={() => navigate(`/esemenyek/${eventId}/erkeztetes`)}>
