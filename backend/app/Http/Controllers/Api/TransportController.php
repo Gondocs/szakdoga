@@ -284,6 +284,9 @@ class TransportController extends Controller
             ], 422);
         }
 
+        // Egy véletlenszerű, koordinátával rendelkező befogadóhely
+        // közelébe helyezzük a járművet, kis véletlenszerű eltéréssel
+        // (jitter), hogy valós GPS-mozgást imitáljon demonstrációs célra
         /** @var \App\Models\EventShelter $target */
         $target = $withCoords->random();
         $jitter = fn () => mt_rand(-600, 600) / 100000; // kb. +/- 0.6 km
@@ -334,6 +337,9 @@ class TransportController extends Controller
             'override_capacity' => ['nullable', 'boolean'],
         ]);
 
+        // Kapacitás-ellenőrzés: csak akkor engedjük felszállni a
+        // személyt, ha van még hely, vagy az operátor kifejezetten
+        // felülbírálta a korlátot
         if ($transport->capacity && ! ($data['override_capacity'] ?? false) && $transport->onboardCount() >= $transport->capacity) {
             return response()->json([
                 'message' => 'A jármű elérte a megadott kapacitást. Szükség esetén jelölje az áttöltést.',
@@ -484,6 +490,8 @@ class TransportController extends Controller
             'file' => ['required', 'file', 'mimes:csv,txt', 'max:2048'],
         ]);
 
+        // A CSV első oszlopát olvassuk okmányszámként; ha az első sor nem
+        // okmányszám-szerű (pl. "Okmányszám" fejléc), azt eldobjuk
         $rows = array_map('str_getcsv', file($request->file('file')->getRealPath()));
         if (! empty($rows) && isset($rows[0][0]) && ! preg_match('/^[0-9A-Za-z]+$/', trim($rows[0][0]))) {
             array_shift($rows); // fejlécsor eldobása, ha nem okmányszám-szerű
@@ -495,6 +503,10 @@ class TransportController extends Controller
         $capacityExceeded = [];
         $onboardCount = $transport->onboardCount();
 
+        // Soronként feldolgozzuk az okmányszámokat: megkeressük a
+        // hozzájuk tartozó személyt, majd kiszűrjük a hibás eseteket
+        // (nem található, már fent van, betelt a kapacitás), mielőtt
+        // ténylegesen felszállítanánk
         foreach ($rows as $row) {
             $docNumber = trim((string) ($row[0] ?? ''));
             if ($docNumber === '') {
