@@ -49,6 +49,12 @@ class AuditService
         return $entity->event_id ?? null;
     }
 
+    /**
+     * Megszámolja, hány mező értéke tért el a "before" és "after" állapot
+     * között. A JSON-kódolt reprezentációkat hasonlítjuk össze, hogy a
+     * tömb/objektum típusú mezők mélységi (deep) összehasonlítása is
+     * megfelelően működjön.
+     */
     public static function countChangedFields(?array $before, ?array $after): int
     {
         if (! $before || ! $after) {
