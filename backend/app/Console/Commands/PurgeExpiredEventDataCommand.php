@@ -28,6 +28,9 @@ class PurgeExpiredEventDataCommand extends Command
         $cutoff = now()->subDays($retentionDays);
         $isDryRun = (bool) $this->option('dry-run');
 
+        // Csak azok a lezárt események érintettek, amelyek utolsó
+        // módosítása (jellemzően a lezárás időpontja) a megőrzési határidőnél
+        // régebbi
         $events = EvacuationEvent::where('status', EventStatus::Closed->value)
             ->where('updated_at', '<=', $cutoff)
             ->get();
@@ -57,6 +60,10 @@ class PurgeExpiredEventDataCommand extends Command
                 continue;
             }
 
+            // Előbb a feltöltött okmányfényképeket töröljük a tárolóból,
+            // majd magukat a személy-rekordokat is (ami a rájuk épülő
+            // regisztrációkat, checkineket, egyedi igényeket stb. kaszkádban
+            // magával viszi)
             foreach ($persons as $person) {
                 if ($person->document_photo_front_path) {
                     Storage::disk('public')->delete($person->document_photo_front_path);
@@ -70,6 +77,9 @@ class PurgeExpiredEventDataCommand extends Command
 
             $event->persons()->delete();
 
+            // A törlést magát is naplózzuk (felhasználó nélkül, mivel ez egy
+            // automatikus rendszerfeladat), hogy utólag is auditálható
+            // legyen, mikor és hány személy adatát törölte a rendszer
             AuditLog::create([
                 'user_id' => null,
                 'event_id' => $event->id,
