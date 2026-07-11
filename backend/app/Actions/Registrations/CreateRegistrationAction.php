@@ -37,6 +37,9 @@ class CreateRegistrationAction
             if (! empty($data['family_id'])) {
                 $family = Family::where('event_id', $event->id)->findOrFail($data['family_id']);
             } elseif (! empty($data['create_new_family'])) {
+                // Sorban következő családkód generálása eseményenként
+                // (pl. "CSAL-004"); a lockForUpdate() zárolással véd a
+                // párhuzamos regisztrációk okozta kódütközés ellen
                 $nextNumber = Family::where('event_id', $event->id)->lockForUpdate()->count() + 1;
                 $family = Family::create([
                     'event_id' => $event->id,
@@ -88,6 +91,8 @@ class CreateRegistrationAction
                 'registered_by' => $registrar->id,
             ]);
 
+            // Az esetleges különleges igények (pl. mozgáskorlátozottság,
+            // gyógyszerigény) mentése a személyhez
             foreach ($data['special_needs'] ?? [] as $need) {
                 SpecialNeed::create([
                     'person_id' => $person->id,
@@ -98,6 +103,7 @@ class CreateRegistrationAction
                 ]);
             }
 
+            // A személyhez tartozó állatok (pl. kutya, macska) rögzítése
             foreach ($data['animals'] ?? [] as $animal) {
                 Animal::create([
                     'person_id' => $person->id,
