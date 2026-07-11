@@ -36,7 +36,6 @@ import { toast } from 'react-toastify';
 import type { FamilyReunificationEntry, FamilyReunificationNote } from '../../types';
 import { addReunificationNote, fetchReunificationNotes, fetchReunificationWorklist } from '../../lib/api/endpoints';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { EventSubNav } from '../../components/layout/EventSubNav';
 
 export function FamilyReunificationPage() {
   const { eventId } = useParams<{ eventId: string }>();
@@ -67,7 +66,6 @@ export function FamilyReunificationPage() {
 
   return (
     <Box>
-      {eventId && <EventSubNav eventId={eventId} />}
       <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
         <GroupsIcon color="primary" />
         <Typography variant="h4" fontWeight={700}>Családegyesítési munkalista</Typography>

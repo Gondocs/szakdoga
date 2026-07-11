@@ -29,7 +29,6 @@ import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import type { FamilySummary } from '../../types';
 import { fetchFamilies } from '../../lib/api/endpoints';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { EventSubNav } from '../../components/layout/EventSubNav';
 
 const SPLIT_TOOLTIP = 'A család tagjai jelenleg különböző befogadóhelyeken tartózkodnak.';
 
@@ -77,7 +76,6 @@ export function FamilyListPage() {
 
   return (
     <Box>
-      {eventId && <EventSubNav eventId={eventId} />}
       <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 3 }}>
         <GroupsIcon color="primary" />
         <Typography variant="h4" fontWeight={700}>Családok / csoportok</Typography>
