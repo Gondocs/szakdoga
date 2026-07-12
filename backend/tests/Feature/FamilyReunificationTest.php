@@ -17,6 +17,12 @@ class FamilyReunificationTest extends TestCase
 {
     use RefreshDatabase;
 
+    // Amíg a család két tagja közül egyik sem érkezett meg befogadóhelyre,
+    // a munkalista üres; miután a két tag két KÜLÖNBÖZŐ befogadóhelyre
+    // érkeztetve lett, a család megjelenik a szétszakadt családok listáján
+    // (notes_count: 0), majd egy hozzáadott ügyintézési bejegyzés
+    // (reunification-note) növeli ezt a számlálót és megjelenik a
+    // legutóbbi bejegyzésként.
     public function test_worklist_lists_only_split_families_and_notes_can_be_added(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -77,6 +83,10 @@ class FamilyReunificationTest extends TestCase
         $worklistAfterNote->assertJsonPath('data.0.latest_note.resolved', false);
     }
 
+    // A munkalista minden családtaghoz visszaadja, hogy melyik
+    // befogadóhelyen van (shelter_id), és — ha a befogadóhely
+    // településéhez van rögzített koordináta — a térképes megjelenítéshez
+    // szükséges lat/lng-t is; koordináta hiányában null-t ad, nem hibázik.
     public function test_worklist_members_include_shelter_id_and_coordinates(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -123,6 +133,8 @@ class FamilyReunificationTest extends TestCase
         $this->assertNull($members[$memberB['id']]['shelter_coordinates']);
     }
 
+    // Ügyintézési bejegyzés hozzáadása jogosultsághoz kötött: befogadóhelyi
+    // kezelő szerepkörrel a kérés 403-at ad.
     public function test_shelter_operator_cannot_add_a_reunification_note(): void
     {
         $this->actingAsRole(RoleCode::Admin);
