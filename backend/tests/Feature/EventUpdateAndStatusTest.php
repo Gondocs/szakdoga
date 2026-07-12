@@ -13,6 +13,9 @@ class EventUpdateAndStatusTest extends TestCase
 {
     use RefreshDatabase;
 
+    // Egy "tervezet" esemény egyetlen módosító kéréssel "aktívra" állítható
+    // és egyúttal befogadóhely-kapacitás is hozzárendelhető hozzá — az
+    // event_shelters kapcsolótábla a megadott kapacitáskorláttal jön létre.
     public function test_admin_can_activate_event_and_add_shelter_capacity(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -36,6 +39,9 @@ class EventUpdateAndStatusTest extends TestCase
         $this->assertDatabaseHas('event_shelters', ['event_id' => $event, 'shelter_id' => $shelter->id, 'capacity_limit' => 80]);
     }
 
+    // A regisztrátor kézzel is átállíthatja egy regisztráció státuszát
+    // (pl. "in_transport"-ra), és ez egyúttal egy status_history bejegyzést
+    // is létrehoz a régi és új státusszal — nyomon követhető az előzmény.
     public function test_registrar_can_manually_transition_registration_status(): void
     {
         $admin = $this->actingAsRole(RoleCode::Admin);
@@ -71,6 +77,8 @@ class EventUpdateAndStatusTest extends TestCase
         ]);
     }
 
+    // A regisztráció-státusz kézi átállítása jogosultsághoz kötött:
+    // befogadóhelyi kezelő szerepkörrel a kérés 403-at ad.
     public function test_shelter_operator_cannot_transition_status(): void
     {
         $this->actingAsRole(RoleCode::Admin);
