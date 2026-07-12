@@ -33,6 +33,9 @@ class QrTokenLostCodeTest extends TestCase
         ])->assertCreated()->json('data.id');
     }
 
+    // Az első, rutinszerű QR-kiadás "qr_issue" akcióként naplózódik,
+    // "significant: false" jelzéssel — nem keletkezik "elveszett kód"
+    // bejegyzés, ha nem is volt korábbi kód.
     public function test_routine_reissue_is_logged_as_qr_issue(): void
     {
         $personId = $this->createPerson();
@@ -44,6 +47,12 @@ class QrTokenLostCodeTest extends TestCase
         $this->assertDatabaseMissing('audit_logs', ['action' => 'qr_reissue_lost']);
     }
 
+    // "reason: lost" paraméterrel kért pótlólagos kódkiadás új, egyedi
+    // public_id-t generál, ez külön, "kiemelt" ("qr_reissue_lost",
+    // significant: true) naplóbejegyzést kap, ÉS a régi, elveszett kód
+    // ezután beolvasáskor 409-et ad (érvénytelenítve lett), miközben az új
+    // kód érvényesen beolvasható — így elveszett kártya esetén nem lehet
+    // véletlenül a régi kóddal visszaélni.
     public function test_lost_code_reissue_is_logged_distinctly_and_significantly_and_invalidates_old_code(): void
     {
         $personId = $this->createPerson();
