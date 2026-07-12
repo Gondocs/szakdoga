@@ -12,6 +12,8 @@ class AuthTest extends TestCase
 {
     use RefreshDatabase;
 
+    // Helyes e-mail/jelszó párossal a bejelentkezés sikeres, és a válasz a
+    // bejelentkezett felhasználó adatait adja vissza.
     public function test_user_can_login_with_correct_credentials(): void
     {
         $role = Role::create(['code' => RoleCode::Admin->value, 'name' => 'Admin']);
@@ -29,6 +31,7 @@ class AuthTest extends TestCase
         $response->assertOk()->assertJsonPath('data.email', 'admin@example.com');
     }
 
+    // Hibás jelszóval a bejelentkezés elutasításra kerül (422).
     public function test_login_fails_with_wrong_password(): void
     {
         User::factory()->create(['email' => 'admin@example.com', 'password' => bcrypt('password')]);
@@ -41,11 +44,14 @@ class AuthTest extends TestCase
         $response->assertUnprocessable();
     }
 
+    // A saját profil (/api/me) végpont bejelentkezés nélkül 401-et ad.
     public function test_me_endpoint_requires_authentication(): void
     {
         $this->getJson('/api/me')->assertUnauthorized();
     }
 
+    // Bejelentkezve a /api/me a ténylegesen bejelentkezett felhasználó
+    // adatait adja vissza.
     public function test_me_endpoint_returns_current_user(): void
     {
         $user = $this->actingAsRole(RoleCode::Admin);
@@ -55,6 +61,8 @@ class AuthTest extends TestCase
             ->assertJsonPath('data.email', $user->email);
     }
 
+    // A saját név módosításához nem szükséges a jelenlegi jelszó megadása
+    // (csak érzékenyebb mezőknél, pl. jelszó/e-mail váltásnál kötelező).
     public function test_user_can_update_own_name_without_current_password(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -64,6 +72,8 @@ class AuthTest extends TestCase
             ->assertJsonPath('data.name', 'Új Név');
     }
 
+    // Az e-mail cím módosításához helyes jelenlegi jelszó szükséges; hibás
+    // "current_password" esetén a kérés 422-t ad, a módosítás nem történik meg.
     public function test_user_cannot_change_email_without_correct_current_password(): void
     {
         $this->actingAsRole(RoleCode::Admin, ['password' => bcrypt('titkosjelszo')]);
@@ -74,6 +84,8 @@ class AuthTest extends TestCase
         ])->assertUnprocessable();
     }
 
+    // Helyes jelenlegi jelszóval a jelszó módosítható, és az adatbázisban
+    // ténylegesen az új (hash-elt) jelszó kerül elmentésre.
     public function test_user_can_change_password_with_correct_current_password(): void
     {
         $user = $this->actingAsRole(RoleCode::Admin, ['password' => bcrypt('regijelszo')]);
@@ -86,6 +98,10 @@ class AuthTest extends TestCase
         $this->assertTrue(\Illuminate\Support\Facades\Hash::check('ujjelszo123', $user->fresh()->password));
     }
 
+    // A saját bejelentkezési előzmény (/api/me/login-history) attól
+    // függetlenül elérhető egy regisztrátor számára, hogy a teljes
+    // auditnaplóhoz (/api/audit-logs) nincs jogosultsága — a felhasználó
+    // legalább a saját sikeres és sikertelen bejelentkezéseit láthatja.
     public function test_login_history_is_available_even_to_roles_without_audit_log_access(): void
     {
         $role = Role::create(['code' => RoleCode::Registrar->value, 'name' => 'Registrar']);
@@ -121,6 +137,9 @@ class AuthTest extends TestCase
         $this->assertTrue($actions->contains('login_failed'));
     }
 
+    // Egy frissen létrehozott felhasználónak (akinek még nincs korábbi
+    // bejelentkezése) a saját előzménye üres listát ad — nem más
+    // felhasználók bejegyzéseit szivárogtatja ki.
     public function test_login_history_only_shows_own_entries(): void
     {
         $this->actingAsRole(RoleCode::Admin);
