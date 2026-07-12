@@ -11,6 +11,8 @@ class MunicipalityManagementTest extends TestCase
 {
     use RefreshDatabase;
 
+    // Admin szerepkörrel egy település létrehozható, átnevezhető, majd —
+    // ha semmi nem hivatkozik rá — törölhető is.
     public function test_admin_can_create_update_and_delete_a_municipality(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -31,6 +33,8 @@ class MunicipalityManagementTest extends TestCase
         $this->assertDatabaseMissing('municipalities', ['id' => $municipalityId]);
     }
 
+    // Település létrehozása jogosultsághoz kötött: regisztrátor
+    // szerepkörrel a kérés 403-at ad.
     public function test_registrar_cannot_create_a_municipality(): void
     {
         $this->actingAsRole(RoleCode::Registrar);
@@ -41,6 +45,8 @@ class MunicipalityManagementTest extends TestCase
         ])->assertForbidden();
     }
 
+    // Ha egy településhez már van rögzített személy, a törlés
+    // adatvesztés-védelemből tiltott (409 MUNICIPALITY_IN_USE).
     public function test_municipality_in_use_cannot_be_deleted(): void
     {
         $this->actingAsRole(RoleCode::Admin);
