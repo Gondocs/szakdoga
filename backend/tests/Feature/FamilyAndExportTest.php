@@ -12,6 +12,10 @@ class FamilyAndExportTest extends TestCase
 {
     use RefreshDatabase;
 
+    // Azt ellenőrzi, hogy egy közös family_id-val felvett két személy
+    // ugyanannak a családnak a tagjaként jelenik meg a családlekérdezésben,
+    // és a "create_new_family" + "is_primary_contact" flaggel létrehozott
+    // első tag lesz a család elsődleges kapcsolattartója.
     public function test_family_detail_lists_members_and_primary_contact(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -49,6 +53,9 @@ class FamilyAndExportTest extends TestCase
         $this->assertEquals($firstPerson['id'], $response->json('data.primary_contact_person_id'));
     }
 
+    // Az esemény regisztrált személyeinek CSV-exportja admin számára
+    // elérhető, és a válasz ténylegesen a felvitt személy adatait tartalmazza
+    // (nem csak üres/sablon CSV-t ad vissza).
     public function test_admin_can_export_persons_as_csv(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -75,6 +82,8 @@ class FamilyAndExportTest extends TestCase
         $this->assertStringContainsString('Export', $response->streamedContent());
     }
 
+    // A személyi CSV-export jogosultsághoz kötött: a regisztrátor szerepkör
+    // nem exportálhat (csak admin/vezető), ezt a policy réteg tiltja.
     public function test_registrar_cannot_export_csv(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -88,6 +97,10 @@ class FamilyAndExportTest extends TestCase
         $this->get("/api/events/{$eventId}/persons/export")->assertForbidden();
     }
 
+    // A befogadóhelyi névsor-exportot egy befogadóhelyi kezelő csak a saját,
+    // hozzá rendelt befogadóhelyéről kérheti le (érkeztetett személy neve
+    // szerepel a CSV-ben); egy másik befogadóhely névsorát ugyanaz a
+    // kezelő nem érheti el, azt 403-mal utasítja el a rendszer.
     public function test_shelter_operator_can_export_own_shelter_roster_but_not_others(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -128,6 +141,10 @@ class FamilyAndExportTest extends TestCase
         $this->get("/api/events/{$eventId}/shelters/{$shelterA->id}/roster-export")->assertForbidden();
     }
 
+    // Az esemény lezárásakor/utóértékeléséhez készülő összesítő CSV riport
+    // ténylegesen tartalmazza a fő szakaszait (összesítő mutatók, egyedi
+    // igények kategóriánkénti bontása, befogadóhelyi kihasználtság) — nem
+    // csak azt ellenőrizzük, hogy a kérés 200-at ad.
     public function test_admin_can_export_summary_report(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -158,6 +175,8 @@ class FamilyAndExportTest extends TestCase
         $this->assertStringContainsString('Befogadóhelyek kihasználtsága', $content);
     }
 
+    // Az összesítő riport exportja is admin/vezető jogosultsághoz kötött;
+    // regisztrátorként a végpont 403-at ad.
     public function test_registrar_cannot_export_summary_report(): void
     {
         $this->actingAsRole(RoleCode::Admin);
