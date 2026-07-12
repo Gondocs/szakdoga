@@ -37,6 +37,12 @@ class RegistrationCheckInFlowTest extends TestCase
         return [$admin, EvacuationEvent::findOrFail($eventId), $municipality, $shelter];
     }
 
+    // Végigköveti az AT2-AT7 elfogadási teszteseteket egy folyamatban: a
+    // regisztrátor felvesz egy személyt (státusz: registered), QR-kódot
+    // kap, a befogadóhelyi kezelő ezzel érkezteti (státusz: arrived_shelter,
+    // status_history és audit_log bejegyzéssel), majd ugyanazt a QR-kódot
+    // másodszor beolvasva a rendszer 409 ALREADY_CHECKED_IN-nel jelzi a
+    // duplikált érkeztetést.
     public function test_full_registration_qr_and_checkin_flow(): void
     {
         [, $event, $municipality, $shelter] = $this->createActiveEventWithShelter();
@@ -83,6 +89,10 @@ class RegistrationCheckInFlowTest extends TestCase
         $duplicate->assertStatus(409)->assertJsonPath('code', 'ALREADY_CHECKED_IN');
     }
 
+    // AT5: ha egy befogadóhely kapacitáskorlátja (itt 1 fő) betelik, a
+    // következő érkeztetési kísérlet 409 SHELTER_FULL hibát ad — a
+    // kapacitáskorlát ténylegesen érvényesül, nem csak megjelenítési
+    // adat.
     public function test_checkin_fails_when_shelter_capacity_is_full(): void
     {
         [, $event, $municipality, $shelter] = $this->createActiveEventWithShelter(capacityLimit: 1);
@@ -117,6 +127,9 @@ class RegistrationCheckInFlowTest extends TestCase
         ])->assertStatus(409)->assertJsonPath('code', 'SHELTER_FULL');
     }
 
+    // AT6: a regisztrátor jogosultsága a felvitelre és QR-kiadásra terjed
+    // ki, az érkeztetésre nem — ez befogadóhelyi kezelői (vagy magasabb)
+    // jogosultságot igényel, ezért a kérés 403-at ad.
     public function test_registrar_cannot_perform_checkin(): void
     {
         [, $event, $municipality, $shelter] = $this->createActiveEventWithShelter();
@@ -137,6 +150,9 @@ class RegistrationCheckInFlowTest extends TestCase
         ])->assertForbidden();
     }
 
+    // Egy tömeges státuszváltás (bulk-status) végponttal több személy
+    // regisztrációs státusza egyszerre állítható, a válasz pontosan
+    // visszaadja, hány frissült sikeresen és hány sikertelenül.
     public function test_registrar_can_bulk_update_registration_status(): void
     {
         [, $event, $municipality] = $this->createActiveEventWithShelter();
@@ -165,6 +181,8 @@ class RegistrationCheckInFlowTest extends TestCase
         }
     }
 
+    // A tömeges státuszváltás jogosultsághoz kötött: befogadóhelyi kezelő
+    // szerepkörrel a kérés 403-at ad.
     public function test_shelter_operator_cannot_bulk_update_registration_status(): void
     {
         [, $event, $municipality] = $this->createActiveEventWithShelter();
@@ -183,6 +201,8 @@ class RegistrationCheckInFlowTest extends TestCase
         ])->assertForbidden();
     }
 
+    // Az auditnaplóhoz kizárólag az auditor (és admin) szerepkörnek van
+    // hozzáférése; a regisztrátornak nincs, a végpont 403-at ad neki.
     public function test_auditor_can_view_audit_log_but_registrar_cannot(): void
     {
         $this->actingAsRole(RoleCode::Auditor);
@@ -192,6 +212,9 @@ class RegistrationCheckInFlowTest extends TestCase
         $this->getJson('/api/audit-logs')->assertForbidden();
     }
 
+    // A dashboard a ténylegesen felvitt regisztráció adatait (regisztráltak
+    // száma, központi szállítást igénylők száma) tükrözi, és a válasz
+    // struktúrája tartalmazza az összesített kockázati mutatókat is.
     public function test_dashboard_reflects_registrations_and_checkins(): void
     {
         [, $event, $municipality, $shelter] = $this->createActiveEventWithShelter();
