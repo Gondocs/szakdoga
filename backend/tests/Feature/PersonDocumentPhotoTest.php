@@ -14,6 +14,8 @@ class PersonDocumentPhotoTest extends TestCase
 {
     use RefreshDatabase;
 
+    // Az okmányfotó eleje és hátulja egymástól függetlenül tölthető fel és
+    // törölhető — az egyik oldal feltöltése/törlése nem érinti a másikat.
     public function test_registrar_can_upload_and_delete_front_and_back_document_photos_independently(): void
     {
         Storage::fake('public');
@@ -55,6 +57,8 @@ class PersonDocumentPhotoTest extends TestCase
             ->assertJsonPath('data.document_photo_front_url', null);
     }
 
+    // Okmányfotó feltöltése jogosultsághoz kötött: befogadóhelyi kezelő
+    // szerepkörrel a kérés 403-at ad.
     public function test_shelter_operator_cannot_upload_a_document_photo(): void
     {
         Storage::fake('public');
