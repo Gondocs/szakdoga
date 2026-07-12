@@ -31,6 +31,12 @@ class QrTokenService
         ]);
     }
 
+    /**
+     * A QR-kódban szereplő public_id alapján visszaadja a hozzá tartozó
+     * tokent. A public_id-ból újraszámolt hash-t is összeveti a tárolt
+     * token_hash-sel, hogy egy esetlegesen módosított/hamisított
+     * azonosítót ne fogadjon el érvényesként.
+     */
     public function resolve(string $publicId): ?QrToken
     {
         $hash = hash('sha256', $publicId);
