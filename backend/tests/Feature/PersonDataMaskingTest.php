@@ -44,6 +44,8 @@ class PersonDataMaskingTest extends TestCase
         return [$personId];
     }
 
+    // Admin szerepkörrel egy személy adatlapja teljesen maszkolatlanul
+    // (okmányszám, telefon, cím) érkezik, "data_masked: false" jelzéssel.
     public function test_admin_sees_unmasked_data(): void
     {
         [$personId] = $this->createPersonWithFullData();
@@ -57,6 +59,11 @@ class PersonDataMaskingTest extends TestCase
         $response->assertJsonPath('data.data_masked', false);
     }
 
+    // A befogadóhelyi kezelő a napi munkájához nem szükséges azonosító
+    // adatokat (okmányszám, születési hely) maszkolva kapja (null), de az
+    // elérhetőségi adatokat (telefon, cím) — amikre ténylegesen szüksége
+    // van — nem: ez egy köztes maszkolási szint az admin és az auditor
+    // között.
     public function test_shelter_operator_sees_masked_identity_documents_but_unmasked_contact_details(): void
     {
         [$personId] = $this->createPersonWithFullData();
@@ -71,6 +78,9 @@ class PersonDataMaskingTest extends TestCase
         $response->assertJsonPath('data.data_masked', true);
     }
 
+    // Az auditor — mivel csak folyamatot ellenőriz, nem operatív munkát
+    // végez — minden érzékeny mezőt maszkolva lát: okmányszám, születési
+    // hely, telefon, e-mail és cím is null.
     public function test_auditor_sees_fully_masked_sensitive_fields(): void
     {
         [$personId] = $this->createPersonWithFullData();
@@ -86,6 +96,9 @@ class PersonDataMaskingTest extends TestCase
         $response->assertJsonPath('data.data_masked', true);
     }
 
+    // Az önkiszolgáló profil-nézet (public_id alapján, munkatárs-session
+    // nélkül) sosem maszkol — a saját adatait mindenki teljes egészében
+    // látja, hiszen ez nem munkatárs-hozzáférés, hanem a saját adata.
     public function test_self_service_profile_view_is_never_masked(): void
     {
         [$personId] = $this->createPersonWithFullData();
