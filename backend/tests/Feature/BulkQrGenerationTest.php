@@ -19,6 +19,10 @@ class BulkQrGenerationTest extends TestCase
 {
     use RefreshDatabase;
 
+    // Egy CSV-listából tömegesen felvitt személyek közül az érvényes sorok
+    // (ismert településsel) létrejönnek és azonnal QR-kódot (public_id)
+    // kapnak, a felismerhetetlen településsel rendelkező sor hibaként
+    // jelenik meg a válaszban, nem szakítja meg a teljes importot.
     public function test_admin_can_bulk_import_persons_with_qr_codes(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -47,6 +51,9 @@ class BulkQrGenerationTest extends TestCase
         $this->assertDatabaseHas('qr_tokens', ['status' => 'active']);
     }
 
+    // Egy kiadott QR-kód utólag megjelölhető kézbesítettként (pl. "card"
+    // átadási móddal), és a kézbesítés időpontja ténylegesen rögzítésre
+    // kerül — ez a kiosztási nyilvántartás alapja.
     public function test_registrar_can_mark_qr_token_as_delivered(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -72,6 +79,8 @@ class BulkQrGenerationTest extends TestCase
         $this->assertDatabaseHas('qr_tokens', ['id' => $qrTokenId, 'delivery_method' => 'card']);
     }
 
+    // A tömeges CSV-import jogosultsághoz kötött: befogadóhelyi kezelő
+    // szerepkörrel a végpont 403-at ad.
     public function test_shelter_operator_cannot_bulk_import(): void
     {
         $this->actingAsRole(RoleCode::Admin);
