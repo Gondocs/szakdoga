@@ -11,6 +11,10 @@ class IncidentTest extends TestCase
 {
     use RefreshDatabase;
 
+    // A befogadóhelyi kezelő bejelenthet egy incidenst (alapból "open"
+    // státusszal), az szűréssel visszakereshető (status=open), majd
+    // megoldottá zárható ("resolved", resolved_at kitöltve) — ezután az
+    // "open" szűrő már nem adja vissza.
     public function test_shelter_operator_can_report_and_resolve_an_incident(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -51,6 +55,8 @@ class IncidentTest extends TestCase
             ->assertJsonCount(0, 'data');
     }
 
+    // Incidens bejelentése jogosultsághoz kötött: auditor szerepkörrel a
+    // kérés 403-at ad.
     public function test_auditor_cannot_report_an_incident(): void
     {
         $this->actingAsRole(RoleCode::Admin);
