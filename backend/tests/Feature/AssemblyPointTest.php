@@ -13,6 +13,9 @@ class AssemblyPointTest extends TestCase
 {
     use RefreshDatabase;
 
+    // Admin szerepkörrel egy gyülekezési pont létrehozható, listázható,
+    // módosítható (lat/lng és név frissítése), majd törölhető — a törlés
+    // után a listából is eltűnik.
     public function test_admin_can_manage_assembly_points(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -49,6 +52,8 @@ class AssemblyPointTest extends TestCase
         $this->getJson("/api/events/{$eventId}/assembly-points")->assertOk()->assertJsonCount(0, 'data');
     }
 
+    // A gyülekezési pontok létrehozása jogosultsághoz kötött: regisztrátor
+    // szerepkörrel a kérés 403-at ad.
     public function test_registrar_cannot_create_assembly_points(): void
     {
         $this->actingAsRole(RoleCode::Admin);
