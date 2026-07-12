@@ -18,6 +18,9 @@ class DashboardArrivedCountTest extends TestCase
 {
     use RefreshDatabase;
 
+    // Egy személy két checkin-rekordot kap (első érkeztetés + áthelyezés),
+    // de a dashboard "arrived_count" mutatója ennek ellenére 1 marad —
+    // egyedi személyt számol, nem checkin-sort.
     public function test_arrived_count_is_not_inflated_by_shelter_transfer(): void
     {
         $this->actingAsRole(RoleCode::Admin);
