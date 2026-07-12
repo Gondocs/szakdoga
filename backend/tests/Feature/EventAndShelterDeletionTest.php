@@ -13,6 +13,8 @@ class EventAndShelterDeletionTest extends TestCase
 {
     use RefreshDatabase;
 
+    // Egy regisztráció nélküli esemény admin által törölhető, és a törlés
+    // naplózódik az auditnaplóba.
     public function test_admin_can_delete_an_event_without_registrations(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -28,6 +30,9 @@ class EventAndShelterDeletionTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'delete', 'entity_type' => 'EvacuationEvent']);
     }
 
+    // Ha egy eseményhez már van regisztrált személy, a törlés adatvesztés-
+    // védelemből tiltott: 409 EVENT_HAS_REGISTRATIONS-t ad, az esemény nem
+    // törlődik.
     public function test_event_with_registrations_cannot_be_deleted(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -52,6 +57,8 @@ class EventAndShelterDeletionTest extends TestCase
         $this->assertDatabaseHas('evacuation_events', ['id' => $eventId]);
     }
 
+    // Esemény törlése kizárólag admin szerepkörnek engedélyezett — a
+    // Manager (aki egyébként létrehozhatja/módosíthatja) nem törölhet.
     public function test_manager_cannot_delete_an_event(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -65,6 +72,8 @@ class EventAndShelterDeletionTest extends TestCase
         $this->deleteJson("/api/events/{$eventId}")->assertForbidden();
     }
 
+    // Egy eseményhez nem rendelt befogadóhely admin által törölhető, és a
+    // törlés naplózódik.
     public function test_admin_can_delete_a_shelter_not_assigned_to_any_event(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -76,6 +85,8 @@ class EventAndShelterDeletionTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'delete', 'entity_type' => 'Shelter']);
     }
 
+    // Egy eseményhez hozzárendelt befogadóhely törlése tiltott (409
+    // SHELTER_IN_USE), mert az esemény kapacitástervezése rá támaszkodik.
     public function test_shelter_assigned_to_an_event_cannot_be_deleted(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -98,6 +109,7 @@ class EventAndShelterDeletionTest extends TestCase
         $this->assertDatabaseHas('shelters', ['id' => $shelter->id]);
     }
 
+    // Befogadóhely törlése is kizárólag admin jogosultsághoz kötött.
     public function test_manager_cannot_delete_a_shelter(): void
     {
         $municipality = Municipality::factory()->create();
