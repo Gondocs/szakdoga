@@ -17,6 +17,11 @@ class DataRetentionPurgeTest extends TestCase
 {
     use RefreshDatabase;
 
+    // A napi ütemezett törlési parancs (data:purge-expired-persons) csak
+    // azoknak az eseményeknek a személyes adatait törli, amelyek "closed"
+    // állapotban vannak ÉS a megőrzési időn (itt 30 nap) túl vannak — egy
+    // frissen lezárt esemény adatai érintetlenek maradnak, és a törlés
+    // maga is naplózódik az auditnaplóba.
     public function test_purges_persons_only_for_closed_events_past_retention_window(): void
     {
         config(['retention.closed_event_retention_days' => 30]);
@@ -62,6 +67,9 @@ class DataRetentionPurgeTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'data_retention_purge', 'entity_id' => $oldClosedEventId]);
     }
 
+    // A "--dry-run" kapcsolóval indított törlési parancs a megőrzési időn
+    // túli, lezárt esemény személyét is érintetlenül hagyja — a dry-run
+    // ténylegesen csak szimulál, nem töröl.
     public function test_dry_run_does_not_delete_anything(): void
     {
         config(['retention.closed_event_retention_days' => 30]);
