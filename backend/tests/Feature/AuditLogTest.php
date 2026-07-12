@@ -13,6 +13,9 @@ class AuditLogTest extends TestCase
 {
     use RefreshDatabase;
 
+    // A sikertelen belépési kísérlet, a sikeres bejelentkezés és a
+    // kijelentkezés is auditnapló-bejegyzést hoz létre, a sikertelen
+    // kísérlet "significant" (kiemelt) jelzéssel.
     public function test_login_logout_and_failed_login_are_logged(): void
     {
         $role = Role::create(['code' => RoleCode::Admin->value, 'name' => 'Admin']);
@@ -37,6 +40,11 @@ class AuditLogTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'logout', 'user_id' => $user->id]);
     }
 
+    // Egy felhasználó nevének módosítása "nem kiemelt" (significant: false)
+    // naplóbejegyzést hoz létre, de a szerepkör (role_id) módosítása külön,
+    // "kiemelt" (significant: true) "role_change" akcióként naplózódik —
+    // a rendszer megkülönbözteti a triviális és a biztonságkritikus
+    // módosításokat.
     public function test_role_change_is_logged_as_significant_but_plain_update_is_not(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -51,6 +59,10 @@ class AuditLogTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'role_change', 'entity_id' => (string) $target->id, 'significant' => true]);
     }
 
+    // Az auditnapló szűrhető esemény (event_id) és felhasználó (user_id)
+    // szerint, valamint szabadszöveges kereséssel (q) — a találatok
+    // ténylegesen megfelelnek a szűrőnek, és egy nem létező kifejezésre
+    // nulla találat jön vissza.
     public function test_filters_by_user_event_and_free_text_search(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -85,6 +97,9 @@ class AuditLogTest extends TestCase
         $this->assertCount(0, $noMatch->json('data'));
     }
 
+    // A "significant_only" szűrő kizárólag a kiemelt (pl. szerepkör-
+    // változtatás) bejegyzéseket adja vissza, a nem kiemelt módosítás
+    // (névváltoztatás) nem szerepel a találatok között.
     public function test_significant_only_filter(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -102,6 +117,8 @@ class AuditLogTest extends TestCase
         }
     }
 
+    // A szűrő-opciók (filter-options) végpont nem üres listát ad vissza a
+    // szűrőmezők (felhasználók, események) feltöltéséhez a felületen.
     public function test_filter_options_returns_distinct_users_and_events(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -116,6 +133,8 @@ class AuditLogTest extends TestCase
         $this->assertNotEmpty($response->json('data.events'));
     }
 
+    // Az auditnapló CSV-ként exportálható, és a válasz helyes
+    // Content-Type fejlécet kap.
     public function test_csv_export_is_downloadable(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -130,6 +149,10 @@ class AuditLogTest extends TestCase
         $response->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
     }
 
+    // Ugyanaz a naplóbejegyzés admin nézetben a valódi telefonszámot mutatja
+    // ("data_masked: false"), auditor nézetben viszont a személyes adat
+    // (telefonszám) el van rejtve és a bejegyzés "data_masked: true"-val
+    // van jelölve — a szerepkör-alapú adatmaszkolás ténylegesen működik.
     public function test_auditor_sees_masked_sensitive_fields_but_admin_does_not(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -160,6 +183,9 @@ class AuditLogTest extends TestCase
         $this->assertTrue($auditorRow['data_masked']);
     }
 
+    // Az auditnapló-lista válasz meta.summary.today_count mezője a mai napi
+    // bejegyzésszámot tartalmazza, és ez nagyobb, mint nulla, ha aznap
+    // történt naplózható esemény.
     public function test_summary_meta_includes_today_counts(): void
     {
         $this->actingAsRole(RoleCode::Admin);
