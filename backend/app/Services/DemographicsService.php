@@ -8,10 +8,15 @@ use Carbon\Carbon;
 class DemographicsService
 {
     /**
+     * Egy evakuációs eseményhez tartozó személyek nem és korcsoport szerinti
+     * eloszlását (demográfiai statisztikáját) állítja elő.
+     *
      * @return array{gender: array<string, int>, age: array<string, int>}
      */
     public function breakdown(EvacuationEvent $event): array
     {
+        // Nemenkénti darabszámok lekérdezése egyetlen csoportosított
+        // (GROUP BY) SQL lekérdezéssel
         $genderCounts = $event->persons()
             ->whereNotNull('gender')
             ->selectRaw('gender, count(*) as total')
@@ -20,6 +25,9 @@ class DemographicsService
 
         $ageBuckets = ['0-17' => 0, '18-39' => 0, '40-59' => 0, '60-74' => 0, '75+' => 0, 'ismeretlen' => 0];
 
+        // Minden személy születési dátumából kiszámoljuk a jelenlegi
+        // életkort, majd az előre definiált korcsoport-sávok (bucket-ek)
+        // egyikébe soroljuk
         $event->persons()->pluck('birth_date')->each(function ($birthDate) use (&$ageBuckets) {
             if (! $birthDate) {
                 $ageBuckets['ismeretlen']++;
