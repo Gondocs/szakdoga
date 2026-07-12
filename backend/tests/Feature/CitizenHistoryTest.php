@@ -19,6 +19,10 @@ class CitizenHistoryTest extends TestCase
 {
     use RefreshDatabase;
 
+    // Ha ugyanaz az okmányszám két különböző eseményben is regisztrálásra
+    // kerül, a két Person-rekord ugyanahhoz az egy (eseményfüggetlen)
+    // Citizen törzsadathoz kapcsolódik (nem jön létre duplikált Citizen), és
+    // a citizen history végpont mindkét esemény regisztrációját visszaadja.
     public function test_same_document_number_links_registrations_across_two_events_to_one_citizen(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -64,6 +68,8 @@ class CitizenHistoryTest extends TestCase
         $this->assertContains('EVT-CIT-B', $eventCodes);
     }
 
+    // Okmányszám megadása nélkül a személyhez nem jön létre Citizen-kapcsolat
+    // (citizen_id null marad), és nem keletkezik felesleges Citizen-rekord.
     public function test_person_without_document_number_has_no_citizen_link(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -86,6 +92,9 @@ class CitizenHistoryTest extends TestCase
         $this->assertSame(0, Citizen::count());
     }
 
+    // Két eltérő okmányszámmal felvitt személy két külön Citizen-rekordot
+    // kap — a törzsadat-összekapcsolás kizárólag egyező okmányszám esetén
+    // történik meg, különbözőnél nem vonja össze őket.
     public function test_different_document_numbers_create_separate_citizens(): void
     {
         $this->actingAsRole(RoleCode::Admin);
