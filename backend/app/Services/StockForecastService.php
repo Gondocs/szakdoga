@@ -16,10 +16,16 @@ class StockForecastService
 {
     private const MEALS_PER_PERSON_PER_DAY = 3;
 
+    /**
+     * Egy evakuációs esemény napi készletigényét (étkezés, takaró, matrac,
+     * gyógyszer) becsli meg, szálláshelyenkénti bontásban és összesítve is.
+     */
     public function forEvent(EvacuationEvent $event): array
     {
         $eventShelters = $event->eventShelters()->with('shelter')->get();
 
+        // Csak a ténylegesen befogadóhelyre megérkezett személyeket vesszük
+        // figyelembe a készletszámításnál
         $persons = Person::where('event_id', $event->id)
             ->whereHas('registration', fn ($q) => $q->where('status', RegistrationStatus::ArrivedShelter->value))
             ->with(['checkins' => fn ($q) => $q->orderByDesc('checked_in_at'), 'specialNeeds'])
@@ -27,6 +33,9 @@ class StockForecastService
 
         $statsByShelter = [];
 
+        // Szálláshelyenként összesítjük a létszámot, valamint az orvosi és
+        // diétás különleges igényű személyek darabszámát (a személy utolsó
+        // bejelentkezése alapján derül ki, épp melyik szálláshelyen van)
         foreach ($persons as $person) {
             $latestCheckIn = $person->checkins->first();
 
@@ -47,6 +56,8 @@ class StockForecastService
             }
         }
 
+        // Az összesített létszám- és igényadatokból napi szükséges
+        // mennyiségeket számolunk (pl. adag = létszám * napi étkezésszám)
         $rows = $eventShelters->map(function ($eventShelter) use ($statsByShelter) {
             $stats = $statsByShelter[$eventShelter->shelter_id] ?? ['count' => 0, 'medical' => 0, 'diet' => 0];
 
@@ -62,6 +73,7 @@ class StockForecastService
             ];
         })->values();
 
+        // Az összes szálláshely adatainak végösszesítése
         $totals = [
             'checked_in_count' => $rows->sum('checked_in_count'),
             'meal_portions_per_day' => $rows->sum('meal_portions_per_day'),
