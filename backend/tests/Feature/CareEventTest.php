@@ -12,6 +12,9 @@ class CareEventTest extends TestCase
 {
     use RefreshDatabase;
 
+    // A befogadóhelyi kezelő rögzíthet egy ellátási eseményt (pl.
+    // étkezés kiadása) egy adott személyhez, és az utólag lekérdezhető a
+    // személy ellátási előzményei között.
     public function test_shelter_operator_can_record_and_list_care_events(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -45,6 +48,8 @@ class CareEventTest extends TestCase
             ->assertJsonPath('data.0.note', 'Ebéd kiadva');
     }
 
+    // Az ellátási esemény rögzítése jogosultsághoz kötött: auditor
+    // szerepkörrel a kérés 403-at ad.
     public function test_auditor_cannot_record_a_care_event(): void
     {
         $this->actingAsRole(RoleCode::Admin);
