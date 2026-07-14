@@ -15,6 +15,11 @@ class StockForecastTest extends TestCase
 {
     use RefreshDatabase;
 
+    // A napi készletigény-előrejelzés a ténylegesen befogadóhelyen lévő
+    // személyek száma alapján számol napi 3 étkezést, 1 takarót és 1
+    // matracot fejenként, és az egyedi (medical) igény miatt a
+    // gyógyszerre szorulók számát is helyesen (1) adja vissza,
+    // befogadóhelyenkénti bontásban is.
     public function test_stock_forecast_reflects_checked_in_persons_and_special_needs(): void
     {
         $this->actingAsRole(RoleCode::Admin);
