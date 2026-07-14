@@ -34,6 +34,10 @@ class SelfServiceRegistrationTest extends TestCase
         return [EvacuationEvent::findOrFail($response->json('data.id')), $municipality, $shelter];
     }
 
+    // Bejelentkezés nélkül (auth guard kikapcsolva) is sikeresen
+    // regisztrálható egy lakos egy aktív eseményhez, azonnal public_id-t
+    // (QR-kód alapja) kap, és a regisztráció "self_service" csatornaként,
+    // a személy adatai pedig helyesen kerülnek elmentésre.
     public function test_citizen_can_self_register_without_authentication_and_receives_qr(): void
     {
         [$event, $municipality] = $this->createActiveEventWithShelter();
@@ -57,6 +61,9 @@ class SelfServiceRegistrationTest extends TestCase
         $this->assertDatabaseHas('persons', ['last_name' => 'Kiss', 'gender' => 'female', 'id_document_number' => '123456AB']);
     }
 
+    // Egy önkiszolgálóan előregisztrált személy ugyanúgy érkeztethető a
+    // befogadóhelyen a QR-kódja alapján, mint egy helyszínen regisztrált
+    // — a két csatorna a check-in szempontjából megkülönböztethetetlen.
     public function test_self_registered_person_can_be_checked_in_normally(): void
     {
         [$event, $municipality, $shelter] = $this->createActiveEventWithShelter();
@@ -79,6 +86,10 @@ class SelfServiceRegistrationTest extends TestCase
         $this->assertDatabaseHas('checkins', ['shelter_id' => $shelter->id]);
     }
 
+    // "draft" (tervezet) státuszú eseményhez az önkiszolgáló regisztráció
+    // nem érhető el — a végpont 404 EVENT_NOT_FOUND-ot ad, mintha az
+    // esemény nem is létezne, hogy ne szivárogjon információ a még nem
+    // közzétett eseményről.
     public function test_self_registration_fails_for_inactive_event(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -99,6 +110,10 @@ class SelfServiceRegistrationTest extends TestCase
         ])->assertStatus(404)->assertJsonPath('code', 'EVENT_NOT_FOUND');
     }
 
+    // A public_id birtokában (bejelentkezés nélkül) a saját profil
+    // megtekinthető és módosítható (telefon, cím, központi szállítási
+    // igény, egyedi igény hozzáadása), és a módosítás "self_update"
+    // akcióként naplózódik az auditnaplóba.
     public function test_citizen_can_view_and_update_own_profile_via_public_id(): void
     {
         [$event, $municipality] = $this->createActiveEventWithShelter();
@@ -133,6 +148,10 @@ class SelfServiceRegistrationTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'self_update']);
     }
 
+    // Miután egy regisztrátor a személy státuszát "returned_home"-ra
+    // állította, a saját profil önkiszolgáló megtekintése lezárul (409
+    // SELF_PROFILE_LOCKED) — hazatérés után a profil már nem módosítható
+    // a saját QR-kóddal.
     public function test_self_profile_locked_after_return_home(): void
     {
         [$event, $municipality] = $this->createActiveEventWithShelter();
@@ -156,6 +175,9 @@ class SelfServiceRegistrationTest extends TestCase
             ->assertJsonPath('code', 'SELF_PROFILE_LOCKED');
     }
 
+    // Aki saját járművel utazik (own_vehicle: true), önkiszolgáló módon
+    // megerősítheti a megérkezését — ez kitölti a
+    // self_arrival_confirmed_at mezőt és naplózódik.
     public function test_own_vehicle_traveler_can_confirm_arrival(): void
     {
         [$event, $municipality] = $this->createActiveEventWithShelter();
@@ -174,6 +196,10 @@ class SelfServiceRegistrationTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'self_arrival_confirmed']);
     }
 
+    // Aki nem jelölte, hogy saját járművel utazik, nem erősítheti meg
+    // önkiszolgáló módon a megérkezését — a végpont 422
+    // NOT_OWN_VEHICLE-t ad, mert az ő esetükben a befogadóhelyi
+    // kezelőnek kell QR-kóddal érkeztetnie.
     public function test_confirm_arrival_fails_without_own_vehicle(): void
     {
         [$event, $municipality] = $this->createActiveEventWithShelter();
