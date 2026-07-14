@@ -16,6 +16,9 @@ class RepatriationTest extends TestCase
 {
     use RefreshDatabase;
 
+    // Admin beállíthatja egy település visszatelepítési engedélyezési
+    // státuszát ("permitted") megjegyzéssel együtt, és ez megjelenik a
+    // település-listán a hozzá tartozó (regisztrált) személyek számával.
     public function test_admin_can_set_repatriation_status_and_it_appears_in_the_list(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -44,6 +47,8 @@ class RepatriationTest extends TestCase
         $list->assertJsonPath('data.0.person_count', 1);
     }
 
+    // A visszatelepítési engedélyezés jogosultsághoz kötött: regisztrátor
+    // szerepkörrel a kérés 403-at ad.
     public function test_registrar_cannot_set_repatriation_status(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -61,6 +66,11 @@ class RepatriationTest extends TestCase
         ])->assertForbidden();
     }
 
+    // Az önkiszolgáló hazatérés-megerősítés (confirm-return) elutasított
+    // (422 REPATRIATION_NOT_AUTHORIZED), amíg a személy települése nincs
+    // engedélyezve; miután admin "conditional" (feltételes) engedélyezésre
+    // állítja, a megerősítés sikeres, és a regisztráció ténylegesen
+    // "returned_home" státuszba kerül.
     public function test_self_service_return_confirmation_requires_authorized_municipality(): void
     {
         $this->actingAsRole(RoleCode::Admin);
