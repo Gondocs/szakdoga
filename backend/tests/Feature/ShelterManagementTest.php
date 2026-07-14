@@ -11,6 +11,8 @@ class ShelterManagementTest extends TestCase
 {
     use RefreshDatabase;
 
+    // Admin szerepkörrel egy befogadóhely létrehozható, majd a kapacitása
+    // és státusza (pl. "full"-ra állítva) módosítható.
     public function test_admin_can_create_and_update_a_shelter(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -33,6 +35,10 @@ class ShelterManagementTest extends TestCase
         ])->assertOk()->assertJsonPath('data.capacity_total', 150);
     }
 
+    // A befogadóhely szolgáltatási adatai (ivóvíz, étkezés, higiéniai
+    // eszközök, gyermekfelügyelet, pszichológiai támogatás, házirend,
+    // közegészségügyi megjegyzés) ténylegesen elmenthetők és visszaadásra
+    // kerülnek.
     public function test_shelter_service_details_can_be_set(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -59,6 +65,8 @@ class ShelterManagementTest extends TestCase
         $response->assertJsonPath('data.house_rules', 'Csendes pihenő 22 és 6 óra között.');
     }
 
+    // Befogadóhely létrehozása jogosultsághoz kötött: regisztrátor
+    // szerepkörrel a kérés 403-at ad.
     public function test_registrar_cannot_create_a_shelter(): void
     {
         $this->actingAsRole(RoleCode::Registrar);
