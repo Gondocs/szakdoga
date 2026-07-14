@@ -29,6 +29,8 @@ class VehicleFleetTest extends TestCase
         return EvacuationEvent::findOrFail($eventId);
     }
 
+    // Admin szerepkörrel egy flottajármű (Vehicle törzsadat) létrehozható,
+    // módosítható, majd törölhető.
     public function test_admin_can_create_update_and_delete_a_vehicle(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -52,6 +54,8 @@ class VehicleFleetTest extends TestCase
         $this->assertDatabaseMissing('vehicles', ['id' => $vehicleId]);
     }
 
+    // Két jármű nem kaphat azonos rendszámot: a másodikat 422-vel utasítja
+    // el a rendszer.
     public function test_plate_number_must_be_unique(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -59,12 +63,18 @@ class VehicleFleetTest extends TestCase
         $this->postJson('/api/vehicles', ['plate_number' => 'BBB-456', 'label' => 'Busz 2'])->assertStatus(422);
     }
 
+    // Flottajármű létrehozása jogosultsághoz kötött: regisztrátor
+    // szerepkörrel a kérés 403-at ad.
     public function test_registrar_cannot_manage_vehicles(): void
     {
         $this->actingAsRole(RoleCode::Registrar);
         $this->postJson('/api/vehicles', ['plate_number' => 'CCC-789', 'label' => 'Busz'])->assertForbidden();
     }
 
+    // Egy jármű nem rendelhető hozzá két, egyszerre FOLYAMATBAN lévő
+    // (active/paused) esemény szállítójához — a második hozzárendelési
+    // kísérlet 409 VEHICLE_IN_USE-t ad, és a flottalista is jelzi, melyik
+    // eseményhez van éppen lefoglalva a jármű.
     public function test_assigning_vehicle_to_two_ongoing_events_is_rejected(): void
     {
         $eventA = $this->createEvent('EVT-VEH-A', 'active');
@@ -90,6 +100,10 @@ class VehicleFleetTest extends TestCase
             ->assertJsonPath('data.0.active_assignment.event_id', $eventA->id);
     }
 
+    // Miután az első esemény, amihez a jármű hozzá volt rendelve, "closed"
+    // állapotba kerül, a jármű szabaddá válik és egy másik, aktív
+    // eseményhez is hozzárendelhető — a foglalás csak folyamatban lévő
+    // eseményre vonatkozik.
     public function test_vehicle_can_be_reassigned_after_its_event_is_closed(): void
     {
         $eventA = $this->createEvent('EVT-VEH-C', 'active');
@@ -112,6 +126,8 @@ class VehicleFleetTest extends TestCase
         ])->assertCreated();
     }
 
+    // Egy aktív eseményhez jelenleg hozzárendelt jármű nem törölhető (409
+    // VEHICLE_IN_USE).
     public function test_vehicle_in_active_use_cannot_be_deleted(): void
     {
         $event = $this->createEvent('EVT-VEH-E', 'active');
@@ -130,6 +146,9 @@ class VehicleFleetTest extends TestCase
             ->assertJsonPath('code', 'VEHICLE_IN_USE');
     }
 
+    // A flottalista a jelenleg hozzárendelt szállítóeszköz utolsó ismert
+    // pozícióját (lat/lng, időbélyeg) is visszaadja az aktuális
+    // hozzárendelés (active_assignment) részeként.
     public function test_fleet_list_exposes_active_transport_position(): void
     {
         $event = $this->createEvent('EVT-VEH-F', 'active');
