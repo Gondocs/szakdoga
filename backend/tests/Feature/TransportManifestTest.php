@@ -33,6 +33,8 @@ class TransportManifestTest extends TestCase
         return [EvacuationEvent::findOrFail($eventId), $municipality];
     }
 
+    // Admin/vezető szerepkörrel egy szállítóeszköz (busz) felvehető
+    // névvel és kapacitással, és ténylegesen elmentésre kerül.
     public function test_admin_can_create_a_transport(): void
     {
         [$event] = $this->createActiveEvent();
@@ -46,6 +48,9 @@ class TransportManifestTest extends TestCase
         $this->assertDatabaseHas('transports', ['code' => '1. sz. busz', 'event_id' => $event->id]);
     }
 
+    // A szállítóeszközhöz opcionálisan megadható indulási/célállomás és
+    // tervezett indulási/érkezési időpont is, ezek ténylegesen elmentésre
+    // kerülnek.
     public function test_transport_can_be_created_with_route_and_schedule(): void
     {
         [$event] = $this->createActiveEvent();
@@ -65,6 +70,9 @@ class TransportManifestTest extends TestCase
         $this->assertNotNull($response->json('data.departure_planned_at'));
     }
 
+    // Egy busz kapacitásán felüli felszállás alapból tiltott (409
+    // TRANSPORT_OVERCAPACITY), de "override_capacity" paraméterrel mégis
+    // végrehajtható — a frontend "Mégis felszállítom" gombja is ezt hívja.
     public function test_boarding_beyond_capacity_is_blocked_unless_overridden(): void
     {
         [$event, $municipality] = $this->createActiveEvent();
@@ -96,6 +104,12 @@ class TransportManifestTest extends TestCase
         ])->assertCreated();
     }
 
+    // A teljes fel-/leszállási ciklus: felszálláskor a regisztráció
+    // "in_transport" státuszba kerül, a manifeszt (utaslista) tartalmazza
+    // a személyt, ugyanazzal a QR-kóddal másodszor felszállni nem lehet
+    // (409 ALREADY_ONBOARD); leszállás után a fedélzeti létszám nullára
+    // csökken, a manifesztből is eltűnik, majd egy másik útra ismét
+    // felszállhat ugyanaz a személy.
     public function test_board_and_alight_flow_updates_manifest_and_status(): void
     {
         [$event, $municipality] = $this->createActiveEvent();
@@ -151,6 +165,8 @@ class TransportManifestTest extends TestCase
             ->assertCreated();
     }
 
+    // Szállítóeszköz létrehozása jogosultsághoz kötött: befogadóhelyi
+    // kezelő szerepkörrel a kérés 403-at ad.
     public function test_shelter_operator_cannot_create_a_transport(): void
     {
         [$event] = $this->createActiveEvent();
@@ -159,6 +175,8 @@ class TransportManifestTest extends TestCase
         $this->postJson("/api/events/{$event->id}/transports", ['code' => 'X'])->assertForbidden();
     }
 
+    // Felszállás rögzítése jogosultsághoz kötött: auditor szerepkörrel a
+    // kérés 403-at ad.
     public function test_auditor_cannot_board_a_person(): void
     {
         [$event, $municipality] = $this->createActiveEvent();
@@ -178,6 +196,9 @@ class TransportManifestTest extends TestCase
         $this->postJson("/api/transports/{$transportId}/board", ['public_id' => $publicId])->assertForbidden();
     }
 
+    // A pozíció szimulálása a busz úti céljához (befogadóhely)
+    // hozzárendelt település rögzített koordinátáit adja vissza — nem
+    // véletlenszerű vagy fix koordinátát.
     public function test_simulate_position_uses_shelter_municipality_coordinates(): void
     {
         [$event] = $this->createActiveEvent();
@@ -202,6 +223,9 @@ class TransportManifestTest extends TestCase
         $this->assertEqualsWithDelta(17.6504, $response->json('data.last_lng'), 0.01);
     }
 
+    // Ha a busznak (illetve a hozzá tartozó eseménynek/befogadóhelynek)
+    // nincs koordinátája, a pozíció szimulálása 422 NO_COORDINATES hibát
+    // ad ahelyett, hogy hamis/üres adatot mutatna a térképen.
     public function test_simulate_position_fails_without_shelter_coordinates(): void
     {
         [$event] = $this->createActiveEvent();
@@ -214,6 +238,11 @@ class TransportManifestTest extends TestCase
             ->assertJsonPath('code', 'NO_COORDINATES');
     }
 
+    // Egy CSV-utaslista (okmányszám oszloppal) importja tömegesen
+    // felszállítja az egyező, előzetesen regisztrált személyeket, a nem
+    // egyező okmányszámokat "not_found"-ként jelzi vissza, és egy
+    // ismételt import a már fedélzeten lévőket "already_onboard"-ként
+    // jelöli, nem duplikálja a felszállást.
     public function test_manifest_csv_import_boards_matched_persons_and_reports_summary(): void
     {
         [$event, $municipality] = $this->createActiveEvent();
@@ -259,6 +288,8 @@ class TransportManifestTest extends TestCase
         $response2->assertJsonPath('data.boarded_count', 0);
     }
 
+    // CSV-utaslista importja jogosultsághoz kötött: itt (a metódus neve
+    // ellenére) auditor szerepkörrel teszteljük, hogy a kérés 403-at ad.
     public function test_shelter_operator_cannot_import_manifest(): void
     {
         [$event] = $this->createActiveEvent();
@@ -270,6 +301,8 @@ class TransportManifestTest extends TestCase
         $this->post("/api/transports/{$transportId}/import-manifest", ['file' => $file])->assertForbidden();
     }
 
+    // Egy üres (senki nem száll rajta) szállítóeszköz módosítható (kód,
+    // kapacitás) és törölhető is.
     public function test_admin_can_update_and_delete_an_empty_transport(): void
     {
         [$event] = $this->createActiveEvent();
@@ -286,6 +319,8 @@ class TransportManifestTest extends TestCase
         $this->assertDatabaseMissing('transports', ['id' => $transportId]);
     }
 
+    // Egy olyan szállítóeszköz, amelynek van jelenleg felszállva lévő
+    // utasa, nem törölhető (409 TRANSPORT_IN_USE) — adatvesztés-védelem.
     public function test_transport_with_onboard_passenger_cannot_be_deleted(): void
     {
         [$event, $municipality] = $this->createActiveEvent();
@@ -306,6 +341,8 @@ class TransportManifestTest extends TestCase
             ->assertJsonPath('code', 'TRANSPORT_IN_USE');
     }
 
+    // Szállítóeszköz módosítása/törlése jogosultsághoz kötött: regisztrátor
+    // szerepkörrel mindkét kérés 403-at ad.
     public function test_registrar_cannot_update_or_delete_a_transport(): void
     {
         [$event] = $this->createActiveEvent();
