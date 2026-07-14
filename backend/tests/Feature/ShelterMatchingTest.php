@@ -18,6 +18,9 @@ class ShelterMatchingTest extends TestCase
 {
     use RefreshDatabase;
 
+    // Ha a befogadóhely-lekérdezéshez nincs megadva person_id, a válasz nem
+    // ajánl egyetlen befogadóhelyet sem (recommended: false, match_score:
+    // null) — az ajánlás kifejezetten egy adott személy igényeihez kötött.
     public function test_shelter_list_without_person_id_has_no_recommendation(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -37,6 +40,10 @@ class ShelterMatchingTest extends TestCase
         $response->assertJsonPath('data.0.match_score', null);
     }
 
+    // Egy mozgáskorlátozott egyedi igényű (wheelchair) személyhez a
+    // rendszer az akadálymentes férőhellyel rendelkező befogadóhelyet
+    // ajánlja a sima befogadóhely helyett, és az ajánlás indoklása
+    // ("Van akadálymentes férőhely") is szerepel a válaszban.
     public function test_shelter_with_accessible_capacity_is_recommended_for_mobility_need(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -79,6 +86,9 @@ class ShelterMatchingTest extends TestCase
         $this->assertContains('Van akadálymentes férőhely', $recommended['match_reasons']);
     }
 
+    // Egy egyébként igény szerint megfelelő (akadálymentes), de betelt
+    // kapacitású befogadóhely NEM kerül ajánlásra — a kapacitás elsőbbséget
+    // élvez a puszta képesség-egyezéssel szemben.
     public function test_full_shelter_is_not_recommended_even_with_matching_capability(): void
     {
         $this->actingAsRole(RoleCode::Admin);
