@@ -13,6 +13,8 @@ class UserManagementTest extends TestCase
 {
     use RefreshDatabase;
 
+    // Admin szerepkörrel a felhasználók listázhatók, és egy új felhasználó
+    // (adott szerepkörrel) létrehozható, ami ténylegesen elmentődik.
     public function test_admin_can_list_and_create_users(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -31,6 +33,8 @@ class UserManagementTest extends TestCase
         $this->assertDatabaseHas('users', ['email' => 'teszt.elek@example.com']);
     }
 
+    // Felhasználókezelés (listázás és létrehozás) jogosultsághoz kötött:
+    // regisztrátor szerepkörrel mindkét kérés 403-at ad.
     public function test_registrar_cannot_manage_users(): void
     {
         $this->actingAsRole(RoleCode::Registrar);
@@ -44,6 +48,8 @@ class UserManagementTest extends TestCase
         ])->assertForbidden();
     }
 
+    // Admin módosíthatja egy másik felhasználó szerepkörét, és a válasz a
+    // frissített szerepkör kódját adja vissza.
     public function test_admin_can_update_a_user_role(): void
     {
         $admin = $this->actingAsRole(RoleCode::Admin);
@@ -58,6 +64,9 @@ class UserManagementTest extends TestCase
         $this->assertNotEquals($admin->id, $target->id);
     }
 
+    // Egy felhasználó feltöltheti és el is távolíthatja a saját
+    // profilképét — feltöltéskor a fájl ténylegesen létrejön a tárolón,
+    // törléskor pedig eltűnik onnan és a hivatkozás is nullázódik.
     public function test_user_can_upload_and_remove_own_avatar(): void
     {
         Storage::fake('public');
@@ -75,6 +84,9 @@ class UserManagementTest extends TestCase
         $this->assertNull($user->fresh()->avatar_path);
     }
 
+    // Egy felhasználó nem tölthet fel profilképet egy MÁSIK felhasználó
+    // nevében, még akkor sem, ha egyébként bejelentkezett — a kérés
+    // 403-at ad.
     public function test_user_cannot_upload_avatar_for_another_user(): void
     {
         Storage::fake('public');
