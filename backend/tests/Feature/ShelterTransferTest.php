@@ -16,6 +16,10 @@ class ShelterTransferTest extends TestCase
 {
     use RefreshDatabase;
 
+    // Egy már befogadóhelyen lévő személy másik befogadóhelyre áthelyezhető
+    // — a régi befogadóhely kapacitása felszabadul (checked_in_count: 0),
+    // az újé lefoglalódik (1), és az áthelyezés naplózódik
+    // ("shelter_transfer" akcióként).
     public function test_person_can_be_transferred_to_another_shelter(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -55,6 +59,9 @@ class ShelterTransferTest extends TestCase
         $this->assertSame(1, $rows[$shelterB->id]['checked_in_count']);
     }
 
+    // Betelt kapacitású befogadóhelyre az áthelyezés alapból tiltott (409
+    // SHELTER_FULL), de "override_capacity" paraméterrel — ami csak
+    // admin/vezető jogosultsággal érvényesül — mégis végrehajtható.
     public function test_transfer_to_a_full_shelter_is_blocked_unless_overridden(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -97,6 +104,8 @@ class ShelterTransferTest extends TestCase
         ])->assertCreated();
     }
 
+    // Egy befogadóhelyen tartózkodó személy ideiglenes eltávozása és
+    // visszaérkezése is rögzíthető, mindkettő időbélyeggel.
     public function test_temporary_leave_and_return_are_recorded(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -128,6 +137,9 @@ class ShelterTransferTest extends TestCase
         $this->assertNotNull($returnResponse->json('data.temporary_return_at'));
     }
 
+    // Az ágy/szoba azonosító (bed_label) megadható már az érkeztetéskor és
+    // az áthelyezéskor is, majd utólag, egy külön PATCH hívással is
+    // módosítható — mindhárom út ténylegesen elmenti a megadott értéket.
     public function test_bed_label_can_be_set_on_checkin_and_transfer_and_updated_afterwards(): void
     {
         $this->actingAsRole(RoleCode::Admin);
@@ -174,6 +186,12 @@ class ShelterTransferTest extends TestCase
         $this->assertDatabaseHas('checkins', ['person_id' => $personId, 'bed_label' => 'C terem, 1. ágy']);
     }
 
+    // Amíg a család egyetlen érkezett tagja van, nincs szétszakadási
+    // figyelmeztetés; amint egy másik tag egy MÁSIK befogadóhelyre
+    // érkezik, a check-in válasz figyelmeztetést ad (a másik tag nevét is
+    // tartalmazva); miután a szétvált tagot átirányítják ugyanoda, ahol a
+    // család többi tagja van, a figyelmeztetés eltűnik — a mutató a
+    // ténylegesen aktuális állapotot tükrözi, nem egy egyszeri jelzést.
     public function test_family_split_warning_is_returned_on_checkin_and_cleared_after_transfer_to_same_shelter(): void
     {
         $this->actingAsRole(RoleCode::Admin);
