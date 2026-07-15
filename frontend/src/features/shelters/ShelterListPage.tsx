@@ -75,6 +75,9 @@ export function ShelterListPage() {
     fetchShelters(eventId).then(setShelters).finally(() => setIsLoading(false));
   }, [eventId]);
 
+  // Névre/településre szűrjük a befogadóhelyeket, majd a kiválasztott
+  // szempont szerint (kihasználtság, kockázat, szabad kapacitás vagy név)
+  // csökkenő/ábécé sorrendbe rendezzük
   const visibleShelters = useMemo(() => {
     const term = search.trim().toLowerCase();
     const filtered = term
@@ -100,6 +103,8 @@ export function ShelterListPage() {
     return sorted;
   }, [shelters, search, sortKey]);
 
+  // Az összes befogadóhely kapacitás- és foglaltsági adatainak
+  // összesítése a KPI-kártyákhoz
   const summary = useMemo(() => {
     const totalCapacity = shelters.reduce((sum, s) => sum + s.capacity_limit, 0);
     const totalOccupied = shelters.reduce((sum, s) => sum + s.checked_in_count, 0);
