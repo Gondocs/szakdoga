@@ -189,6 +189,8 @@ export function EventMapPage() {
             <CircleMarker
               key={m.municipality_id}
               center={[m.lat, m.lng]}
+              // Négyzetgyökös skálázás, hogy a kör területe (és ne csak a
+              // sugara) legyen arányos a létszámmal, felső korláttal
               radius={Math.min(6 + Math.sqrt(m.person_count) * 2, 22)}
               pathOptions={{ color: '#a3172b', fillColor: '#a3172b', fillOpacity: 0.3, weight: 1 }}
               eventHandlers={{
