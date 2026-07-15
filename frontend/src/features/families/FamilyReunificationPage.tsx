@@ -118,6 +118,9 @@ function FamilyCard({
   onOpenNotes: () => void;
   onPersonClick: (personId: string) => void;
 }) {
+  // A családtagokat befogadóhelyenként csoportosítjuk (Map kulcs =
+  // shelter_id), hogy a térképen szálláshelyenként egy jelölőn belül
+  // lehessen felsorolni az odatartozó tagok neveit
   const shelterGroups = useMemo(() => {
     const groups = new Map<string, { name: string; coordinates: { lat: number; lng: number }; members: string[] }>();
     for (const m of family.members) {
