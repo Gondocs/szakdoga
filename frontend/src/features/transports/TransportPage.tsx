@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -9,6 +9,7 @@ import {
   TextField,
   MenuItem,
   Chip,
+  LinearProgress,
   CircularProgress,
   Dialog,
   DialogTitle,
@@ -31,6 +32,12 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import ScheduleIcon from '@mui/icons-material/Schedule';
+import PlaceIcon from '@mui/icons-material/Place';
+import PersonIcon from '@mui/icons-material/Person';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -55,10 +62,19 @@ import {
 import { specialNeedCategoryLabels, specialNeedDetailLabel } from '../../constants/specialNeeds';
 import { registrationStatusLabels } from '../../constants/registrationStatus';
 import { SpecialNeedIcon } from '../../components/ui/SpecialNeedIcon';
+import { KpiCard } from '../../components/ui/KpiCard';
 import { useAuth } from '../auth/AuthContext';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { QrScannerDialog } from '../../components/QrScannerDialog';
 import { EmptyState } from '../../components/ui/EmptyState';
+
+// A jármű kihasználtsági arányához rendel színt: betelt (piros),
+// majdnem tele (sárga, 75% fölött), egyébként rendben (zöld)
+function capacityColor(ratio: number): 'success' | 'warning' | 'error' {
+  if (ratio >= 1) return 'error';
+  if (ratio >= 0.75) return 'warning';
+  return 'success';
+}
 
 function MapRecenter({ lat, lng }: { lat: number; lng: number }) {
   const map = useMap();
@@ -70,6 +86,7 @@ function MapRecenter({ lat, lng }: { lat: number; lng: number }) {
 
 export function TransportPage() {
   const { eventId } = useParams<{ eventId: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const canManage = user?.role?.code === 'admin' || user?.role?.code === 'manager';
 
@@ -118,6 +135,16 @@ export function TransportPage() {
   }, [selectedId]);
 
   const selectedTransport = transports.find((t) => t.id === selectedId) ?? null;
+
+  // Az összes jármű adataiból KPI-összesítőt számolunk: járműszám, a
+  // fedélzeten lévők és a teljes kapacitás összege, valamint a késésben
+  // lévő járatok száma
+  const summary = useMemo(() => {
+    const totalOnboard = transports.reduce((sum, t) => sum + t.onboard_count, 0);
+    const totalCapacity = transports.reduce((sum, t) => sum + (t.capacity ?? 0), 0);
+    const delayedCount = transports.filter((t) => !!t.delay_minutes && t.delay_minutes > 0).length;
+    return { vehicleCount: transports.length, totalOnboard, totalCapacity, delayedCount };
+  }, [transports]);
 
   async function handleSimulatePosition(transportId: string) {
     setIsSimulating(true);
@@ -256,64 +283,116 @@ export function TransportPage() {
         </Button>
       </Stack>
 
+      {transports.length > 0 && (
+        <Stack direction="row" flexWrap="wrap" gap={2} sx={{ mb: 3 }}>
+          <KpiCard label="Járművek" value={summary.vehicleCount} icon={<DirectionsBusIcon fontSize="small" />} />
+          <KpiCard
+            label="Fedélzeten összesen"
+            value={summary.totalCapacity > 0 ? `${summary.totalOnboard} / ${summary.totalCapacity}` : summary.totalOnboard}
+            icon={<PeopleAltIcon fontSize="small" />}
+          />
+          <KpiCard label="Késésben lévő járművek" value={summary.delayedCount} icon={<WarningAmberIcon fontSize="small" />} />
+        </Stack>
+      )}
+
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="flex-start">
         <Stack spacing={1.5} sx={{ width: { xs: '100%', md: 320 }, flexShrink: 0 }}>
-          {transports.map((t) => (
-            <Paper
-              key={t.id}
-              variant="outlined"
-              sx={{
-                p: 2,
-                cursor: 'pointer',
-                borderColor: t.id === selectedId ? 'primary.main' : undefined,
-                borderWidth: t.id === selectedId ? 2 : 1,
-              }}
-              onClick={() => setSelectedId(t.id)}
-            >
-              <Stack direction="row" spacing={1.5} alignItems="center">
-                <DirectionsBusIcon color="secondary" />
-                <Box sx={{ flex: 1 }}>
-                  <Typography fontWeight={700}>{t.code}</Typography>
-                  {t.vehicle && (
-                    <Typography variant="caption" color="text.secondary" display="block">
-                      {t.vehicle.label} ({t.vehicle.plate_number})
-                    </Typography>
-                  )}
-                  {(t.origin || t.destination) && (
-                    <Typography variant="caption" color="text.secondary" display="block">
-                      {t.origin ?? '–'} → {t.destination ?? '–'}
-                    </Typography>
-                  )}
-                  {t.escort_name && (
-                    <Typography variant="caption" color="text.secondary" display="block">
-                      Kísérő: {t.escort_name}
-                    </Typography>
-                  )}
-                  {!!t.delay_minutes && (
-                    <Typography variant="caption" color="warning.main" display="block">
-                      Késés: {t.delay_minutes} perc{t.route_change_note ? ` — ${t.route_change_note}` : ''}
-                    </Typography>
-                  )}
-                  <Typography
-                    variant="body2"
-                    color={t.capacity && t.onboard_count >= t.capacity ? 'warning.main' : 'text.secondary'}
+          {transports.map((t) => {
+            const ratio = t.capacity ? t.onboard_count / t.capacity : 0;
+            const isDelayed = !!t.delay_minutes && t.delay_minutes > 0;
+            return (
+              <Paper
+                key={t.id}
+                variant="outlined"
+                sx={{
+                  p: 2,
+                  cursor: 'pointer',
+                  transition: 'box-shadow 0.15s, border-color 0.15s',
+                  borderColor: t.id === selectedId ? 'primary.main' : undefined,
+                  borderWidth: t.id === selectedId ? 2 : 1,
+                  '&:hover': { boxShadow: 2, borderColor: 'primary.main' },
+                }}
+                onClick={() => setSelectedId(t.id)}
+              >
+                <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 40,
+                      height: 40,
+                      borderRadius: '50%',
+                      bgcolor: 'secondary.main',
+                      color: 'secondary.contrastText',
+                      flexShrink: 0,
+                    }}
                   >
-                    Fedélzeten: {t.onboard_count}{t.capacity ? ` / ${t.capacity}` : ''} fő
-                  </Typography>
-                </Box>
-                {canManage && (
-                  <Stack direction="row" spacing={0} onClick={(e) => e.stopPropagation()}>
-                    <IconButton size="small" onClick={() => setEditTransport(t)}>
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" color="error" onClick={() => setDeleteTarget(t)}>
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Stack>
-                )}
-              </Stack>
-            </Paper>
-          ))}
+                    <DirectionsBusIcon fontSize="small" />
+                  </Box>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap sx={{ rowGap: 0.5 }}>
+                      <Typography fontWeight={700} noWrap>{t.code}</Typography>
+                      {isDelayed && (
+                        <Chip
+                          size="small"
+                          color="warning"
+                          icon={<ScheduleIcon />}
+                          label={`${t.delay_minutes} perc késés`}
+                        />
+                      )}
+                    </Stack>
+                    {t.vehicle && (
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        {t.vehicle.label} ({t.vehicle.plate_number})
+                      </Typography>
+                    )}
+                    {(t.origin || t.destination) && (
+                      <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 0.5 }}>
+                        <PlaceIcon fontSize="inherit" color="disabled" />
+                        <Typography variant="caption" color="text.secondary">
+                          {t.origin ?? '–'} → {t.destination ?? '–'}
+                        </Typography>
+                      </Stack>
+                    )}
+                    {t.escort_name && (
+                      <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 0.5 }}>
+                        <PersonIcon fontSize="inherit" color="disabled" />
+                        <Typography variant="caption" color="text.secondary">{t.escort_name}</Typography>
+                      </Stack>
+                    )}
+                    {t.route_change_note && isDelayed && (
+                      <Typography variant="caption" color="warning.main" display="block" sx={{ mt: 0.5 }}>
+                        {t.route_change_note}
+                      </Typography>
+                    )}
+
+                    <Typography variant="body2" sx={{ mt: 1, mb: 0.5 }}>
+                      Fedélzeten: <strong>{t.onboard_count}{t.capacity ? ` / ${t.capacity}` : ''}</strong> fő
+                    </Typography>
+                    {!!t.capacity && (
+                      <LinearProgress
+                        variant="determinate"
+                        value={Math.min(ratio * 100, 100)}
+                        color={capacityColor(ratio)}
+                        sx={{ height: 6, borderRadius: 3 }}
+                      />
+                    )}
+                  </Box>
+                  {canManage && (
+                    <Stack direction="row" spacing={0} onClick={(e) => e.stopPropagation()} sx={{ flexShrink: 0 }}>
+                      <IconButton size="small" onClick={() => setEditTransport(t)}>
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton size="small" color="error" onClick={() => setDeleteTarget(t)}>
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Stack>
+                  )}
+                </Stack>
+              </Paper>
+            );
+          })}
           {transports.length === 0 && (
             <EmptyState title="Még nincs felvéve szállítóeszköz ehhez az eseményhez" />
           )}
@@ -321,10 +400,30 @@ export function TransportPage() {
 
         {selectedTransport && (
           <Paper variant="outlined" sx={{ p: 3, flex: 1, width: '100%' }}>
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mb: 0.5, rowGap: 1 }}>
               <Typography variant="h6" fontWeight={700}>{selectedTransport.code}</Typography>
-              <Chip size="small" label={`${selectedTransport.onboard_count} fő a fedélzeten`} />
+              <Chip
+                size="small"
+                color={
+                  selectedTransport.capacity && selectedTransport.onboard_count / selectedTransport.capacity >= 0.75
+                    ? capacityColor(selectedTransport.onboard_count / selectedTransport.capacity)
+                    : 'default'
+                }
+                label={`${selectedTransport.onboard_count}${selectedTransport.capacity ? ` / ${selectedTransport.capacity}` : ''} fő a fedélzeten`}
+              />
+              {!!selectedTransport.delay_minutes && (
+                <Chip size="small" color="warning" icon={<ScheduleIcon />} label={`${selectedTransport.delay_minutes} perc késés`} />
+              )}
             </Stack>
+            {(selectedTransport.origin || selectedTransport.destination) && (
+              <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 2 }}>
+                <PlaceIcon fontSize="small" color="disabled" />
+                <Typography variant="body2" color="text.secondary">
+                  {selectedTransport.origin ?? '–'} → {selectedTransport.destination ?? '–'}
+                  {selectedTransport.escort_name ? ` · Kísérő: ${selectedTransport.escort_name}` : ''}
+                </Typography>
+              </Stack>
+            )}
 
             <Box sx={{ mb: 3 }}>
               <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
@@ -373,16 +472,26 @@ export function TransportPage() {
               ) : passengers.length === 0 ? (
                 <Typography variant="body2" color="text.secondary">Jelenleg senki nincs felszállva erre a járműre.</Typography>
               ) : (
-                <List dense sx={{ maxHeight: 260, overflowY: 'auto', bgcolor: 'action.hover', borderRadius: 1 }}>
+                <List dense sx={{ maxHeight: 320, overflowY: 'auto', bgcolor: 'action.hover', borderRadius: 1 }}>
                   {passengers.map((p) => (
-                    <ListItemButton key={p.id} onClick={() => setDetailsPerson(p)}>
+                    <ListItemButton key={p.id} onClick={() => setDetailsPerson(p)} sx={{ alignItems: 'flex-start' }}>
                       <ListItemText
                         primary={p.full_name}
-                        secondary={p.municipality?.name ?? '–'}
+                        secondary={
+                          <>
+                            {p.municipality?.name ?? '–'}
+                            {p.phone ? ` · ${p.phone}` : ''}
+                          </>
+                        }
                       />
-                      {(p.special_needs ?? []).map((n) => (
-                        <SpecialNeedIcon key={n.id} category={n.category} needType={n.type} needDescription={n.description} fontSize="small" color="secondary" />
-                      ))}
+                      <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap sx={{ justifyContent: 'flex-end', rowGap: 0.5 }}>
+                        {p.registration && (
+                          <Chip size="small" label={registrationStatusLabels[p.registration.status]} />
+                        )}
+                        {(p.special_needs ?? []).map((n) => (
+                          <SpecialNeedIcon key={n.id} category={n.category} needType={n.type} needDescription={n.description} fontSize="small" color="secondary" />
+                        ))}
+                      </Stack>
                     </ListItemButton>
                   ))}
                 </List>
@@ -563,6 +672,15 @@ export function TransportPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDetailsPerson(null)}>Bezárás</Button>
+          {detailsPerson && (
+            <Button
+              variant="contained"
+              startIcon={<OpenInNewIcon />}
+              onClick={() => navigate(`/szemelyek/${detailsPerson.id}`)}
+            >
+              Tovább az adatlapra
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     </Box>
