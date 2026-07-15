@@ -70,6 +70,9 @@ export function RepatriationPage() {
     }
   }
 
+  // Településenkénti visszatelepítési adatok összesítése a KPI-sávhoz:
+  // engedélyezési státuszok szerinti darabszám, valamint az érintett és
+  // már ténylegesen hazatért személyek összesített száma
   const summary = useMemo(() => {
     const totalPersons = rows.reduce((sum, r) => sum + r.person_count, 0);
     const totalReturned = rows.reduce((sum, r) => sum + r.returned_count, 0);
