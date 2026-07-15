@@ -48,6 +48,8 @@ export function FamilyDetailPage() {
     fetchFamily(familyId).then(setFamily).finally(() => setIsLoading(false));
   }, [familyId]);
 
+  // A család akkor számít "szétszakadtnak", ha a tagok egynél több eltérő
+  // befogadóhelyen tartózkodnak jelenleg
   const shelterSplit = useMemo(() => {
     if (!family) return false;
     const shelterIds = new Set(
