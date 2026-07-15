@@ -58,6 +58,9 @@ const intervalFormat: Record<TimelineInterval, Intl.DateTimeFormatOptions> = {
   day: { month: 'short', day: 'numeric' },
 };
 
+// A backend által számolt "hány óra múlva telik be a kapacitás" értéket
+// alakítja emberi olvasásra alkalmas szöveggé: percben (1 óránál rövidebb),
+// órában, vagy napban (2 napnál hosszabb esetén) fejezi ki az időtartamot
 function formatForecast(hours: number | null, intakeRatePerHour: number): string {
   if (hours === null) {
     return 'A jelenlegi ütem mellett nem várható telítődés.';
