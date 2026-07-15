@@ -3,6 +3,9 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { FontScaleProvider, useFontScale } from './FontScaleContext';
 
+// Egyszerű teszt-komponens, ami a hookot fogyasztja, hogy a Context
+// viselkedése (érték olvasása, setFontScale hívása) renderelt DOM-on
+// keresztül is ellenőrizhető legyen
 function TestConsumer() {
   const { fontScale, setFontScale } = useFontScale();
   return (
