@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { specialNeedDetailLabel } from './specialNeeds';
 
+// A specialNeedDetailLabel egy elsőbbségi sorrendet valósít meg:
+// katalógusban ismert típus > szabad szöveges leírás > csak a kategória
+// neve. Az alábbi tesztek ezt a három ágat fedik le.
 describe('specialNeedDetailLabel', () => {
   it('a katalógusból ismert típust részesíti előnyben a szöveges leírással szemben', () => {
     const label = specialNeedDetailLabel({
