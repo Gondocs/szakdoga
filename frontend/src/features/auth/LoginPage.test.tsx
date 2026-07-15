@@ -11,6 +11,9 @@ vi.mock('./AuthContext', () => ({
   useAuth: vi.fn(),
 }));
 
+// Csak a useNavigate hookot mockoljuk ki (a többi react-router-dom exportot
+// az eredeti implementáció szolgáltatja, pl. a MemoryRouter-t is
+// használjuk), hogy ellenőrizhető legyen, hova navigál a komponens
 vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router-dom')>();
   return { ...actual, useNavigate: () => navigateMock };
@@ -66,6 +69,10 @@ describe('LoginPage', () => {
   });
 
   it('a beküldés alatt letiltja a gombot, hogy ne lehessen duplán elküldeni', async () => {
+    // A login Promise-t szándékosan "lógva" hagyjuk (a resolve függvényt
+    // kimentjük), hogy a teszt a beküldés közbeni (pending) állapotban is
+    // meg tudja vizsgálni a gomb letiltottságát, mielőtt manuálisan
+    // feloldanánk a Promise-t
     let resolveLogin: () => void = () => {};
     const login = vi.fn(
       () =>
