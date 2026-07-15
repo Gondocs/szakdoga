@@ -5,12 +5,18 @@ import { DashboardCharts } from './DashboardCharts';
 import { fetchRegistrationsTimeline } from '../../lib/api/endpoints';
 import type { DashboardData } from '../../types';
 
+// A komponens belül API-hívást indít az időbeli diagramhoz, ezt mockoljuk,
+// hogy a teszt ne valós hálózati kérésen, hanem a mock visszatérési
+// értékén keresztül vezérelhető legyen
 vi.mock('../../lib/api/endpoints', () => ({
   fetchRegistrationsTimeline: vi.fn(),
 }));
 
 const mockedFetchTimeline = vi.mocked(fetchRegistrationsTimeline);
 
+// Gyári (factory) függvény egy teljes, érvényes DashboardData objektumhoz,
+// hogy az egyes tesztek csak a rájuk nézve releváns mezőket kelljen
+// felülírniuk (overrides), a többi kötelező mezőt ne kelljen megismételni
 function makeDashboardData(overrides: Partial<DashboardData> = {}): DashboardData {
   return {
     registered_count: 187,
