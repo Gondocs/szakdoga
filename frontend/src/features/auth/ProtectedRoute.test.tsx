@@ -5,12 +5,18 @@ import { ProtectedRoute } from './ProtectedRoute';
 import { useAuth } from './AuthContext';
 import type { RoleCode, User } from '../../types';
 
+// Az AuthContext-et mockoljuk, hogy tesztenként tetszőleges
+// bejelentkezési/betöltési állapotot tudjunk beállítani anélkül, hogy
+// valós bejelentkezési folyamatot kellene lefuttatni
 vi.mock('./AuthContext', () => ({
   useAuth: vi.fn(),
 }));
 
 const mockedUseAuth = vi.mocked(useAuth);
 
+// Egy minimális útvonal-fát épít fel a ProtectedRoute körül, hogy
+// tesztelhető legyen a "Védett tartalom" megjelenítése vagy a
+// "Bejelentkezés oldal"-ra való átirányítás
 function renderProtected(allow?: Parameters<typeof ProtectedRoute>[0]['allow']) {
   return render(
     <MemoryRouter initialEntries={['/vedett']}>
