@@ -4,6 +4,8 @@ import { RiskBadge } from './RiskBadge';
 import type { RiskLevel } from '../../types';
 
 describe('RiskBadge', () => {
+  // Paraméterezett teszt: mind a négy kockázati szintre lefuttatja ugyanazt
+  // az ellenőrzést a hozzá tartozó magyar címkével
   it.each<[RiskLevel, string]>([
     ['low', 'Alacsony'],
     ['medium', 'Közepes'],
