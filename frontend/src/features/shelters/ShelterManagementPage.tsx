@@ -92,6 +92,8 @@ export function ShelterManagementPage() {
     }
   }
 
+  // Névre/településre szűrjük, majd a kiválasztott oszlop szerint (település,
+  // kapacitás vagy státusz) rendezzük a befogadóhelyek listáját
   const displayedShelters = useMemo(() => {
     const term = search.trim().toLowerCase();
     const filtered = term
