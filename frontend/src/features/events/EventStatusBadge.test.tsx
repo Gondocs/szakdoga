@@ -4,6 +4,8 @@ import { EventStatusBadge } from './EventStatusBadge';
 import type { EventStatus } from '../../types';
 
 describe('EventStatusBadge', () => {
+  // Paraméterezett teszt: a négy lehetséges eseménystátusz mindegyikére
+  // egy-egy futtatást indít, ellenőrizve a hozzá tartozó magyar címkét
   it.each<[EventStatus, string]>([
     ['draft', 'Tervezet'],
     ['active', 'Aktív'],
