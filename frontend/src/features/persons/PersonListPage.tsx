@@ -425,6 +425,11 @@ export function PersonListPage() {
                   <CircleMarker
                     key={m.municipality_id}
                     center={[m.lat, m.lng]}
+                    // A kör sugarát a településen regisztráltak számának
+                    // négyzetgyökéből számoljuk (nem lineárisan), hogy a
+                    // terület nagysága arányos legyen a létszámmal, felső
+                    // korláttal (22px), nehogy egy nagy létszám túl nagy
+                    // kört rajzoljon a térképen
                     radius={Math.min(6 + Math.sqrt(m.person_count) * 2, 22)}
                     pathOptions={{ color: '#a3172b', fillColor: '#a3172b', fillOpacity: 0.3, weight: 1 }}
                     eventHandlers={{
