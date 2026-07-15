@@ -232,6 +232,10 @@ function formatValue(key: string, value: unknown): string {
   return String(value);
 }
 
+// A napló "előtte" és "utána" JSON-állapotát hasonlítja össze mezőnként,
+// és csak azokat a mezőket jeleníti meg, amelyeknek ténylegesen
+// megváltozott az értéke (a JSON-szerializált formát vetjük össze, hogy a
+// beágyazott objektum/tömb mezők is helyesen összehasonlíthatók legyenek)
 function FieldDiff({ before, after }: { before: Record<string, unknown> | null; after: Record<string, unknown> | null }) {
   const keys = Array.from(new Set([...(before ? Object.keys(before) : []), ...(after ? Object.keys(after) : [])]))
     .filter((k) => !HIDDEN_FIELDS.has(k))
