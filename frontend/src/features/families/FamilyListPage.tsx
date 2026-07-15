@@ -18,10 +18,10 @@ import {
   TableContainer,
   Tooltip,
   TableSortLabel,
+  Alert,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { alpha } from '@mui/material/styles';
 import SearchIcon from '@mui/icons-material/Search';
 import GroupsIcon from '@mui/icons-material/Groups';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
@@ -58,6 +58,8 @@ export function FamilyListPage() {
     }
   }
 
+  // A keresőszó alapján szűrjük a családkódra, majd a kiválasztott oszlop
+  // (családkód vagy létszám) szerint, a megadott iránnyal rendezzük a listát
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     const base = term ? families.filter((f) => f.family_code.toLowerCase().includes(term)) : families;
@@ -70,32 +72,29 @@ export function FamilyListPage() {
     });
   }, [families, search, sortBy, sortDir]);
 
+  // A szétszakadt (több befogadóhelyen tartózkodó tagú) családok száma, a
+  // figyelmeztető sáv megjelenítéséhez
   const splitCount = useMemo(() => families.filter((f) => f.is_split).length, [families]);
-
-  if (isLoading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
 
   return (
     <Box>
-      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 3 }}>
-        <GroupsIcon color="primary" />
+      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2} sx={{ mb: 3 }}>
         <Typography variant="h4" fontWeight={700}>Családok / csoportok</Typography>
       </Stack>
 
       {splitCount > 0 && (
-        <Paper variant="outlined" sx={{ p: 2, mb: 2, borderColor: 'warning.main', bgcolor: (t) => alpha(t.palette.warning.main, 0.08) }}>
-          <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" flexWrap="wrap">
-            <Stack direction="row" spacing={1} alignItems="center">
-              <WarningAmberIcon color="warning" />
-              <Typography variant="body2">
-                {splitCount} család tagjai jelenleg különböző befogadóhelyeken tartózkodnak — érdemes ellenőrizni és
-                segíteni az újraegyesítésüket.
-              </Typography>
-            </Stack>
-            <Button size="small" variant="outlined" color="warning" onClick={() => navigate(`/esemenyek/${eventId}/csaladok/egyesites`)}>
+        <Alert
+          severity="warning"
+          sx={{ mb: 2 }}
+          action={
+            <Button color="inherit" size="small" onClick={() => navigate(`/esemenyek/${eventId}/csaladok/egyesites`)}>
               Munkalista megnyitása
             </Button>
-          </Stack>
-        </Paper>
+          }
+        >
+          {splitCount} család tagjai jelenleg különböző befogadóhelyeken tartózkodnak — érdemes ellenőrizni és
+          segíteni az újraegyesítésüket.
+        </Alert>
       )}
 
       <TextField
@@ -110,27 +109,30 @@ export function FamilyListPage() {
         }}
       />
 
-      {isMobile ? (
+      {isLoading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>
+      ) : isMobile ? (
         <Stack spacing={1.5}>
           {filtered.map((f) => (
             <Paper key={f.id} variant="outlined" sx={{ p: 2, cursor: 'pointer' }} onClick={() => navigate(`/csaladok/${f.id}`)}>
               <Stack direction="row" justifyContent="space-between" alignItems="center">
-                <Box>
-                  <Stack direction="row" spacing={0.5} alignItems="center">
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <GroupsIcon color="secondary" />
+                  <Box>
                     <Typography fontWeight={700}>{f.family_code}</Typography>
-                    {f.is_split && (
-                      <Tooltip title={SPLIT_TOOLTIP}>
-                        <WarningAmberIcon fontSize="small" color="warning" />
-                      </Tooltip>
-                    )}
-                  </Stack>
-                  <Chip size="small" label={`${f.members_count} fő`} sx={{ mt: 0.5 }} />
-                </Box>
+                    <Typography variant="body2" color="text.secondary">{f.members_count} fő</Typography>
+                  </Box>
+                </Stack>
                 <ChevronRightIcon color="action" />
               </Stack>
+              {f.is_split && (
+                <Stack direction="row" spacing={1} sx={{ mt: 1.5 }} flexWrap="wrap" alignItems="center">
+                  <Chip size="small" variant="outlined" color="warning" icon={<WarningAmberIcon />} label="Szétszakadt" />
+                </Stack>
+              )}
             </Paper>
           ))}
-          {filtered.length === 0 && <EmptyState title="Nincs találat" />}
+          {filtered.length === 0 && <EmptyState title="Nincs találat" description="A keresésnek megfelelő család nem található." />}
         </Stack>
       ) : (
         <TableContainer component={Paper} variant="outlined">
@@ -147,25 +149,29 @@ export function FamilyListPage() {
                     Létszám
                   </TableSortLabel>
                 </TableCell>
-                <TableCell></TableCell>
+                <TableCell>Állapot</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {filtered.map((f) => (
                 <TableRow key={f.id} hover sx={{ cursor: 'pointer' }} onClick={() => navigate(`/csaladok/${f.id}`)}>
                   <TableCell>{f.family_code}</TableCell>
-                  <TableCell><Chip size="small" label={`${f.members_count} fő`} /></TableCell>
+                  <TableCell>{f.members_count} fő</TableCell>
                   <TableCell>
                     {f.is_split && (
                       <Tooltip title={SPLIT_TOOLTIP}>
-                        <WarningAmberIcon fontSize="small" color="warning" />
+                        <Chip size="small" variant="outlined" color="warning" icon={<WarningAmberIcon />} label="Szétszakadt" />
                       </Tooltip>
                     )}
                   </TableCell>
                 </TableRow>
               ))}
               {filtered.length === 0 && (
-                <TableRow><TableCell colSpan={3}><EmptyState title="Nincs találat" /></TableCell></TableRow>
+                <TableRow>
+                  <TableCell colSpan={3}>
+                    <EmptyState title="Nincs találat" description="A keresésnek megfelelő család nem található." />
+                  </TableCell>
+                </TableRow>
               )}
             </TableBody>
           </Table>
