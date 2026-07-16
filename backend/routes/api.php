@@ -25,6 +25,14 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login']);
 
+// A tényleges brute-force elleni védelem az AuthController-ben van (max.
+// 5 hibás kód után a pending belépés lezárul); ez a throttle csak egy
+// tágabb, IP-alapú biztonsági háló mindkét végpontra összesítve.
+Route::middleware('throttle:20,1')->group(function () {
+    Route::post('/login/two-factor/verify', [AuthController::class, 'verifyTwoFactor']);
+    Route::post('/login/two-factor/resend', [AuthController::class, 'resendTwoFactor']);
+});
+
 // Bejelentkezés nélkül elérhető lakossági önkiszolgáló előregisztráció
 // (Interreg tanulmány "1. fázis"). Rate-limitelve a visszaélések ellen.
 Route::middleware('throttle:20,1')->group(function () {
