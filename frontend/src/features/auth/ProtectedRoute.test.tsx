@@ -44,14 +44,25 @@ function makeUser(roleCode: RoleCode): User {
   };
 }
 
+// A ProtectedRoute csak a user/isLoading mezőket használja, a többi
+// AuthContext-mezőt (2FA-hoz kapcsolódó állapot/műveletek) csak a típus
+// teljessége miatt kell megadni a mockban.
+const authMockDefaults = {
+  pendingTwoFactor: false,
+  login: vi.fn(),
+  verifyTwoFactor: vi.fn(),
+  resendTwoFactor: vi.fn(),
+  cancelTwoFactor: vi.fn(),
+  logout: vi.fn(),
+  setUser: vi.fn(),
+};
+
 describe('ProtectedRoute', () => {
   it('betöltés közben töltésjelzőt mutat, nem a védett tartalmat', () => {
     mockedUseAuth.mockReturnValue({
+      ...authMockDefaults,
       user: null,
       isLoading: true,
-      login: vi.fn(),
-      logout: vi.fn(),
-      setUser: vi.fn(),
     });
 
     renderProtected();
@@ -62,11 +73,9 @@ describe('ProtectedRoute', () => {
 
   it('bejelentkezés nélkül a bejelentkezési oldalra irányít', () => {
     mockedUseAuth.mockReturnValue({
+      ...authMockDefaults,
       user: null,
       isLoading: false,
-      login: vi.fn(),
-      logout: vi.fn(),
-      setUser: vi.fn(),
     });
 
     renderProtected();
@@ -77,11 +86,9 @@ describe('ProtectedRoute', () => {
 
   it('bejelentkezett, de nem engedélyezett szerepkörnél a "Nincs jogosultsága" oldalt mutatja', () => {
     mockedUseAuth.mockReturnValue({
+      ...authMockDefaults,
       user: makeUser('registrar'),
       isLoading: false,
-      login: vi.fn(),
-      logout: vi.fn(),
-      setUser: vi.fn(),
     });
 
     renderProtected(['admin', 'manager']);
@@ -92,11 +99,9 @@ describe('ProtectedRoute', () => {
 
   it('engedélyezett szerepkörrel megjeleníti a védett tartalmat', () => {
     mockedUseAuth.mockReturnValue({
+      ...authMockDefaults,
       user: makeUser('admin'),
       isLoading: false,
-      login: vi.fn(),
-      logout: vi.fn(),
-      setUser: vi.fn(),
     });
 
     renderProtected(['admin', 'manager']);
@@ -106,11 +111,9 @@ describe('ProtectedRoute', () => {
 
   it('"allow" megadása nélkül bármely bejelentkezett felhasználónak megjeleníti a tartalmat', () => {
     mockedUseAuth.mockReturnValue({
+      ...authMockDefaults,
       user: makeUser('auditor'),
       isLoading: false,
-      login: vi.fn(),
-      logout: vi.fn(),
-      setUser: vi.fn(),
     });
 
     renderProtected();
