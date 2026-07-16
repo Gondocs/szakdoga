@@ -53,6 +53,11 @@ return [
             'transport' => 'ses',
         ],
 
+        'mailtrap' => [
+            'transport' => 'mailtrap',
+            'key' => env('MAILTRAP_KEY'),
+        ],
+
         'postmark' => [
             'transport' => 'postmark',
             // 'message_stream_id' => env('POSTMARK_MESSAGE_STREAM_ID'),
@@ -114,5 +119,20 @@ return [
         'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Two-Factor Kód Fogadó (ideiglenes felülírás)
+    |--------------------------------------------------------------------------
+    |
+    | Amíg a rendszerben nincsenek valós, léteső e-mail címekkel rendelkező
+    | staff felhasználók (a seederek próba-domainű címeket használnak, pl.
+    | @katasztrofavedelem.test), minden 2FA-kód erre a címre megy a
+    | felhasználó tényleges e-mail címe helyett. Éles/valós e-mailekkel
+    | rendelkező felhasználóknál töröld ezt az env kulcsot.
+    |
+    */
+
+    'two_factor_test_recipient' => env('TWO_FACTOR_TEST_RECIPIENT'),
 
 ];
