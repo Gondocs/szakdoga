@@ -3,10 +3,12 @@
 namespace Tests\Feature;
 
 use App\Enums\RoleCode;
+use App\Mail\TwoFactorCodeMail;
 use App\Models\Municipality;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class AuditLogTest extends TestCase
@@ -18,6 +20,8 @@ class AuditLogTest extends TestCase
     // kísérlet "significant" (kiemelt) jelzéssel.
     public function test_login_logout_and_failed_login_are_logged(): void
     {
+        Mail::fake();
+
         $role = Role::create(['code' => RoleCode::Admin->value, 'name' => 'Admin']);
         $user = User::factory()->create(['email' => 'admin@example.com', 'password' => bcrypt('password'), 'role_id' => $role->id]);
 
@@ -32,6 +36,18 @@ class AuditLogTest extends TestCase
             'email' => 'admin@example.com',
             'password' => 'password',
         ])->assertOk();
+
+        $code = null;
+        Mail::assertSent(TwoFactorCodeMail::class, function (TwoFactorCodeMail $mail) use (&$code) {
+            $code = $mail->code;
+
+            return true;
+        });
+
+        $this->withSession(['2fa_user_id' => $user->id])
+            ->withHeader('Referer', 'http://localhost:5173')
+            ->postJson('/api/login/two-factor/verify', ['code' => $code])
+            ->assertOk();
 
         $this->assertDatabaseHas('audit_logs', ['action' => 'login', 'user_id' => $user->id]);
 
