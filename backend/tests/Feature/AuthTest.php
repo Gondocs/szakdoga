@@ -3,21 +3,26 @@
 namespace Tests\Feature;
 
 use App\Enums\RoleCode;
+use App\Mail\TwoFactorCodeMail;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class AuthTest extends TestCase
 {
     use RefreshDatabase;
 
-    // Helyes e-mail/jelszó párossal a bejelentkezés sikeres, és a válasz a
-    // bejelentkezett felhasználó adatait adja vissza.
-    public function test_user_can_login_with_correct_credentials(): void
+    // Helyes e-mail/jelszó párossal a bejelentkezés a 2FA-lépést kéri
+    // (nem jelentkezteti be azonnal a felhasználót), majd a kiküldött
+    // kóddal a /login/two-factor/verify végpont sikeresen bejelentkeztet.
+    public function test_user_can_login_with_correct_credentials_and_two_factor_code(): void
     {
+        Mail::fake();
+
         $role = Role::create(['code' => RoleCode::Admin->value, 'name' => 'Admin']);
-        User::factory()->create([
+        $user = User::factory()->create([
             'email' => 'admin@example.com',
             'password' => bcrypt('password'),
             'role_id' => $role->id,
@@ -28,7 +33,26 @@ class AuthTest extends TestCase
             'password' => 'password',
         ]);
 
-        $response->assertOk()->assertJsonPath('data.email', 'admin@example.com');
+        $response->assertOk()->assertJson(['two_factor_required' => true]);
+        $this->assertGuest();
+
+        $code = null;
+        Mail::assertSent(TwoFactorCodeMail::class, function (TwoFactorCodeMail $mail) use (&$code) {
+            $code = $mail->code;
+
+            return true;
+        });
+
+        // A teszt-kliens nem viszi át automatikusan a /login által beállított
+        // session-sütit a következő hívásra (lásd lentebb, a login-history
+        // tesztnél is), ezért a pending 2FA-állapotot itt explicit módon
+        // állítjuk be a session-ben.
+        $verify = $this->withSession(['2fa_user_id' => $user->id])
+            ->withHeader('Referer', 'http://localhost:5173')
+            ->postJson('/api/login/two-factor/verify', ['code' => $code]);
+
+        $verify->assertOk()->assertJsonPath('data.email', 'admin@example.com');
+        $this->assertAuthenticated();
     }
 
     // Hibás jelszóval a bejelentkezés elutasításra kerül (422).
@@ -104,6 +128,8 @@ class AuthTest extends TestCase
     // legalább a saját sikeres és sikertelen bejelentkezéseit láthatja.
     public function test_login_history_is_available_even_to_roles_without_audit_log_access(): void
     {
+        Mail::fake();
+
         $role = Role::create(['code' => RoleCode::Registrar->value, 'name' => 'Registrar']);
         $user = User::factory()->create([
             'email' => 'registrar@example.com',
@@ -121,8 +147,21 @@ class AuthTest extends TestCase
             'password' => 'password',
         ])->assertOk();
 
+        $code = null;
+        Mail::assertSent(TwoFactorCodeMail::class, function (TwoFactorCodeMail $mail) use (&$code) {
+            $code = $mail->code;
+
+            return true;
+        });
+
+        $this->withSession(['2fa_user_id' => $user->id])
+            ->withHeader('Referer', 'http://localhost:5173')
+            ->postJson('/api/login/two-factor/verify', ['code' => $code])
+            ->assertOk();
+
         $this->assertDatabaseHas('audit_logs', ['user_id' => $user->id, 'action' => 'login']);
         $this->assertDatabaseHas('audit_logs', ['user_id' => $user->id, 'action' => 'login_failed']);
+        $this->assertDatabaseHas('audit_logs', ['user_id' => $user->id, 'action' => 'two_factor_sent']);
 
         // A tényleges bejelentkezés által beállított session-sütit a teszt-kliens
         // nem viszi át automatikusan a következő hívásra, ezért a védett
