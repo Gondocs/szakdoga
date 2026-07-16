@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LoginRequest;
 use App\Http\Resources\UserResource;
+use App\Mail\TwoFactorCodeMail;
 use App\Models\AuditLog;
 use App\Models\User;
 use App\Services\AuditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
@@ -18,6 +20,10 @@ use OpenApi\Attributes as OA;
 
 class AuthController extends Controller
 {
+    private const TWO_FACTOR_MAX_ATTEMPTS = 5;
+
+    private const TWO_FACTOR_CODE_TTL_MINUTES = 10;
+
     #[OA\Post(
         path: '/api/login',
         summary: 'Bejelentkezés (Sanctum SPA session)',
@@ -35,18 +41,24 @@ class AuthController extends Controller
         responses: [
             new OA\Response(
                 response: 200,
-                description: 'Sikeres bejelentkezés',
+                description: 'Helyes hitelesítő adatok — vagy a bejelentkezett felhasználó (ha nincs 2FA lépés hátra), '.
+                    'vagy egy jelzés, hogy a rendszer e-mailben kiküldött egy 2FA kódot',
                 content: new OA\JsonContent(
-                    properties: [
-                        new OA\Property(property: 'data', properties: [
-                            new OA\Property(property: 'id', type: 'integer', example: 1),
-                            new OA\Property(property: 'name', type: 'string', example: 'Admin Felhasználó'),
-                            new OA\Property(property: 'email', type: 'string', example: 'admin@katasztrofavedelem.test'),
-                            new OA\Property(property: 'role', properties: [
-                                new OA\Property(property: 'code', type: 'string', example: 'admin'),
-                                new OA\Property(property: 'name', type: 'string', example: 'Rendszergazda'),
+                    oneOf: [
+                        new OA\Schema(properties: [
+                            new OA\Property(property: 'data', properties: [
+                                new OA\Property(property: 'id', type: 'integer', example: 1),
+                                new OA\Property(property: 'name', type: 'string', example: 'Admin Felhasználó'),
+                                new OA\Property(property: 'email', type: 'string', example: 'admin@katasztrofavedelem.test'),
+                                new OA\Property(property: 'role', properties: [
+                                    new OA\Property(property: 'code', type: 'string', example: 'admin'),
+                                    new OA\Property(property: 'name', type: 'string', example: 'Rendszergazda'),
+                                ], type: 'object'),
                             ], type: 'object'),
-                        ], type: 'object'),
+                        ]),
+                        new OA\Schema(properties: [
+                            new OA\Property(property: 'two_factor_required', type: 'boolean', example: true),
+                        ]),
                     ]
                 )
             ),
@@ -57,7 +69,7 @@ class AuthController extends Controller
     {
         $credentials = $request->validated();
 
-        if (! Auth::attempt($credentials, remember: false)) {
+        if (! Auth::validate($credentials)) {
             $attemptedUser = User::where('email', $credentials['email'])->first();
 
             AuditLog::create([
@@ -75,12 +87,127 @@ class AuthController extends Controller
             ]);
         }
 
+        $user = User::where('email', $credentials['email'])->firstOrFail();
+
+        $this->issueTwoFactorCode($user, $request);
+        $auditService->log('two_factor_sent', $user, $user, null, null);
+
+        return response()->json(['two_factor_required' => true]);
+    }
+
+    #[OA\Post(
+        path: '/api/login/two-factor/verify',
+        summary: 'Kétfaktoros hitelesítő kód ellenőrzése (a /login után)',
+        tags: ['Auth'],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['code'],
+                properties: [
+                    new OA\Property(property: 'code', type: 'string', example: '123456'),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Sikeres bejelentkezés'),
+            new OA\Response(response: 422, description: 'Hibás/lejárt kód, vagy nincs folyamatban lévő belépés'),
+        ]
+    )]
+    public function verifyTwoFactor(Request $request, AuditService $auditService)
+    {
+        $request->validate(['code' => ['required', 'string']]);
+
+        $userId = $request->session()->get('2fa_user_id');
+        $user = $userId ? User::find($userId) : null;
+
+        if (! $user) {
+            throw ValidationException::withMessages([
+                'code' => 'Nincs folyamatban lévő belépés, kérjük jelentkezz be újra.',
+            ]);
+        }
+
+        if (! $user->two_factor_code
+            || ! $user->two_factor_expires_at
+            || $user->two_factor_expires_at->isPast()
+            || ! Hash::check((string) $request->input('code'), $user->two_factor_code)) {
+            $user->increment('two_factor_attempts');
+
+            $auditService->log('login_2fa_failed', $user, $user, null, null);
+
+            if ($user->two_factor_attempts >= self::TWO_FACTOR_MAX_ATTEMPTS) {
+                $this->clearTwoFactorState($user, $request);
+
+                throw ValidationException::withMessages([
+                    'code' => 'Túl sok sikertelen próbálkozás. Kérjük jelentkezz be újra.',
+                ]);
+            }
+
+            throw ValidationException::withMessages([
+                'code' => 'Hibás vagy lejárt kód.',
+            ]);
+        }
+
+        $this->clearTwoFactorState($user, $request);
+
+        Auth::login($user);
         $request->session()->regenerate();
 
-        $user = $request->user();
         $auditService->log('login', $user, $user, null, null);
 
         return new UserResource($user->load(['role', 'shelter']));
+    }
+
+    #[OA\Post(
+        path: '/api/login/two-factor/resend',
+        summary: 'Kétfaktoros hitelesítő kód újraküldése (a /login után)',
+        tags: ['Auth'],
+        responses: [
+            new OA\Response(response: 200, description: 'Új kód kiküldve'),
+            new OA\Response(response: 422, description: 'Nincs folyamatban lévő belépés'),
+        ]
+    )]
+    public function resendTwoFactor(Request $request, AuditService $auditService)
+    {
+        $userId = $request->session()->get('2fa_user_id');
+        $user = $userId ? User::find($userId) : null;
+
+        if (! $user) {
+            throw ValidationException::withMessages([
+                'code' => 'Nincs folyamatban lévő belépés, kérjük jelentkezz be újra.',
+            ]);
+        }
+
+        $this->issueTwoFactorCode($user, $request);
+        $auditService->log('two_factor_sent', $user, $user, null, null);
+
+        return response()->json(['two_factor_required' => true]);
+    }
+
+    private function issueTwoFactorCode(User $user, Request $request): void
+    {
+        $code = (string) random_int(100000, 999999);
+
+        $user->forceFill([
+            'two_factor_code' => Hash::make($code),
+            'two_factor_expires_at' => now()->addMinutes(self::TWO_FACTOR_CODE_TTL_MINUTES),
+            'two_factor_attempts' => 0,
+        ])->save();
+
+        $request->session()->put('2fa_user_id', $user->id);
+
+        $recipient = config('mail.two_factor_test_recipient') ?: $user->email;
+        Mail::to($recipient)->send(new TwoFactorCodeMail($code));
+    }
+
+    private function clearTwoFactorState(User $user, Request $request): void
+    {
+        $user->forceFill([
+            'two_factor_code' => null,
+            'two_factor_expires_at' => null,
+            'two_factor_attempts' => 0,
+        ])->save();
+
+        $request->session()->forget('2fa_user_id');
     }
 
     #[OA\Post(
@@ -193,7 +320,7 @@ class AuthController extends Controller
     public function loginHistory(Request $request)
     {
         $entries = AuditLog::where('user_id', $request->user()->id)
-            ->whereIn('action', ['login', 'logout', 'login_failed'])
+            ->whereIn('action', ['login', 'logout', 'login_failed', 'two_factor_sent', 'login_2fa_failed'])
             ->orderByDesc('created_at')
             ->limit(10)
             ->get(['id', 'action', 'created_at']);
