@@ -30,10 +30,29 @@ import type {
   User,
 } from '../../types';
 
-export async function login(email: string, password: string): Promise<User> {
+export type LoginResult = { twoFactorRequired: true } | { twoFactorRequired: false; user: User };
+
+export async function login(email: string, password: string): Promise<LoginResult> {
   await ensureCsrfCookie();
-  const { data } = await apiClient.post<{ data: User }>('/api/login', { email, password });
+  const { data } = await apiClient.post<{ data: User } | { two_factor_required: true }>('/api/login', {
+    email,
+    password,
+  });
+
+  if ('two_factor_required' in data) {
+    return { twoFactorRequired: true };
+  }
+
+  return { twoFactorRequired: false, user: data.data };
+}
+
+export async function verifyTwoFactorCode(code: string): Promise<User> {
+  const { data } = await apiClient.post<{ data: User }>('/api/login/two-factor/verify', { code });
   return data.data;
+}
+
+export async function resendTwoFactorCode(): Promise<void> {
+  await apiClient.post('/api/login/two-factor/resend');
 }
 
 export async function logout(): Promise<void> {
@@ -59,7 +78,7 @@ export async function updateProfile(payload: UpdateProfilePayload): Promise<User
 
 export interface LoginHistoryEntry {
   id: number;
-  action: 'login' | 'logout' | 'login_failed';
+  action: 'login' | 'logout' | 'login_failed' | 'two_factor_sent' | 'login_2fa_failed';
   created_at: string;
 }
 
