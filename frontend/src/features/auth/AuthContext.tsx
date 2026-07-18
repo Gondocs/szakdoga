@@ -34,6 +34,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setIsLoading(false));
   }, []);
 
+  // A visszaadott boolean jelzi a hívónak (LoginPage), hogy 2FA-lépésre van
+  // szükség — ilyenkor a "user" state még nem áll be, a bejelentkezés csak
+  // a verifyTwoFactor sikeres lefutása után fejeződik be.
   const login = useCallback(async (email: string, password: string) => {
     const result = await loginRequest(email, password);
     if (result.twoFactorRequired) {
@@ -54,6 +57,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await resendTwoFactorCode();
   }, []);
 
+  // A "Vissza" gombhoz: visszalépteti a LoginPage-et a jelszó-űrlapra
+  // anélkül, hogy a szerverrel bármit kommunikálnia kellene (a pending
+  // állapotot a szerver oldalán a kód lejárata/felülírása oldja fel).
   const cancelTwoFactor = useCallback(() => {
     setPendingTwoFactor(false);
   }, []);
