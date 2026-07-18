@@ -200,6 +200,29 @@ export interface IncidentCreatedPayload {
   description: string;
 }
 
+// A backend App\Events\TransportPositionUpdated broadcastWith()-jének felel
+// meg — ugyanazon az event.{id}.updates csatornán érkezik, mint a
+// ShelterCapacityUpdated.
+export interface TransportPositionUpdatedPayload {
+  transport_id: string;
+  code: string;
+  last_lat: number | null;
+  last_lng: number | null;
+  last_position_at: string | null;
+}
+
+// A backend App\Events\AuditLogRecorded broadcastWith()-jének felel meg —
+// szándékosan nem tartalmazza a before/after_json mezőket (lásd a backend
+// oldali kommentet), csak a napló élő csíkjához elég könnyű metaadatokat.
+export interface AuditLogRecordedPayload {
+  id: number;
+  action: string;
+  entity_type: string;
+  user_name: string;
+  significant: boolean;
+  created_at: string;
+}
+
 export type RepatriationStatus = 'not_permitted' | 'conditional' | 'permitted';
 
 export interface RepatriationAuthorization {
