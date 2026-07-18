@@ -24,8 +24,9 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { toast } from 'react-toastify';
 import 'leaflet/dist/leaflet.css';
 import { assemblyPointIcon, busIcon, shelterIcon } from '../../lib/leafletIcons';
-import type { AssemblyPoint, ShelterWithRisk } from '../../types';
+import type { AssemblyPoint, ShelterWithRisk, TransportPositionUpdatedPayload } from '../../types';
 import { useAuth } from '../auth/AuthContext';
+import { connectEcho } from '../../lib/echo';
 import {
   createAssemblyPoint,
   deleteAssemblyPoint,
@@ -75,6 +76,29 @@ export function EventMapPage() {
   }
 
   useEffect(load, [eventId]);
+
+  // A busz-markerek más felhasználó (vagy a Szállítás oldal) által
+  // szimulált pozícióváltásra is élőben mozdulnak — a csatorna
+  // (event.{id}.updates) élettartamát az EventSubNav birtokolja, itt csak
+  // a saját listenert vesszük fel/le.
+  useEffect(() => {
+    if (!eventId) return;
+
+    const channel = connectEcho().private(`event.${eventId}.updates`);
+    channel.listen('.transport.position.updated', (payload: TransportPositionUpdatedPayload) => {
+      setTransports((prev) =>
+        prev.map((t) =>
+          t.id === payload.transport_id
+            ? { ...t, last_lat: payload.last_lat, last_lng: payload.last_lng, last_position_at: payload.last_position_at }
+            : t
+        )
+      );
+    });
+
+    return () => {
+      channel.stopListening('.transport.position.updated');
+    };
+  }, [eventId]);
 
   function handleMapClickForNewPoint(lat: number, lng: number) {
     setIsPlacingPoint(false);
