@@ -21,6 +21,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Laravel nem ismeri natívan a "mailtrap" transportot (csak
+        // smtp/ses/postmark/resend/stb. van beépítve), ezért a
+        // symfony/mailtrap-mailer csomag MailtrapApiTransport-ját kézzel
+        // regisztráljuk — ez teszi elérhetővé a 'mailtrap' drivert a
+        // config/mail.php 'mailers.mailtrap' bejegyzésének.
         Mail::extend('mailtrap', fn (array $config) => new MailtrapApiTransport($config['key'] ?? env('MAILTRAP_KEY')));
     }
 }
