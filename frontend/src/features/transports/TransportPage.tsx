@@ -67,6 +67,8 @@ import { useAuth } from '../auth/AuthContext';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { QrScannerDialog } from '../../components/QrScannerDialog';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { connectEcho } from '../../lib/echo';
+import type { TransportPositionUpdatedPayload } from '../../types';
 
 // A jármű kihasználtsági arányához rendel színt: betelt (piros),
 // majdnem tele (sárga, 75% fölött), egyébként rendben (zöld)
@@ -120,6 +122,30 @@ export function TransportPage() {
   }
 
   useEffect(load, [eventId]);
+
+  // A "Pozíció szimulálása" gomb helyi state-frissítése mellett más
+  // felhasználók (pl. a kísérő egy másik gépen) szimulált pozícióváltása is
+  // élőben megjelenik itt. A csatornát (event.{id}.updates) NEM zárjuk le
+  // ennek a komponensnek a cleanupjában — azt az EventSubNav birtokolja,
+  // ami a teljes esemény-munkamenet alatt feliratkozva marad rá.
+  useEffect(() => {
+    if (!eventId) return;
+
+    const channel = connectEcho().private(`event.${eventId}.updates`);
+    channel.listen('.transport.position.updated', (payload: TransportPositionUpdatedPayload) => {
+      setTransports((prev) =>
+        prev.map((t) =>
+          t.id === payload.transport_id
+            ? { ...t, last_lat: payload.last_lat, last_lng: payload.last_lng, last_position_at: payload.last_position_at }
+            : t
+        )
+      );
+    });
+
+    return () => {
+      channel.stopListening('.transport.position.updated');
+    };
+  }, [eventId]);
 
   function loadPassengers(transportId: string) {
     setIsLoadingPassengers(true);
