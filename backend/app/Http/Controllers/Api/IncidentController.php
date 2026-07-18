@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\IncidentCreated;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\IncidentResource;
 use App\Models\EvacuationEvent;
@@ -86,7 +87,11 @@ class IncidentController extends Controller
             'reported_by' => $request->user()->id,
         ]);
 
-        return (new IncidentResource($incident->load(['shelter', 'person', 'reportedBy'])))->response()->setStatusCode(201);
+        $incident->load(['shelter', 'person', 'reportedBy']);
+
+        event(new IncidentCreated($incident));
+
+        return (new IncidentResource($incident))->response()->setStatusCode(201);
     }
 
     #[OA\Post(
