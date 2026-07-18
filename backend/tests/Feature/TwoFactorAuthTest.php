@@ -10,10 +10,15 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
+// A /api/login-hoz kapcsolódó alap forgatókönyveket (helyes/hibás jelszó,
+// login-history) az AuthTest fedi le; itt kifejezetten a 2FA-kódellenőrzés
+// (verify/resend) él- és hibaeseteire koncentrálunk.
 class TwoFactorAuthTest extends TestCase
 {
     use RefreshDatabase;
 
+    // Egy admin szerepkörű, jelszóval rendelkező tesztfelhasználót hoz
+    // létre — minden teszt ezzel indítja a jelszavas belépést.
     private function createUser(): User
     {
         $role = Role::create(['code' => RoleCode::Admin->value, 'name' => 'Admin']);
