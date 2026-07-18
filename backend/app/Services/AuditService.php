@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\AuditLogRecorded;
 use App\Models\AuditLog;
 use App\Models\EvacuationEvent;
 use App\Models\StatusHistory;
@@ -24,7 +25,7 @@ class AuditService
      */
     public function log(string $action, Model $entity, User $causer, ?array $before = null, ?array $after = null, ?bool $forceSignificant = null): AuditLog
     {
-        return AuditLog::create([
+        $auditLog = AuditLog::create([
             'user_id' => $causer->id,
             'event_id' => $this->resolveEventId($entity),
             'action' => $action,
@@ -38,6 +39,18 @@ class AuditService
                 || self::countChangedFields($before, $after) >= self::SIGNIFICANT_THRESHOLD
             ),
         ]);
+
+        // Csak az AuditService-en átmenő naplóbejegyzések broadcastolnak — ez
+        // a napló túlnyomó többsége (regisztráció, érkeztetés, áthelyezés,
+        // incidens, felhasználó-/szerepkör-módosítás stb.). Az AuthController
+        // közvetlen login/login_failed AuditLog::create()-jai és az
+        // adatmegőrzési törlés parancs (PurgeExpiredEventDataCommand)
+        // szándékosan nem kerülnek az élő csíkba — ezek külön, a
+        // fiókbeállítások saját bejelentkezési előzményében, illetve a teljes
+        // naplóban amúgy is látszanak.
+        event(new AuditLogRecorded($auditLog, $causer));
+
+        return $auditLog;
     }
 
     private function resolveEventId(Model $entity): ?string
