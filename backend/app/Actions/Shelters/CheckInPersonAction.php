@@ -3,6 +3,7 @@
 namespace App\Actions\Shelters;
 
 use App\Enums\RegistrationStatus;
+use App\Events\ShelterCapacityUpdated;
 use App\Exceptions\AlreadyCheckedInException;
 use App\Exceptions\ShelterFullException;
 use App\Models\CheckIn;
@@ -12,12 +13,15 @@ use App\Models\Person;
 use App\Models\Shelter;
 use App\Models\User;
 use App\Services\AuditService;
+use App\Services\CapacityRiskService;
 use Illuminate\Support\Facades\DB;
 
 class CheckInPersonAction
 {
-    public function __construct(private readonly AuditService $auditService)
-    {
+    public function __construct(
+        private readonly AuditService $auditService,
+        private readonly CapacityRiskService $capacityRiskService,
+    ) {
     }
 
     /**
@@ -66,7 +70,25 @@ class CheckInPersonAction
             $this->auditService->recordStatusChange($registration, $oldStatus, RegistrationStatus::ArrivedShelter->value, $operator);
             $this->auditService->log('checkin', $checkIn, $operator, null, $checkIn->toArray());
 
+            $this->broadcastCapacityUpdate($eventShelter->fresh(), $shelter);
+
             return $checkIn;
         });
+    }
+
+    private function broadcastCapacityUpdate(EventShelter $eventShelter, Shelter $shelter): void
+    {
+        $risk = $this->capacityRiskService->forEventShelter($eventShelter);
+
+        event(new ShelterCapacityUpdated(
+            eventId: $eventShelter->event_id,
+            shelterId: $eventShelter->shelter_id,
+            shelterName: $shelter->name,
+            checkedInCount: $eventShelter->checked_in_count,
+            capacityLimit: $eventShelter->capacity_limit,
+            riskScore: $risk['score'],
+            riskLevel: $risk['level'],
+            utilization: $risk['utilization'],
+        ));
     }
 }
