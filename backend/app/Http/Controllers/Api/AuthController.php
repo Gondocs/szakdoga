@@ -69,6 +69,10 @@ class AuthController extends Controller
     {
         $credentials = $request->validated();
 
+        // Auth::validate() csak a hitelesítő adatokat ellenőrzi, nem
+        // jelentkezteti be a felhasználót — a tényleges bejelentkezés
+        // (Auth::login + session regenerálás) csak a helyes 2FA-kód
+        // megadása után történik meg, a verifyTwoFactor()-ban.
         if (! Auth::validate($credentials)) {
             $attemptedUser = User::where('email', $credentials['email'])->first();
 
@@ -89,6 +93,10 @@ class AuthController extends Controller
 
         $user = User::where('email', $credentials['email'])->firstOrFail();
 
+        // A "pending" 2FA-állapotot a sessionben tároljuk (nem külön
+        // tokenben), mivel a Sanctum SPA-flow már a /sanctum/csrf-cookie
+        // hívással beállít egy session-sütit, amit a böngésző a következő
+        // (verify/resend) kérésekhez automatikusan visszaküld.
         $this->issueTwoFactorCode($user, $request);
         $auditService->log('two_factor_sent', $user, $user, null, null);
 
@@ -120,12 +128,19 @@ class AuthController extends Controller
         $userId = $request->session()->get('2fa_user_id');
         $user = $userId ? User::find($userId) : null;
 
+        // Nincs pending 2FA-állapot a sessionben (pl. lejárt a session,
+        // vagy a felhasználó közvetlenül ezt a végpontot hívta meg
+        // sikeres jelszavas belépés nélkül) — újra be kell jelentkezni.
         if (! $user) {
             throw ValidationException::withMessages([
                 'code' => 'Nincs folyamatban lévő belépés, kérjük jelentkezz be újra.',
             ]);
         }
 
+        // Egyetlen feltételben ellenőrizzük az összes elutasítási okot
+        // (nincs kód, lejárt, vagy nem egyezik), mert mindegyik esetben
+        // ugyanúgy próbálkozásnak számít és ugyanazt az általános hibaüzenetet
+        // adjuk vissza — nem áruljuk el, konkrétan melyik feltétel bukott el.
         if (! $user->two_factor_code
             || ! $user->two_factor_expires_at
             || $user->two_factor_expires_at->isPast()
@@ -134,6 +149,9 @@ class AuthController extends Controller
 
             $auditService->log('login_2fa_failed', $user, $user, null, null);
 
+            // Túl sok sikertelen próbálkozás után a teljes pending
+            // belépést lezárjuk (a régi, egyébként helyes kód is
+            // érvénytelenné válik) — újra jelszóval kell kezdeni.
             if ($user->two_factor_attempts >= self::TWO_FACTOR_MAX_ATTEMPTS) {
                 $this->clearTwoFactorState($user, $request);
 
@@ -149,6 +167,8 @@ class AuthController extends Controller
 
         $this->clearTwoFactorState($user, $request);
 
+        // Csak itt, a helyes kód megadása után történik a tényleges
+        // bejelentkezés — a login() eddig csak validált, nem jelentkeztetett be.
         Auth::login($user);
         $request->session()->regenerate();
 
@@ -177,6 +197,8 @@ class AuthController extends Controller
             ]);
         }
 
+        // Új kód kiadása visszaállítja a próbálkozás-számlálót is, tehát a
+        // korábbi hibás próbálkozások nem viszik közelebb a lezáráshoz.
         $this->issueTwoFactorCode($user, $request);
         $auditService->log('two_factor_sent', $user, $user, null, null);
 
@@ -187,6 +209,10 @@ class AuthController extends Controller
     {
         $code = (string) random_int(100000, 999999);
 
+        // forceFill()->save()-t használunk update() helyett, mert a
+        // two_factor_* mezők szándékosan nincsenek a $fillable listában
+        // (nem tömeges hozzárendelésből, hanem csak a szerver által,
+        // belsőleg állítódnak be) — update() ezeket csendben eldobná.
         $user->forceFill([
             'two_factor_code' => Hash::make($code),
             'two_factor_expires_at' => now()->addMinutes(self::TWO_FACTOR_CODE_TTL_MINUTES),
@@ -195,7 +221,16 @@ class AuthController extends Controller
 
         $request->session()->put('2fa_user_id', $user->id);
 
+        // Amíg a seedelt staff felhasználók e-mail címei (pl.
+        // @katasztrofavedelem.test) nem valós postafiókok, a
+        // TWO_FACTOR_TEST_RECIPIENT env kulcs minden kódot egy adott,
+        // ténylegesen ellenőrizhető címre irányít át.
         $recipient = config('mail.two_factor_test_recipient') ?: $user->email;
+
+        // Szándékosan szinkron send() (nem queue()): a felhasználó a
+        // bejelentkezés közben, azonnal várja a kódot, ezért a kiküldésnek
+        // a kérés részeként kell megtörténnie — egy esetlegesen nem futó
+        // queue worker miatt a levél sosem érkezne meg.
         Mail::to($recipient)->send(new TwoFactorCodeMail($code));
     }
 
@@ -319,6 +354,9 @@ class AuthController extends Controller
     )]
     public function loginHistory(Request $request)
     {
+        // A two_factor_sent/login_2fa_failed akciók is itt jelennek meg,
+        // hogy a felhasználó a saját előzményében lássa, ha valaki
+        // (ő maga vagy más) 2FA-kódot kért/rontott el a fiókjához.
         $entries = AuditLog::where('user_id', $request->user()->id)
             ->whereIn('action', ['login', 'logout', 'login_failed', 'two_factor_sent', 'login_2fa_failed'])
             ->orderByDesc('created_at')
