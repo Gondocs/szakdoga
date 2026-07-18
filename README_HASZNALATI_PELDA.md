@@ -10,7 +10,7 @@ Ez a dokumentum egy **kitalált, de reális szituáción** keresztül mutatja be
 
 **2026. március 14., péntek, 14:00.** A Mosoni-Duna vízállása a tavaszi olvadás és a tartós esőzés miatt gyorsan emelkedik. A Vízügyi Igazgatóság jelzése alapján a GYMS Vármegyei Katasztrófavédelmi Igazgatóság elrendeli **Vámosszabadi, Vének és Kisbajcs** községek lakosságának megelőző kitelepítését a következő 24 órában.
 
-Az ügyeletes műveleti vezető, **Nagy Katalin** (szerepkör: *Műveleti vezető*) megnyitja a rendszert, hogy elindítsa a kitelepítés informatikai támogatását.
+Az ügyeletes műveleti vezető, **Nagy Katalin** (szerepkör: *Műveleti vezető*) megnyitja a rendszert, hogy elindítsa a kitelepítés informatikai támogatását. Bejelentkezéskor a jelszava után egy 6 jegyű, e-mailben kiküldött kódot is meg kell adnia (kétfaktoros hitelesítés) — csak ez után jut be a felületre.
 
 ---
 
@@ -80,11 +80,11 @@ Katalin (műveleti vezető) a **Családegyesítési munkalistán** megtalálja a
 
 ## 7. lépés — Egy rendkívüli esemény (incidens)
 
-Vasárnap délután a Győri Városi Sportcsarnokban két család között vitás helyzet alakul ki egy közös helyiség használata miatt. Márton (befogadóhelyi kezelő) rögzíti az esetet a **Rendkívüli események** oldalon: kategória "konfliktus", súlyosság "közepes", rövid leírással. Miután a helyzetet a helyszínen rendezik, az esetet megoldottként zárja le, a megoldás időpontjával és rögzítő nevével együtt visszakereshetően.
+Vasárnap délután a Győri Városi Sportcsarnokban két család között vitás helyzet alakul ki egy közös helyiség használata miatt. Márton (befogadóhelyi kezelő) rögzíti az esetet a **Rendkívüli események** oldalon: kategória "konfliktus", súlyosság "közepes", rövid leírással. Ahogy elmenti, Katalin — aki épp a szállítás nyomon követése oldalt nézi otthonról — azonnal, frissítés nélkül egy figyelmeztető toast-üzenetet kap az incidensről (a rendszer a bejelentkezett, jogosult felhasználóknak élőben, WebSocketen küldi ki az értesítést). Miután a helyzetet a helyszínen rendezik, Márton az esetet megoldottként zárja le, a megoldás időpontjával és rögzítő nevével együtt visszakereshetően.
 
 ## 8. lépés — A helyzet nyomon követése (Műveleti vezető)
 
-Katalin a hétvége alatt folyamatosan az **Esemény dashboardot** figyeli:
+Katalin a hétvége alatt folyamatosan az **Esemény dashboardot** figyeli — a befogadóhelyi kapacitás- és kockázat-táblázat élőben, WebSocketen frissül minden érkeztetéskor/áthelyezéskor, neki nem kell manuálisan frissítenie az oldalt:
 
 - **Regisztráltak:** 187 fő, **Családok:** 52
 - **Megérkezettek:** 171 fő
