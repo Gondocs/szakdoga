@@ -2,6 +2,7 @@
 
 namespace App\Actions\Shelters;
 
+use App\Events\ShelterCapacityUpdated;
 use App\Exceptions\ShelterFullException;
 use App\Models\CheckIn;
 use App\Models\EventShelter;
@@ -9,6 +10,7 @@ use App\Models\Person;
 use App\Models\Shelter;
 use App\Models\User;
 use App\Services\AuditService;
+use App\Services\CapacityRiskService;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -19,8 +21,10 @@ use Illuminate\Support\Facades\DB;
  */
 class TransferPersonAction
 {
-    public function __construct(private readonly AuditService $auditService)
-    {
+    public function __construct(
+        private readonly AuditService $auditService,
+        private readonly CapacityRiskService $capacityRiskService,
+    ) {
     }
 
     public function execute(Person $person, Shelter $newShelter, User $operator, bool $overrideCapacity = false, ?string $bedLabel = null): CheckIn
@@ -81,7 +85,31 @@ class TransferPersonAction
                 'to_shelter_id' => $newShelter->id,
             ]);
 
+            // Mindkét érintett befogadóhely kapacitása változott (a régié
+            // csökkent, az újé nőtt), ezért mindkettőre külön eseményt
+            // váltunk ki.
+            if ($oldEventShelter) {
+                $this->broadcastCapacityUpdate($oldEventShelter->fresh(), $oldEventShelter->shelter);
+            }
+            $this->broadcastCapacityUpdate($newEventShelter->fresh(), $newShelter);
+
             return $newCheckIn;
         });
+    }
+
+    private function broadcastCapacityUpdate(EventShelter $eventShelter, Shelter $shelter): void
+    {
+        $risk = $this->capacityRiskService->forEventShelter($eventShelter);
+
+        event(new ShelterCapacityUpdated(
+            eventId: $eventShelter->event_id,
+            shelterId: $eventShelter->shelter_id,
+            shelterName: $shelter->name,
+            checkedInCount: $eventShelter->checked_in_count,
+            capacityLimit: $eventShelter->capacity_limit,
+            riskScore: $risk['score'],
+            riskLevel: $risk['level'],
+            utilization: $risk['utilization'],
+        ));
     }
 }
