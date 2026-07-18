@@ -47,6 +47,9 @@ const fontScaleOptions: { value: FontScale; label: string }[] = [
   { value: 'extra-large', label: 'Extra nagy' },
 ];
 
+// A Record kulcsai a LoginHistoryEntry['action'] union minden tagját le
+// kell, hogy fedjék — ha a backend új action típust vezet be, itt TS-hiba
+// jelzi, hogy ide is meg kell adni a hozzá tartozó ikont/címkét.
 const loginHistoryMeta: Record<LoginHistoryEntry['action'], { label: string; icon: React.ReactNode; color: string }> = {
   login: { label: 'Sikeres bejelentkezés', icon: <LoginIcon fontSize="small" />, color: 'success.main' },
   logout: { label: 'Kijelentkezés', icon: <LogoutIcon fontSize="small" />, color: 'text.secondary' },
