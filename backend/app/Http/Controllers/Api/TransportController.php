@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Actions\Registrations\UpdateRegistrationStatusAction;
 use App\Enums\RegistrationStatus;
+use App\Events\TransportPositionUpdated;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\PersonResource;
 use App\Models\EvacuationEvent;
@@ -297,7 +298,11 @@ class TransportController extends Controller
             'last_position_at' => now(),
         ]);
 
-        return response()->json(['data' => $this->serialize($transport->fresh())]);
+        $freshTransport = $transport->fresh();
+
+        event(new TransportPositionUpdated($freshTransport));
+
+        return response()->json(['data' => $this->serialize($freshTransport)]);
     }
 
     #[OA\Post(
