@@ -178,6 +178,28 @@ export interface DashboardData {
   };
 }
 
+// A backend App\Events\ShelterCapacityUpdated broadcastWith()-jének felel meg
+// (mezőnevek szándékosan megegyeznek a DashboardData['shelters'][number]
+// mezőivel, hogy ugyanazzal az alakkal lehessen frissíteni a state-et).
+export interface ShelterCapacityUpdatedPayload {
+  shelter_id: string;
+  shelter_name: string;
+  checked_in_count: number;
+  capacity_limit: number;
+  risk_score: number;
+  risk_level: RiskLevel;
+  utilization: number;
+}
+
+// A backend App\Events\IncidentCreated broadcastWith()-jének felel meg.
+export interface IncidentCreatedPayload {
+  incident_id: string;
+  category: IncidentCategory;
+  severity: IncidentSeverity;
+  shelter_name: string | null;
+  description: string;
+}
+
 export type RepatriationStatus = 'not_permitted' | 'conditional' | 'permitted';
 
 export interface RepatriationAuthorization {
