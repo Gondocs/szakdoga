@@ -55,6 +55,7 @@ import { useAuth } from '../auth/AuthContext';
 import { specialNeedCategoryLabels } from '../../constants/specialNeeds';
 import { SpecialNeedIcon } from '../../components/ui/SpecialNeedIcon';
 import { DashboardCharts } from './DashboardCharts';
+import { connectEcho } from '../../lib/echo';
 
 export function EventDashboardPage() {
   const { eventId } = useParams<{ eventId: string }>();
@@ -83,12 +84,33 @@ export function EventDashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId]);
 
+  // A 30s pollozás helyett a befogadóhelyi kapacitás/kockázat WebSocketen
+  // (Reverb) érkező változására reagálunk. Szándékosan nem az egyedi
+  // eseménymezőkből rakjuk össze a frissített state-et (pl. overall_risk,
+  // arrived_count), mert azok kiszámítása a backend CapacityRiskService-ben
+  // több, egymással összefüggő tényezőt kombinál — a duplikált
+  // kliensoldali logika könnyen szinkronizálatlanná válna. Ehelyett a
+  // push-esemény csak triggerként szolgál egy azonnali, célzott
+  // frissítéshez: a felhasználó élményében ez ugyanúgy "real-time", csak a
+  // számítás továbbra is a backend egyetlen, megbízható forrásából jön.
+  //
+  // A csatornát magát NEM hagyjuk el (leaveChannel) ennek a komponensnek a
+  // cleanupjában: az EventSubNav (EventLayout.tsx) ugyanezen a csatornán,
+  // de a teljes esemény-munkamenet alatt állandóan feliratkozva van — ha
+  // itt bezárnánk a csatornát minden aloldal-váltáskor, azzal az
+  // EventSubNav feliratkozását is megszakítanánk. Csak a saját listenert
+  // vesszük le.
   useEffect(() => {
     if (!eventId) return;
-    const interval = setInterval(() => {
+
+    const channel = connectEcho().private(`event.${eventId}.updates`);
+    channel.listen('.shelter.capacity.updated', () => {
       fetchDashboard(eventId).then(setData).catch(() => {});
-    }, 30000);
-    return () => clearInterval(interval);
+    });
+
+    return () => {
+      channel.stopListening('.shelter.capacity.updated');
+    };
   }, [eventId]);
 
   const selfRegisterUrl = event ? `${window.location.origin}/onkiszolgalo/${event.code}` : '';
