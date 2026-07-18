@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useState, type ReactElement, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -48,10 +48,13 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import HomeIcon from '@mui/icons-material/Home';
 import DownloadIcon from '@mui/icons-material/Download';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
-import type { AuditLogEntry, AuditLogFilterOptions } from '../../types';
+import type { AuditLogEntry, AuditLogFilterOptions, AuditLogRecordedPayload } from '../../types';
 import { auditLogExportUrl, fetchAuditLogFilterOptions, fetchAuditLogs, type AuditLogFilters } from '../../lib/api/endpoints';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorState } from '../../components/ui/ErrorState';
+import { connectEcho } from '../../lib/echo';
+
+const MAX_LIVE_ENTRIES = 15;
 
 const actionMeta: Record<string, { label: string; icon: ReactNode; color: ChipProps['color'] }> = {
   create: { label: 'Létrehozás', icon: <AddCircleIcon fontSize="small" />, color: 'success' },
@@ -338,6 +341,24 @@ export function AuditLogPage() {
 
   useEffect(load, [page]);
 
+  const [liveEntries, setLiveEntries] = useState<AuditLogRecordedPayload[]>([]);
+
+  // Ez az oldal (ellentétben az esemény-scope-olt event.{id}.updates
+  // csatornákkal) az egyetlen feliratkozó az "audit-logs" csatornára, ezért
+  // itt biztonságos a teljes csatornát lezárni unmountkor — nincs másik
+  // komponens, ami megszakadna tőle.
+  useEffect(() => {
+    const channel = connectEcho().private('audit-logs');
+    channel.listen('.audit-log.recorded', (payload: AuditLogRecordedPayload) => {
+      setLiveEntries((prev) => [payload, ...prev].slice(0, MAX_LIVE_ENTRIES));
+    });
+
+    return () => {
+      channel.stopListening('.audit-log.recorded');
+      connectEcho().leaveChannel('audit-logs');
+    };
+  }, []);
+
   function applyFilters() {
     setPage(1);
     setTimeout(load, 0);
@@ -367,6 +388,45 @@ export function AuditLogPage() {
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           Ma {summary.today_count} esemény történt, ebből {summary.today_significant_count} jelentős.
         </Typography>
+      )}
+
+      {liveEntries.length > 0 && (
+        <Paper variant="outlined" sx={{ p: 1.5, mb: 3 }}>
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+            <Box
+              sx={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                bgcolor: 'success.main',
+                animation: 'pulse 2s infinite',
+                '@keyframes pulse': {
+                  '0%, 100%': { opacity: 1 },
+                  '50%': { opacity: 0.3 },
+                },
+              }}
+            />
+            <Typography variant="subtitle2" color="text.secondary">
+              Élő aktivitás
+            </Typography>
+          </Stack>
+          <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', pb: 0.5 }}>
+            {liveEntries.map((entry, index) => {
+              const info = actionInfo(entry.action);
+              return (
+                <Chip
+                  key={`${entry.id}-${index}`}
+                  size="small"
+                  icon={info.icon as ReactElement}
+                  color={entry.significant ? 'warning' : info.color}
+                  variant={entry.significant ? 'filled' : 'outlined'}
+                  label={`${info.label} · ${entry.user_name} · ${formatDistanceToNow(new Date(entry.created_at), { addSuffix: true, locale: hu })}`}
+                  sx={{ flexShrink: 0 }}
+                />
+              );
+            })}
+          </Stack>
+        </Paper>
       )}
 
       <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
