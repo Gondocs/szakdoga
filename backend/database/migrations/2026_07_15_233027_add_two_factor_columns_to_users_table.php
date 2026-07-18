@@ -11,10 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // A három mező kizárólag a folyamatban lévő 2FA-kódot írja le
+        // (nincs külön "enabled"/"confirmed_at" flag), mert a 2FA minden
+        // staff szerepkörnek kötelező — nincs önkéntes be/kikapcsolás.
         Schema::table('users', function (Blueprint $table) {
-            $table->string('two_factor_code')->nullable();
+            $table->string('two_factor_code')->nullable(); // hash-elt kód
             $table->timestamp('two_factor_expires_at')->nullable();
-            $table->unsignedTinyInteger('two_factor_attempts')->default(0);
+            $table->unsignedTinyInteger('two_factor_attempts')->default(0); // sikertelen próbálkozások
         });
     }
 
