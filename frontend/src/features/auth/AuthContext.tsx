@@ -7,6 +7,7 @@ import {
   resendTwoFactorCode,
   verifyTwoFactorCode,
 } from '../../lib/api/endpoints';
+import { connectEcho, disconnectEcho } from '../../lib/echo';
 
 interface AuthContextValue {
   user: User | null;
@@ -33,6 +34,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .catch(() => setUser(null))
       .finally(() => setIsLoading(false));
   }, []);
+
+  // A WebSocket-kapcsolatot a "user" state-hez kötjük (nem közvetlenül a
+  // login()/logout() hívásokhoz), hogy oldalfrissítés után, egy már
+  // érvényes session mellett (fetchMe() sikeres) is automatikusan
+  // felépüljön, ne csak explicit bejelentkezéskor.
+  useEffect(() => {
+    if (user) {
+      connectEcho();
+    } else {
+      disconnectEcho();
+    }
+  }, [user]);
 
   // A visszaadott boolean jelzi a hívónak (LoginPage), hogy 2FA-lépésre van
   // szükség — ilyenkor a "user" state még nem áll be, a bejelentkezés csak
