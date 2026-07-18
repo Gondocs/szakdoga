@@ -26,6 +26,10 @@ export function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
 
+  // Helyes jelszó esetén a login() true-t ad vissza, ha 2FA-kódra van
+  // szükség (ekkor a context már beállította a pendingTwoFactor-t, és a
+  // komponens a kódbeviteli lépésre vált) — csak akkor navigálunk el
+  // azonnal, ha nincs 2FA-lépés hátra.
   async function handleCredentialsSubmit(event: FormEvent) {
     event.preventDefault();
     setIsSubmitting(true);
@@ -58,6 +62,9 @@ export function LoginPage() {
     }
   }
 
+  // A cooldown csak kliensoldali UX-védelem a gomb ismételt kattintgatása
+  // ellen — a tényleges rate-limitelést a backend throttle middleware-je
+  // végzi, ide-vissza kattintgatva sem lehet megkerülni.
   async function handleResend() {
     try {
       await resendTwoFactor();
@@ -106,6 +113,9 @@ export function LoginPage() {
           </Typography>
         </Stack>
 
+        {/* A pendingTwoFactor az AuthContext state-je, nem lokális UI-állapot,
+            mert a login() eredménye (kell-e 2FA) is ott dől el — így a
+            komponens csak a contextre épít, nem tart duplikált állapotot. */}
         {pendingTwoFactor ? (
           <Box component="form" onSubmit={handleCodeSubmit}>
             <Stack spacing={2}>
