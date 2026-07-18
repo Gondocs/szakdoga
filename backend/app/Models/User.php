@@ -16,6 +16,10 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
+    // A two_factor_code/two_factor_expires_at/two_factor_attempts mezők
+    // szándékosan NEM szerepelnek itt: azokat kizárólag az AuthController
+    // állítja be belsőleg (forceFill-lel), sosem tömeges felhasználói
+    // bemenetből.
     protected $fillable = [
         'name',
         'email',
@@ -28,6 +32,9 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        // A 2FA-kód hash-e sosem kerülhet ki a JSON-válaszokba, még
+        // véletlenül sem — a two_factor_expires_at/attempts nem érzékeny,
+        // azok maradhatnak láthatók.
         'two_factor_code',
     ];
 
