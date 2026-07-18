@@ -30,6 +30,10 @@ import type {
   User,
 } from '../../types';
 
+// A /api/login mostantól kétféleképp válaszolhat: vagy a bejelentkezett
+// felhasználóval (ha valamiért nincs 2FA-lépés), vagy egy jelzéssel, hogy
+// a rendszer e-mailben kiküldött egy kódot, és a /login/two-factor/verify
+// végpontra van szükség a bejelentkezés befejezéséhez.
 export type LoginResult = { twoFactorRequired: true } | { twoFactorRequired: false; user: User };
 
 export async function login(email: string, password: string): Promise<LoginResult> {
@@ -51,6 +55,8 @@ export async function verifyTwoFactorCode(code: string): Promise<User> {
   return data.data;
 }
 
+// A folyamatban lévő 2FA-állapotot a szerver a sessionben tartja, ezért
+// ehhez a hívásnál nem kell semmilyen azonosítót küldeni.
 export async function resendTwoFactorCode(): Promise<void> {
   await apiClient.post('/api/login/two-factor/resend');
 }
@@ -78,6 +84,8 @@ export async function updateProfile(payload: UpdateProfilePayload): Promise<User
 
 export interface LoginHistoryEntry {
   id: number;
+  // two_factor_sent/login_2fa_failed: a bejelentkezéshez tartozó 2FA-kód
+  // kiküldése, illetve egy hibás kódpróbálkozás.
   action: 'login' | 'logout' | 'login_failed' | 'two_factor_sent' | 'login_2fa_failed';
   created_at: string;
 }
