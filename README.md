@@ -43,7 +43,9 @@ A rendszer célja, hogy egy adott **kitelepítési eseményhez** (pl. "2026. tav
 |---|---|
 | Nyelv / futtatókörnyezet | PHP 8.2 |
 | Keretrendszer | Laravel 12 |
-| Autentikáció | Laravel Sanctum (session-alapú SPA autentikáció) |
+| Autentikáció | Laravel Sanctum (session-alapú SPA autentikáció) + kétfaktoros hitelesítés (e-mail kód) |
+| Real-time / WebSocket | Laravel Reverb (önhosztolt, Pusher-kompatibilis protokoll) |
+| E-mail küldés | Mailtrap Sending API (`symfony/mailtrap-mailer`) — 2FA-kódokhoz |
 | Adatbázis (fejlesztés) | SQLite (in-memory, teszteléshez) |
 | Adatbázis (produkció / bemutató) | MySQL / MariaDB (InnoDB) |
 | API dokumentáció | L5-Swagger (OpenAPI 3, `darkaonline/l5-swagger`) |
@@ -65,6 +67,7 @@ A rendszer célja, hogy egy adott **kitelepítési eseményhez** (pl. "2026. tav
 | HTTP kliens | Axios |
 | QR-kód generálás/olvasás | `qrcode.react`, `jsqr` (kamerás beolvasás) |
 | Értesítések | `react-toastify` |
+| Real-time / WebSocket | Laravel Echo + `pusher-js` (Reverb-kompatibilis) |
 | Dátumkezelés | `date-fns`, MUI X Date Pickers |
 | Linter | oxlint |
 
@@ -73,6 +76,7 @@ A rendszer célja, hogy egy adott **kitelepítési eseményhez** (pl. "2026. tav
 - A **Laravel + Sanctum SPA session** kombináció egyszerű, biztonságos, cookie-alapú autentikációt ad anélkül, hogy külön JWT-kezelést kellene bevezetni — ehhez a méretű, egy szervezet által üzemeltetett belső rendszerhez ez a pragmatikus megoldás.
 - A **React + MUI** gyors, konzisztens admin felületet biztosít táblázatokkal, szűrőkkel, dialógusokkal — ezek nagy része MUI-ból "készen" jön, így a fejlesztési idő a tényleges üzleti logikára fordítható.
 - A **Leaflet + OpenStreetMap** ingyenes, nem igényel API-kulcsot vagy fizetős térképszolgáltatót, ami egy közigazgatási/katasztrófavédelmi rendszernél fontos szempont.
+- A **Laravel Reverb** önhosztolt WebSocket-szerver, nem igényel külső fizetős szolgáltatót (pl. Pusher-előfizetést) — ugyanaz a "nincs felesleges külső függőség" elv vezérelte, mint a térképszolgáltató választását.
 
 ## Architektúra
 
@@ -92,14 +96,16 @@ A két alkalmazás **különálló folyamatként** fut és HTTP(S)-en keresztül
 - **Policies** (`app/Policies`) — szerepkör-alapú jogosultság-ellenőrzés (`$this->authorize(...)`).
 - **Actions** (`app/Actions`) — egy-egy összetettebb üzleti művelet (pl. `IssueQrTokenAction`, regisztráció létrehozás), hogy a controllerek vékonyak maradjanak.
 - **Services** (`app/Services`) — újrafelhasználható logika, pl. `CapacityRiskService` (befogadóhelyi kockázatszámítás), `StockForecastService` (napi készletigény-előrejelzés), `AuditService`, `FamilySplitWarningService`, `DemographicsService`.
+- **Events** (`app/Events`) — WebSocketen kiküldött (broadcast) események, pl. `ShelterCapacityUpdated`, `IncidentCreated` (lásd `routes/channels.php` a csatorna-jogosultságokhoz).
 - **Enums** (`app/Enums`) — PHP natív enumok minden zárt értékkészletre (`RegistrationStatus`, `RoleCode`, `RiskLevel` stb.), mindegyiken `label()` metódussal a magyar megjelenítéshez (exportokhoz, naplóhoz).
 
 ### Frontend rétegek
 
 - **`features/`** — oldalanként/modulonként szervezett komponensek (pl. `features/persons`, `features/shelters`, `features/transports`).
 - **`components/ui/`** — újrafelhasználható, "buta" UI elemek (`EmptyState`, `ErrorState`, `ConfirmDialog`, `RiskBadge`, `SpecialNeedIcon`, `MunicipalityAutocomplete` stb.).
-- **`components/layout/`** — `AppLayout` (fő navigáció, fiók menü), `EventSubNav` (esemény-alközepontok közti gyorsváltó sáv).
+- **`components/layout/`** — `AppLayout` (fő navigáció, fiók menü), `EventSubNav` (esemény-alközepontok közti gyorsváltó sáv, egyben a WebSocket-feliratkozás élettartamának gazdája egy adott eseményen belül).
 - **`lib/api/endpoints.ts`** — az összes backend hívás egy helyen, típusos válaszokkal.
+- **`lib/echo.ts`** — a WebSocket (Laravel Echo/Reverb) kapcsolat singleton kliense, a bejelentkezéshez/kijelentkezéshez kötve.
 - **`app/router.tsx`** — a teljes útvonaltérkép (lásd lentebb).
 
 ## Szerepkörök és jogosultságok
@@ -142,7 +148,7 @@ Minden személyhez (vagy egy egész családhoz) kiadható egy egyedi QR-kód ("d
 - Járműflotta (busz, kisbusz, vonat, autó, mentő, teherautó, egyéb) törzsadata, kapacitással.
 - Egy adott eseményhez rendelt szállítóeszközök (indulási/célállomás, kísérő, tervezett indulás/érkezés, késés, útvonalváltozás).
 - Utasok fel-/leszállásának QR-alapú rögzítése, tömeges "szervezett utaslista" import CSV-ből.
-- Szimulált GPS-pozíció (mivel nincs valós jármű-GPS integráció) a térképes koncepció demonstrálására.
+- Szimulált GPS-pozíció (mivel nincs valós jármű-GPS integráció) a térképes koncepció demonstrálására — a pozícióváltás **valós idejű (WebSocket)**, tehát ha valaki máshol szimulál egy mozgást, a Szállítás és a Térképes áttekintés oldalon is azonnal, frissítés nélkül mozdul a busz-marker.
 
 ### 6. Családkezelés és családegyesítés
 - Családok automatikus vagy kézi csoportosítása, kapcsolattartó kijelölése.
@@ -158,24 +164,27 @@ Minden személyhez (vagy egy egész családhoz) kiadható egy egyedi QR-kód ("d
 ### 8. Dashboard és jelentések
 - Esemény-szintű KPI-k (regisztráltak, családok, megérkezettek, központi szállítást/elszállásolást igénylők, hiányzók száma), mindegyik kattintható, szűrt személylistára navigál.
 - Demográfiai bontás (nem, kor), regisztrációk időbeli alakulása, speciális igény szerinti eloszlás — mind diagramban (Recharts), mind kattintható KPI-kártyaként.
-- Befogadóhelyi kapacitás- és kockázat-táblázat.
+- **Befogadóhelyi kapacitás- és kockázat-táblázat, valós idejű (WebSocket) frissítéssel**: érkeztetéskor/áthelyezéskor a dashboardot néző staff azonnal, pollozás/frissítés nélkül látja a változást (lásd [Architektúra](#architektúra), `ShelterCapacityUpdated` esemény).
 - **Napi készletigény-előrejelzés**: a jelenleg befogadóhelyen tartózkodók száma és igényei alapján becsült napi étkezési adag-, takaró-, matrac- és gyógyszerigény, befogadóhelyenkénti bontásban, kattintható mutatókkal.
 - Exportok: CSV a személyi listáról, a befogadóhelyi névsorról és az összesítő jelentésről (utóbbi kettő magyar nyelvű, olvasható címkékkel).
 
 ### 9. Rendkívüli események (incidensek)
-Panasz, konfliktus, biztonsági esemény, kár vagy egyéb bejelentése egy adott befogadóhelyhez és/vagy személyhez kötve, súlyossággal (alacsony/közepes/magas) és megoldás-nyomon követéssel.
+Panasz, konfliktus, biztonsági esemény, kár vagy egyéb bejelentése egy adott befogadóhelyhez és/vagy személyhez kötve, súlyossággal (alacsony/közepes/magas) és megoldás-nyomon követéssel. Új incidens bejelentésekor, illetve amikor egy befogadóhely újonnan éri el a kritikus kockázati szintet, **élő toast-értesítés** jelenik meg minden, az adott eseményt épp néző, jogosult staffnak (WebSocketen, nem pollozással).
 
 ### 10. Visszatelepítés
 Településenkénti visszatelepítési engedélyezési státusz (nem engedélyezett / feltételes / engedélyezett), feltételek megjegyzéssel, engedélyezési időablakkal, és a ténylegesen hazatértek számának követésével.
 
 ### 11. Naplózás és auditálás
-Minden lényeges művelet (létrehozás, módosítás, törlés, érkeztetés, státuszváltás, áthelyezés, QR-kiadás, szállítás fel-/leszállás, bejelentkezés/kijelentkezés, felhasználó- és szerepkör-módosítás stb.) egységes naplóba kerül, előtte/utána állapottal, szűrhető felhasználó, esemény, entitástípus, művelet és időintervallum szerint, **napi összesítővel**. Auditor szerepkörnél a személyes adatok maszkolva jelennek meg a naplóban is. CSV export magyar nyelvű címkékkel.
+Minden lényeges művelet (létrehozás, módosítás, törlés, érkeztetés, státuszváltás, áthelyezés, QR-kiadás, szállítás fel-/leszállás, bejelentkezés/kijelentkezés, felhasználó- és szerepkör-módosítás stb.) egységes naplóba kerül, előtte/utána állapottal, szűrhető felhasználó, esemény, entitástípus, művelet és időintervallum szerint, **napi összesítővel**. Auditor szerepkörnél a személyes adatok maszkolva jelennek meg a naplóban is. CSV export magyar nyelvű címkékkel. A napló tetején egy **élő "aktivitás" csík** (WebSocket) mutatja a legutóbbi bejegyzéseket (ki, mit csinált, mikor) admin/vezető/auditor szerepkörnek, frissítés nélkül — a csík maga nem tartalmaz érzékeny adatot (before/after állapotot), csak a teljes, megfelelően maszkolt naplóban kattintva.
 
 ### 12. Felhasználó- és alapadat-kezelés
 Felhasználók (szerepkör-hozzárendeléssel, avatárral, befogadóhely-hozzárendeléssel befogadóhelyi kezelőknél), települések (kereshető törzsadat-lista, térképes koordináta-választóval), befogadóhelyek, járművek — mindegyik admin/vezető jogosultsághoz kötött CRUD felülettel.
 
 ### 13. Fiókbeállítások
-Saját profil szerkesztése, jelszócsere, bejelentkezési előzmények megtekintése.
+Saját profil szerkesztése, jelszócsere, bejelentkezési előzmények megtekintése (beleértve a kiküldött 2FA-kódokat és a sikertelen kódpróbálkozásokat is).
+
+### 14. Bejelentkezés és kétfaktoros hitelesítés (2FA)
+Minden belépő (nem lakossági) felhasználó számára **kötelező** a kétlépcsős bejelentkezés: helyes jelszó megadása után a rendszer egy 6 jegyű, 10 percig érvényes kódot küld e-mailben, amit a felhasználónak meg kell adnia a tényleges bejelentkezés befejezéséhez. 5 egymást követő hibás kód után a folyamatban lévő belépés lezárul, újra kell kezdeni. A kódküldés (`two_factor_sent`) és a sikertelen kódpróbálkozás (`login_2fa_failed`) is auditnaplózott esemény.
 
 ## Telepítés és futtatás
 
@@ -184,6 +193,7 @@ Saját profil szerkesztése, jelszócsere, bejelentkezési előzmények megtekin
 - PHP 8.2+, Composer
 - Node.js (Vite 8-hoz ajánlott egy friss LTS verzió) és npm
 - MySQL/MariaDB (produkciós/bemutató célra) — fejlesztéshez elég a beépített SQLite
+- Egy (ingyenes) [Mailtrap](https://mailtrap.io) fiók API-tokennel — a kétfaktoros hitelesítéshez szükséges e-mail-küldéshez
 
 ### Backend (Laravel API)
 
@@ -212,6 +222,8 @@ php artisan migrate --seed
 php artisan serve
 ```
 
+> **Windows-on, ha `php artisan serve` mojibake/encoding hibával elszáll** (jellemzően ékezetes karaktereket tartalmazó projekt-elérési útnál fordul elő): használd helyette a `php -S localhost:8000 -t public` parancsot ugyanabból (`backend/`) könyvtárból — funkcionálisan egyenértékű, csak a beépített fejlesztői szerver más belépési útját használja.
+
 A `--seed` kapcsoló feltölti az alap szerepköröket, egy admin felhasználót, néhány mintatelepülést és befogadóhelyet (lásd `database/seeders/`). A `SyntheticRegistrationSeeder` szintetikus (kitalált) regisztrációs adatokat is generál demonstrációs/teszt céllal.
 
 A backend alapértelmezetten a `http://localhost:8000` címen fut. Állítsd be a `.env`-ben a frontend URL-jét CORS/Sanctum miatt:
@@ -221,6 +233,36 @@ FRONTEND_URLS=http://localhost:5173
 SANCTUM_STATEFUL_DOMAINS=localhost:5173
 ```
 
+#### E-mail küldés (kétfaktoros hitelesítéshez)
+
+A 2FA-kódok kiküldéséhez valós SMTP/API-alapú levélküldő kell (a `MAIL_MAILER=log` csak naplózna, nem küldene ki semmit). A projekt a Mailtrap Sending API-t használja:
+
+```env
+MAIL_MAILER=mailtrap
+MAILTRAP_HOST=default
+MAILTRAP_KEY=            # a saját Mailtrap fiókod API-tokenje
+MAIL_FROM_ADDRESS="hello@demomailtrap.co"
+MAIL_FROM_NAME="${APP_NAME}"
+
+# Amíg a seedelt staff felhasználók e-mail címei (pl. @katasztrofavedelem.test)
+# nem valós postafiókok, minden 2FA-kód erre a címre megy a felhasználó
+# tényleges e-mail címe helyett:
+TWO_FACTOR_TEST_RECIPIENT=sajat.cimed@example.com
+```
+
+A kódküldés **szinkron** (a `/api/login` kérés részeként történik, nem queue-olt) — nincs szükség külön queue worker-re ehhez a funkcióhoz.
+
+#### WebSocket / real-time frissítés (Laravel Reverb)
+
+A dashboard élő kapacitás-/kockázatfrissítéséhez és az incidens-toastokhoz egy **külön, folyamatosan futó Reverb-szerver** szükséges (ez nem kerülhető meg — WebSocket-szerver nélkül nincs push):
+
+```bash
+php artisan reverb:install   # csak első alkalommal: legenerálja a REVERB_* env változókat
+php artisan reverb:start
+```
+
+A `reverb:install` a `.env`-be írja a `REVERB_APP_ID`/`REVERB_APP_KEY`/`REVERB_APP_SECRET`/`REVERB_HOST`/`REVERB_PORT`/`REVERB_SCHEME` (és a nekik megfelelő `VITE_REVERB_*`) változókat — ez utóbbiakat másold át a **frontend** `.env`-jébe is (lásd lentebb), mert a Vite csak a saját `.env`-jét olvassa.
+
 ### Frontend (React SPA)
 
 ```bash
@@ -228,10 +270,18 @@ cd frontend
 npm install
 ```
 
-Hozz létre egy `.env` fájlt (vagy másold az `.env.example`-t, ha van):
+Hozz létre egy `.env` fájlt:
 
 ```env
 VITE_API_BASE_URL=http://localhost:8000
+
+# A backend .env-jéből a reverb:install által generált REVERB_APP_KEY/HOST/PORT/SCHEME
+# értékek (ezek nem titkosak — a Reverb/Pusher "app key" tervezetten publikus,
+# minden böngésző-kliens ezzel nyit WebSocket-kapcsolatot):
+VITE_REVERB_APP_KEY=
+VITE_REVERB_HOST=localhost
+VITE_REVERB_PORT=8080
+VITE_REVERB_SCHEME=http
 ```
 
 Majd:
@@ -250,6 +300,20 @@ A backend `composer.json`-ja tartalmaz egy `composer dev` szkriptet, ami egyszer
 cd backend
 composer dev
 ```
+
+Ez **nem tartalmazza a Reverb szervert** — azt (`php artisan reverb:start`) mindenképp külön terminálban kell futtatni, ha a real-time frissítést is ki akarod próbálni. Fejlesztéshez tehát jellemzően 3 folyamat fut egyszerre: a backend (`composer dev` vagy `php artisan serve`/`php -S`), a `php artisan reverb:start`, és értelemszerűen maga a böngésző.
+
+### Élő demó / fejlesztői teszt a WebSocket-frissítéshez
+
+A `demo:simulate-activity` artisan parancs valós Action-osztályokon (érkeztetés, áthelyezés, incidens) keresztül folyamatosan generál eseményeket egy megadott kitelepítési eseményhez, hogy a real-time frissítés böngészőben, kézi kattintgatás nélkül megfigyelhető legyen:
+
+```bash
+cd backend
+php artisan demo:simulate-activity              # az EVT-2026-001 eseményhez, 4 másodpercenként
+php artisan demo:simulate-activity EVT-2026-002 --interval=2 --duration=60
+```
+
+Nyisd meg a dashboardot böngészőben, indítsd el a parancsot egy külön terminálban, és figyeld, ahogy a kapacitás-/kockázat-táblázat élőben frissül, illetve incidens-toast jelenik meg. **Ez tisztán fejlesztői/bemutató célú eszköz**, nem éles adatgenerálásra szánt.
 
 ## Tesztelés
 
@@ -287,12 +351,14 @@ php artisan serve
 backend/
 ├── app/
 │   ├── Actions/            # Egy-egy összetettebb üzleti művelet
-│   ├── Console/Commands/   # Ütemezett/kézi artisan parancsok (pl. lejárt adatok törlése)
+│   ├── Console/Commands/   # Ütemezett/kézi artisan parancsok (pl. lejárt adatok törlése, élő demó)
 │   ├── Enums/              # Zárt értékkészletek label() metódussal
+│   ├── Events/             # WebSocketen broadcastolt események (ShelterCapacityUpdated, IncidentCreated)
 │   ├── Http/
 │   │   ├── Controllers/Api/
 │   │   ├── Requests/
 │   │   └── Resources/
+│   ├── Mail/                # Kiküldött e-mailek (pl. TwoFactorCodeMail)
 │   ├── Models/
 │   ├── Policies/
 │   └── Services/
@@ -302,6 +368,7 @@ backend/
 │   └── seeders/
 ├── routes/
 │   ├── api.php
+│   ├── channels.php        # WebSocket-csatornák jogosultság-ellenőrzése
 │   └── console.php
 └── tests/Feature/
 
@@ -313,13 +380,16 @@ frontend/
 │   │   └── ui/             # Újrafelhasználható UI primitívek
 │   ├── constants/
 │   ├── features/           # Oldalankénti/modulonkénti komponensek
-│   └── lib/api/            # endpoints.ts — az összes backend hívás
+│   └── lib/
+│       ├── api/             # endpoints.ts — az összes backend hívás
+│       └── echo.ts          # WebSocket (Laravel Echo/Reverb) kliens
 ```
 
 ## Adatvédelem és biztonság
 
 - **Session-alapú autentikáció** Laravel Sanctummal (nincs kliens oldalon tárolt hosszú élettartamú token).
-- **Szerepkör-alapú hozzáférés-vezérlés** minden végponton Policy-kkel — a frontend csak elrejti, nem "biztosítja" a jogosultságot.
+- **Kötelező kétfaktoros hitelesítés (2FA)** minden belépő (staff) felhasználónak — helyes jelszó után e-mailben kiküldött, 10 percig érvényes 6 jegyű kód szükséges a bejelentkezéshez, max. 5 próbálkozással.
+- **Szerepkör-alapú hozzáférés-vezérlés** minden végponton Policy-kkel — a frontend csak elrejti, nem "biztosítja" a jogosultságot. Ugyanezek a Policy-k érvényesülnek a WebSocket-csatornák jogosultság-ellenőrzésén (`routes/channels.php`) is.
 - **Adatmaszkolás auditoroknak**: a személyes adatok (telefonszám, cím, okmányszám stb.) auditor szerepkörnél maszkolva jelennek meg listákban és a naplóban is.
 - **Automatikus adatmegőrzési törlés**: napi ütemezett parancs (`data:purge-expired-persons`) törli a megőrzési időn túli, lezárt eseményekhez tartozó személyes adatokat, ezt is naplózva.
 - **Teljes körű auditnapló**: minden lényeges módosítás visszakövethető (ki, mikor, mit változtatott, előtte/utána állapot).
@@ -329,15 +399,15 @@ frontend/
 
 A funkcióspecifikáció (és a fejlesztés során felmerült igények) alapján az alábbiak **még nincsenek megvalósítva**, ezek a következő fejlesztési fázis jelöltjei:
 
-- **Kétfaktoros hitelesítés (2FA)** a belépő (nem lakossági) felhasználóknak.
 - **PWA / offline-first támogatás**: a gyülekezőpontokon és befogadóhelyeken gyakran gyenge vagy nincs internetkapcsolat — egy telepíthető, offline-szinkronizáló kliens (Service Worker + helyi tárolás, majd háttér-szinkron) jelentősen javítaná a helyszíni használhatóságot.
-- **Valós idejű frissítés WebSocketen (Laravel Echo/Reverb)** a jelenlegi 30 másodperces pollozás helyett a dashboardon és a befogadóhelyi kapacitás-nézeteken — élő push-értesítésekkel (új incidens, befogadóhely megtelt stb.) a bejelentkezett kezelőknek.
-- **Automatizált SMS/e-mail emlékeztetők** (pl. visszatelepítési ablak nyílásáról, önkiszolgáló profil frissítési felszólításról) — jelenleg a `MAIL_MAILER=log` és nincs SMS-integráció.
-- Valós GPS-integráció a szállítóeszközökhöz (jelenleg csak szimulált pozíció).
-- Kódszétválasztás/lazy loading a frontend build méretének csökkentésére (a jelenlegi bundle ~570 kB gzip-elve, ami a build figyelmeztetést is kiváltja).
+- **Automatizált SMS-emlékeztetők** (pl. visszatelepítési ablak nyílásáról, önkiszolgáló profil frissítési felszólításról) — e-mail-küldés (2FA-kódok, Mailtrap) már be van kötve, de SMS-integráció nincs.
+- Valós GPS-integráció a szállítóeszközökhöz (jelenleg csak szimulált pozíció — bár a szimulált pozíció-frissítések is WebSocketen mehetnének élőben, ez még nincs megvalósítva).
+- Élő auditnapló-csík adminoknak/auditoroknak (a WebSocket-infrastruktúra, ami a dashboard/incidens real-time frissítését adja, már megvan — ez "csak" egy újabb csatorna/esemény lenne rá).
+- Kódszétválasztás/lazy loading a frontend build méretének csökkentésére (a jelenlegi bundle ~600 kB gzip-elve, ami a build figyelmeztetést is kiváltja).
 
 ## Ismert korlátok
 
 - A szállítóeszközök pozíciója **szimulált**, nincs mögötte valós GPS-eszköz vagy -integráció — ez tudatos egyszerűsítés, ami a geografikus nyomon követés koncepcióját demonstrálja valós hardver nélkül.
 - A rendszer jelenleg **egyetlen vármegyére/szervezetre** optimalizált (nincs multi-tenant elkülönítés több katasztrófavédelmi igazgatóság között).
-- Az e-mail/SMS értesítések nincsenek bekötve külső szolgáltatóhoz (a `.env` alapértelmezett `MAIL_MAILER=log` csak naplóz, ténylegesen nem küld).
+- Az **e-mail-küldés be van kötve** (Mailtrap Sending API, 2FA-kódokhoz), de **SMS-értesítés nincs**. A Mailtrap ingyenes csomagja demo-domainről küld, és bizonyos korlátokkal (pl. csak a fiók tulajdonosának saját címére enged tesztküldést) — bemutatóhoz/produkcióhoz valós, verifikált küldő-domainre érdemes váltani.
+- A **WebSocket real-time frissítéshez** (Laravel Reverb) egy külön, folyamatosan futó szerverfolyamat kell (`php artisan reverb:start`) — ez nem kerülhető meg, WebSocket-szerver nélkül a dashboard visszaesik a kezdeti (egyszeri) betöltésre, élő frissítés nélkül.
