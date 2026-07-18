@@ -32,6 +32,9 @@ class AuditLogTest extends TestCase
 
         $this->assertDatabaseHas('audit_logs', ['action' => 'login_failed', 'significant' => true]);
 
+        // Helyes jelszóval a login csak a 2FA-kódot küldi ki, még nem
+        // jelentkeztet be — az "login" audit-bejegyzés csak a helyes kód
+        // megadása (verify) után jön létre, ezért azt is végig kell vinni.
         $this->withHeader('Referer', 'http://localhost:5173')->postJson('/api/login', [
             'email' => 'admin@example.com',
             'password' => 'password',
