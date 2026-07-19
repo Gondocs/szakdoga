@@ -59,6 +59,8 @@ const loginHistoryMeta: Record<LoginHistoryEntry['action'], { label: string; ico
   login_failed: { label: 'Sikertelen bejelentkezési kísérlet', icon: <WarningAmberIcon fontSize="small" />, color: 'error.main' },
   two_factor_sent: { label: 'Kétfaktoros kód kiküldve', icon: <ShieldMoonIcon fontSize="small" />, color: 'text.secondary' },
   login_2fa_failed: { label: 'Sikertelen kétfaktoros kód', icon: <WarningAmberIcon fontSize="small" />, color: 'error.main' },
+  two_factor_enabled: { label: 'Kétfaktoros hitelesítés bekapcsolva', icon: <ShieldMoonIcon fontSize="small" />, color: 'success.main' },
+  two_factor_disabled: { label: 'Kétfaktoros hitelesítés kikapcsolva', icon: <ShieldMoonIcon fontSize="small" />, color: 'warning.main' },
 };
 
 export function SettingsPage() {
