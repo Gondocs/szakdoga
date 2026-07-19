@@ -373,12 +373,22 @@ class AuthController extends Controller
             new OA\Response(response: 200, description: 'Frissített felhasználó'),
         ]
     )]
-    public function updateTwoFactorPreference(Request $request)
+    public function updateTwoFactorPreference(Request $request, AuditService $auditService)
     {
         $data = $request->validate(['enabled' => ['required', 'boolean']]);
 
         $user = $request->user();
+        $before = ['two_factor_enabled' => $user->two_factor_enabled];
         $user->forceFill(['two_factor_enabled' => $data['enabled']])->save();
+
+        $auditService->log(
+            $data['enabled'] ? 'two_factor_enabled' : 'two_factor_disabled',
+            $user,
+            $user,
+            $before,
+            ['two_factor_enabled' => $data['enabled']],
+            forceSignificant: true,
+        );
 
         return new UserResource($user->fresh(['role', 'shelter']));
     }
