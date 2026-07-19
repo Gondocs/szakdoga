@@ -93,6 +93,20 @@ class AuthController extends Controller
 
         $user = User::where('email', $credentials['email'])->firstOrFail();
 
+        // A two_factor_enabled mező a felhasználó saját (fiókbeállításokban
+        // tett) döntése, hogy kéri-e a 2FA-t — alapból mindenkinek be van
+        // kapcsolva, tehát ez a kihagyás nem gyengíti az alapértelmezett
+        // biztonságot, csak opt-out lehetőséget ad (pl. fejlesztői/teszt
+        // felhasználóknak).
+        if (! $user->two_factor_enabled) {
+            Auth::login($user);
+            $request->session()->regenerate();
+
+            $auditService->log('login', $user, $user, null, null);
+
+            return new UserResource($user->load(['role', 'shelter']));
+        }
+
         // A "pending" 2FA-állapotot a sessionben tároljuk (nem külön
         // tokenben), mivel a Sanctum SPA-flow már a /sanctum/csrf-cookie
         // hívással beállít egy session-sütit, amit a böngésző a következő
@@ -337,6 +351,34 @@ class AuthController extends Controller
         }
 
         $user->update($update);
+
+        return new UserResource($user->fresh(['role', 'shelter']));
+    }
+
+    #[OA\Put(
+        path: '/api/me/two-factor',
+        summary: 'Saját kétfaktoros hitelesítés be-/kikapcsolása',
+        security: [['sanctumSession' => []]],
+        tags: ['Auth'],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['enabled'],
+                properties: [
+                    new OA\Property(property: 'enabled', type: 'boolean'),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Frissített felhasználó'),
+        ]
+    )]
+    public function updateTwoFactorPreference(Request $request)
+    {
+        $data = $request->validate(['enabled' => ['required', 'boolean']]);
+
+        $user = $request->user();
+        $user->forceFill(['two_factor_enabled' => $data['enabled']])->save();
 
         return new UserResource($user->fresh(['role', 'shelter']));
     }
