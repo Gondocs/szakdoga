@@ -91,7 +91,15 @@ export interface LoginHistoryEntry {
   id: number;
   // two_factor_sent/login_2fa_failed: a bejelentkezéshez tartozó 2FA-kód
   // kiküldése, illetve egy hibás kódpróbálkozás.
-  action: 'login' | 'logout' | 'login_failed' | 'two_factor_sent' | 'login_2fa_failed';
+  // two_factor_enabled/two_factor_disabled: a saját 2FA-beállítás módosítása.
+  action:
+    | 'login'
+    | 'logout'
+    | 'login_failed'
+    | 'two_factor_sent'
+    | 'login_2fa_failed'
+    | 'two_factor_enabled'
+    | 'two_factor_disabled';
   created_at: string;
 }
 
