@@ -18,6 +18,8 @@ import {
   ListItemIcon,
   ListItemText,
   Link,
+  Switch,
+  FormControlLabel,
 } from '@mui/material';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -35,6 +37,7 @@ import {
   deleteUserAvatar,
   fetchLoginHistory,
   updateProfile,
+  updateTwoFactorPreference,
   uploadUserAvatar,
   type LoginHistoryEntry,
 } from '../../lib/api/endpoints';
@@ -71,6 +74,7 @@ export function SettingsPage() {
 
   const [loginHistory, setLoginHistory] = useState<LoginHistoryEntry[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const [isTogglingTwoFactor, setIsTogglingTwoFactor] = useState(false);
 
   useEffect(() => {
     fetchLoginHistory().then(setLoginHistory).catch(() => setLoginHistory([])).finally(() => setIsLoadingHistory(false));
@@ -110,6 +114,21 @@ export function SettingsPage() {
       toast.error('A profilkép feltöltése nem sikerült.');
     } finally {
       setIsUploadingAvatar(false);
+    }
+  }
+
+  // A 2FA-kapcsoló azonnal, a profilűrlaptól függetlenül alkalmazódik —
+  // ez egy önálló biztonsági beállítás, nem kell hozzá a "Mentés" gomb.
+  async function handleTwoFactorToggle(enabled: boolean) {
+    setIsTogglingTwoFactor(true);
+    try {
+      const updated = await updateTwoFactorPreference(enabled);
+      setUser(updated);
+      toast.success(enabled ? 'Kétfaktoros hitelesítés bekapcsolva.' : 'Kétfaktoros hitelesítés kikapcsolva.');
+    } catch {
+      toast.error('A beállítás mentése nem sikerült.');
+    } finally {
+      setIsTogglingTwoFactor(false);
     }
   }
 
@@ -217,6 +236,25 @@ export function SettingsPage() {
                 </Button>
               </Stack>
             </Box>
+          </Paper>
+
+          <Paper variant="outlined" sx={{ p: 3 }}>
+            <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5 }}>Kétfaktoros hitelesítés</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              Bejelentkezéskor e-mailben kiküldött kód megadását kéri. Kikapcsolva a jelszó megadása után
+              azonnal bejelentkezik — ezt elsősorban fejlesztés/tesztelés közbeni kényelemre ajánlott
+              kikapcsolni, egyébként hagyja bekapcsolva.
+            </Typography>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={user?.two_factor_enabled ?? true}
+                  disabled={isTogglingTwoFactor}
+                  onChange={(e) => handleTwoFactorToggle(e.target.checked)}
+                />
+              }
+              label={user?.two_factor_enabled ?? true ? 'Bekapcsolva' : 'Kikapcsolva'}
+            />
           </Paper>
         </Stack>
 
