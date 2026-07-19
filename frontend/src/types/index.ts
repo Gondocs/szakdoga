@@ -11,6 +11,7 @@ export interface User {
   name: string;
   email: string;
   avatar_url?: string | null;
+  two_factor_enabled?: boolean;
   role?: Role;
   shelter_id?: string | null;
   shelter?: { id: string; name: string } | null;
