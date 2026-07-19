@@ -1,0 +1,10 @@
+{
+    "name": "kitelepitesi-tamogato-rendszer",
+    "private": true,
+    "scripts": {
+        "dev": "concurrently -k -n backend,reverb,frontend -c blue,magenta,green \"cd backend && php -S localhost:8000 -t public\" \"cd backend && php artisan reverb:start\" \"cd frontend && npm run dev\""
+    },
+    "devDependencies": {
+        "concurrently": "^9.0.1"
+    }
+}
