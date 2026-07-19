@@ -82,6 +82,11 @@ export async function updateProfile(payload: UpdateProfilePayload): Promise<User
   return data.data;
 }
 
+export async function updateTwoFactorPreference(enabled: boolean): Promise<User> {
+  const { data } = await apiClient.put<{ data: User }>('/api/me/two-factor', { enabled });
+  return data.data;
+}
+
 export interface LoginHistoryEntry {
   id: number;
   // two_factor_sent/login_2fa_failed: a bejelentkezéshez tartozó 2FA-kód
