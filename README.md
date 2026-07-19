@@ -292,16 +292,23 @@ npm run dev
 
 A frontend alapértelmezetten a `http://localhost:5173` címen fut.
 
-### Mindkettő egyszerre (kényelmi szkript)
+### Mindhárom egyszerre (backend + Reverb + frontend, egy paranccsal)
 
-A backend `composer.json`-ja tartalmaz egy `composer dev` szkriptet, ami egyszerre indítja a Laravel szervert, a sor (queue) figyelőt, a naplókövetőt és a Vite dev szervert:
+A repo gyökerében van egy `package.json`, ami a `concurrently` csomaggal egyetlen paranccsal indítja a backend PHP szervert, a Reverb WebSocket-szervert és a frontend Vite dev szervert (a kimenetük színkódolva, egymás mellett jelenik meg egy terminálban):
+
+```bash
+npm install   # csak első alkalommal, a repo gyökeréből
+npm run dev
+```
+
+Ez a `php -S localhost:8000 -t public`, a `php artisan reverb:start` és a frontend `npm run dev` parancsokat futtatja párhuzamosan. **Előfeltétel**: a backend és a frontend `.env`-je már be legyen állítva (lásd fent), és a `php artisan reverb:install` már lefusson egyszer (ez generálja a `REVERB_*` változókat) — ez a gyökér szkript ezeket nem pótolja, csak a napi indítást gyorsítja fel. 2FA-hoz (Mailtrap SMTP) nincs külön futó folyamat szükséges, mert a 2FA-email küldése szinkron, nem sorba állított.
+
+Alternatívaként a backend `composer.json`-ja tartalmaz egy `composer dev` szkriptet is, ami a Laravel szervert, a sor (queue) figyelőt, a naplókövetőt és a Vite dev szervert indítja (Reverb nélkül):
 
 ```bash
 cd backend
 composer dev
 ```
-
-Ez **nem tartalmazza a Reverb szervert** — azt (`php artisan reverb:start`) mindenképp külön terminálban kell futtatni, ha a real-time frissítést is ki akarod próbálni. Fejlesztéshez tehát jellemzően 3 folyamat fut egyszerre: a backend (`composer dev` vagy `php artisan serve`/`php -S`), a `php artisan reverb:start`, és értelemszerűen maga a böngésző.
 
 ### Élő demó / fejlesztői teszt a WebSocket-frissítéshez
 
