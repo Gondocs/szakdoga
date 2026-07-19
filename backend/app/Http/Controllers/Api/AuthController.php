@@ -406,11 +406,16 @@ class AuthController extends Controller
     )]
     public function loginHistory(Request $request)
     {
-        // A two_factor_sent/login_2fa_failed akciók is itt jelennek meg,
-        // hogy a felhasználó a saját előzményében lássa, ha valaki
-        // (ő maga vagy más) 2FA-kódot kért/rontott el a fiókjához.
+        // A two_factor_sent/login_2fa_failed/two_factor_enabled/
+        // two_factor_disabled akciók is itt jelennek meg, hogy a felhasználó
+        // a saját előzményében lássa, ha valaki (ő maga vagy más) 2FA-kódot
+        // kért/rontott el, vagy módosította a 2FA-beállítását a fiókjához.
         $entries = AuditLog::where('user_id', $request->user()->id)
-            ->whereIn('action', ['login', 'logout', 'login_failed', 'two_factor_sent', 'login_2fa_failed'])
+            ->whereIn('action', [
+                'login', 'logout', 'login_failed',
+                'two_factor_sent', 'login_2fa_failed',
+                'two_factor_enabled', 'two_factor_disabled',
+            ])
             ->orderByDesc('created_at')
             ->limit(10)
             ->get(['id', 'action', 'created_at']);
