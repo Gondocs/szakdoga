@@ -181,10 +181,12 @@ Minden lényeges művelet (létrehozás, módosítás, törlés, érkeztetés, s
 Felhasználók (szerepkör-hozzárendeléssel, avatárral, befogadóhely-hozzárendeléssel befogadóhelyi kezelőknél), települések (kereshető törzsadat-lista, térképes koordináta-választóval), befogadóhelyek, járművek — mindegyik admin/vezető jogosultsághoz kötött CRUD felülettel.
 
 ### 13. Fiókbeállítások
-Saját profil szerkesztése, jelszócsere, bejelentkezési előzmények megtekintése (beleértve a kiküldött 2FA-kódokat és a sikertelen kódpróbálkozásokat is).
+Saját profil szerkesztése, jelszócsere, bejelentkezési előzmények megtekintése (beleértve a kiküldött 2FA-kódokat és a sikertelen kódpróbálkozásokat is), valamint a saját kétfaktoros hitelesítés be-/kikapcsolása (lásd lentebb).
 
 ### 14. Bejelentkezés és kétfaktoros hitelesítés (2FA)
-Minden belépő (nem lakossági) felhasználó számára **kötelező** a kétlépcsős bejelentkezés: helyes jelszó megadása után a rendszer egy 6 jegyű, 10 percig érvényes kódot küld e-mailben, amit a felhasználónak meg kell adnia a tényleges bejelentkezés befejezéséhez. 5 egymást követő hibás kód után a folyamatban lévő belépés lezárul, újra kell kezdeni. A kódküldés (`two_factor_sent`) és a sikertelen kódpróbálkozás (`login_2fa_failed`) is auditnaplózott esemény.
+Alapértelmezetten minden belépő (nem lakossági) felhasználó számára **kötelező** a kétlépcsős bejelentkezés: helyes jelszó megadása után a rendszer egy 6 jegyű, 10 percig érvényes kódot küld e-mailben, amit a felhasználónak meg kell adnia a tényleges bejelentkezés befejezéséhez. 5 egymást követő hibás kód után a folyamatban lévő belépés lezárul, újra kell kezdeni. A kódküldés (`two_factor_sent`) és a sikertelen kódpróbálkozás (`login_2fa_failed`) is auditnaplózott esemény.
+
+A `users.two_factor_enabled` mező (alapértelmezetten `true`) lehetővé teszi, hogy egy már bejelentkezett felhasználó a Fiókbeállítások oldalon **saját magának** kikapcsolja a 2FA-t — ez elsősorban fejlesztés/tesztelés közbeni kényelmi opció (hogy ne kelljen minden bejelentkezéskor e-mailt ellenőrizni), nem globális biztonsági kapcsoló: kikapcsolva a `/api/login` a jelszó ellenőrzése után rögtön bejelentkeztet, kód küldése nélkül. Új felhasználóknál (és alapértelmezésben mindenkinél) a 2FA bekapcsolva marad.
 
 ## Telepítés és futtatás
 
