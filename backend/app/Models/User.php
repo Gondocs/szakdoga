@@ -7,19 +7,19 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
-    // A two_factor_code/two_factor_expires_at/two_factor_attempts mezők
-    // szándékosan NEM szerepelnek itt: azokat kizárólag az AuthController
-    // állítja be belsőleg (forceFill-lel), sosem tömeges felhasználói
-    // bemenetből.
+    // A two_factor_code/two_factor_expires_at/two_factor_attempts/
+    // two_factor_enabled mezők szándékosan NEM szerepelnek itt: azokat
+    // kizárólag az AuthController állítja be belsőleg (forceFill-lel),
+    // sosem tömeges felhasználói bemenetből.
     protected $fillable = [
         'name',
         'email',
@@ -44,6 +44,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_expires_at' => 'datetime',
+            'two_factor_enabled' => 'boolean',
         ];
     }
 
