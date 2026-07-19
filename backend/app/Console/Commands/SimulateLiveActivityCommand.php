@@ -8,6 +8,7 @@ use App\Actions\Shelters\TransferPersonAction;
 use App\Enums\RegistrationStatus;
 use App\Enums\RoleCode;
 use App\Events\IncidentCreated;
+use App\Events\TransportPositionUpdated;
 use App\Exceptions\AlreadyCheckedInException;
 use App\Exceptions\ShelterFullException;
 use App\Models\EvacuationEvent;
@@ -16,14 +17,16 @@ use App\Models\Incident;
 use App\Models\Municipality;
 use App\Models\Person;
 use App\Models\Registration;
+use App\Models\Transport;
 use App\Models\User;
 use Illuminate\Console\Command;
 
 /**
  * Bemutató/fejlesztői segédeszköz: valós Action-osztályokon (nem
  * "kézzel piszkált" adatbázis-mezőkön) keresztül generál folyamatosan
- * érkeztetéseket, áthelyezéseket és incidenseket egy eseményhez, hogy a
- * WebSocket (Reverb) real-time frissítés — dashboard kapacitás/kockázat,
+ * érkeztetéseket, áthelyezéseket, szállítóeszköz-pozícióváltozásokat és
+ * incidenseket egy eseményhez, hogy a WebSocket (Reverb) real-time
+ * frissítés — dashboard kapacitás/kockázat, busz-marker mozgás,
  * incidens-toast — élőben, böngészőben megfigyelhető legyen anélkül, hogy
  * valakinek manuálisan kellene kattintgatnia a felületen.
  *
@@ -36,7 +39,7 @@ class SimulateLiveActivityCommand extends Command
         {--interval=4 : Másodperc két akció között}
         {--duration= : Opcionális időkorlát másodpercben; üresen hagyva Ctrl+C-ig fut}';
 
-    protected $description = 'Élő érkeztetéseket/áthelyezéseket/incidenseket generál egy eseményhez a WebSocket real-time frissítés demonstrálásához';
+    protected $description = 'Élő érkeztetéseket/áthelyezéseket/szállítóeszköz-pozíciókat/incidenseket generál egy eseményhez a WebSocket real-time frissítés demonstrálásához';
 
     public function handle(
         CreateRegistrationAction $createRegistration,
@@ -101,12 +104,14 @@ class SimulateLiveActivityCommand extends Command
     ): void {
         $roll = $faker->numberBetween(1, 100);
 
-        // 55% érkeztetés, 25% áthelyezés, 20% incidens — hozzávetőlegesen a
-        // valós arányokat követve (sok regisztráció/érkezés, ritkább
-        // áthelyezés, még ritkább rendkívüli esemény).
+        // 45% érkeztetés, 20% áthelyezés, 20% szállítóeszköz-pozíció, 15%
+        // incidens — hozzávetőlegesen a valós arányokat követve (sok
+        // regisztráció/érkezés, ritkább áthelyezés/pozícióváltás, még
+        // ritkább rendkívüli esemény).
         match (true) {
-            $roll <= 55 => $this->simulateCheckIn($event, $faker, $operator, $registrar, $createRegistration, $checkIn),
-            $roll <= 80 => $this->simulateTransfer($event, $operator, $transfer),
+            $roll <= 45 => $this->simulateCheckIn($event, $faker, $operator, $registrar, $createRegistration, $checkIn),
+            $roll <= 65 => $this->simulateTransfer($event, $operator, $transfer),
+            $roll <= 85 => $this->simulateTransportPosition($event),
             default => $this->simulateIncident($event, $faker, $registrar),
         };
     }
@@ -178,6 +183,53 @@ class SimulateLiveActivityCommand extends Command
             now()->format('H:i:s'),
             $arrivedRegistration->person->fullName(),
             $newShelter->shelter->name,
+        ));
+    }
+
+    // Ugyanaz a jitter/célpont-választási logika, mint
+    // TransportController::simulatePosition()-ben — szándékosan nem azt
+    // hívjuk közvetlenül (HTTP-n keresztül konzolparancsból nem
+    // praktikus), hanem ezt a kis, önmagában is jól olvasható másolatot
+    // tartjuk itt fenn, ugyanúgy, ahogy az incidens-szimuláció is a saját
+    // helyén hozza létre az Incident rekordot a kontroller helyett.
+    private function simulateTransportPosition(EvacuationEvent $event): void
+    {
+        $transport = $event->transports()->inRandomOrder()->first();
+
+        if (! $transport) {
+            $transport = $event->transports()->create(['code' => 'Demó busz']);
+        }
+
+        $withCoords = $event->eventShelters()->with('shelter.municipality')->get()->filter(
+            fn ($es) => $es->shelter?->municipality?->lat !== null && $es->shelter?->municipality?->lng !== null
+        );
+
+        if ($withCoords->isEmpty()) {
+            $this->line('<comment>Kihagyva:</comment> nincs koordinátával rendelkező befogadóhely, a pozíció nem szimulálható.');
+
+            return;
+        }
+
+        /** @var EventShelter $target */
+        $target = $withCoords->random();
+        $jitter = fn () => mt_rand(-600, 600) / 100000;
+
+        $transport->update([
+            'last_lat' => (float) $target->shelter->municipality->lat + $jitter(),
+            'last_lng' => (float) $target->shelter->municipality->lng + $jitter(),
+            'last_position_at' => now(),
+        ]);
+
+        $freshTransport = $transport->fresh();
+
+        event(new TransportPositionUpdated($freshTransport));
+
+        $this->line(sprintf(
+            '<info>[%s] Pozíció frissítve:</info> %s (%.5f, %.5f)',
+            now()->format('H:i:s'),
+            $freshTransport->code,
+            $freshTransport->last_lat,
+            $freshTransport->last_lng,
         ));
     }
 
