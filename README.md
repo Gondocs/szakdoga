@@ -261,7 +261,7 @@ php artisan reverb:install   # csak első alkalommal: legenerálja a REVERB_* en
 php artisan reverb:start
 ```
 
-A `reverb:install` a `.env`-be írja a `REVERB_APP_ID`/`REVERB_APP_KEY`/`REVERB_APP_SECRET`/`REVERB_HOST`/`REVERB_PORT`/`REVERB_SCHEME` (és a nekik megfelelő `VITE_REVERB_*`) változókat — ez utóbbiakat másold át a **frontend** `.env`-jébe is (lásd lentebb), mert a Vite csak a saját `.env`-jét olvassa.
+A `reverb:install` a `.env`-be írja a `REVERB_APP_ID`/`REVERB_APP_KEY`/`REVERB_APP_SECRET`/`REVERB_HOST`/`REVERB_PORT`/`REVERB_SCHEME` (és a nekik megfelelő `VITE_REVERB_*`) változókat. Az `APP_KEY`/`PORT`/`SCHEME` értékeket másold át a **frontend** `.env`-jébe is (lásd lentebb), mert a Vite csak a saját `.env`-jét olvassa — a `REVERB_HOST`-ot viszont **NE** másold változatlanul: Windows-on állítsd a backend `.env`-jében `127.0.0.1`-re (lásd a teljesítménycsapda-figyelmeztetést lentebb), a frontendben pedig maradjon `localhost` (a böngésző-kliensnek ott nincs ugyanaz a lassulása, és a sütikezeléshez is ez kell).
 
 ### Frontend (React SPA)
 
@@ -305,7 +305,7 @@ Ez **nem tartalmazza a Reverb szervert** — azt (`php artisan reverb:start`) mi
 
 ### Élő demó / fejlesztői teszt a WebSocket-frissítéshez
 
-A `demo:simulate-activity` artisan parancs valós Action-osztályokon (érkeztetés, áthelyezés, incidens) keresztül folyamatosan generál eseményeket egy megadott kitelepítési eseményhez, hogy a real-time frissítés böngészőben, kézi kattintgatás nélkül megfigyelhető legyen:
+A `demo:simulate-activity` artisan parancs valós Action-osztályokon (érkeztetés, áthelyezés, szállítóeszköz-pozíció, incidens) keresztül folyamatosan generál eseményeket egy megadott kitelepítési eseményhez, hogy a real-time frissítés böngészőben, kézi kattintgatás nélkül megfigyelhető legyen:
 
 ```bash
 cd backend
@@ -314,6 +314,19 @@ php artisan demo:simulate-activity EVT-2026-002 --interval=2 --duration=60
 ```
 
 Nyisd meg a dashboardot böngészőben, indítsd el a parancsot egy külön terminálban, és figyeld, ahogy a kapacitás-/kockázat-táblázat élőben frissül, illetve incidens-toast jelenik meg. **Ez tisztán fejlesztői/bemutató célú eszköz**, nem éles adatgenerálásra szánt.
+
+Egy második, ennél nagyobb léptékű parancs, a `demo:full-scenario`, **egy (opcionálisan `--events`-szel több) új eseményt** hoz létre a semmiből, **kb. 300 fős** népességgel (Faker hu_HU-val generált családok + önkiszolgáló egyének, kb. a `README_HASZNALATI_PELDA.md` forgatókönyvéhez hasonló elemekkel: szállítás, szándékos családszétválás és -egyesítés, incidens, visszatelepítés), kizárólag valós Action-osztályokon keresztül. Két fázisból áll: egy **gyors, tömeges feltöltésből** (nincs mesterséges késleltetés — kb. 30 másodperc ~300 főre), majd egy **valóban élő tempójú záró szakaszból**, ami véletlenszerűen érkeztet/áthelyez/incidenst jelent/pozíciót szimulál, hogy böngészőben ténylegesen követhető legyen. A végén egy **önellenőrző riportot** ír ki (✔ OK / ⚠ FIGYELEM soronként), ami összeveti a várt és a tényleges rendszerállapotot — ez a legjobb módja annak, hogy nagy volumenű, változatos adaton derüljön ki, ha valahol elszakad a lánc a modulok között:
+
+```bash
+cd backend
+php artisan demo:full-scenario                                    # 1 esemény, ~300 fő, 40 élő akció
+php artisan demo:full-scenario --people=30 --live-actions=15 --interval=1
+php artisan demo:full-scenario --events=3                         # ha mégis több eseményt akarsz egyszerre
+```
+
+> **Windows-specifikus teljesítménycsapda**: a `REVERB_HOST` értéke szándékosan `127.0.0.1`, NEM `localhost` — ez utóbbi Windows-on a backend PHP-kliensében (nem a böngészőben — ott nem probléma) kb. 200ms/hívás pluszterhelést okozott broadcast eseményenként (IPv6→IPv4 DNS-visszaesés), ami tömeges adatgeneráláskor (pl. ~400 fő regisztrálásakor, egyenként több auditnapló-bejegyzéssel) **percekben mérhető lassulást** jelentett (2 percen túli timeout helyett kb. 30 másodperc a javítás után). Ha saját `.env`-edben `REVERB_HOST=localhost` van, és a broadcast-tal járó műveletek (bármi, ami `AuditService::log()`-ot hív) gyanúsan lassúak, cseréld `127.0.0.1`-re.
+
+Az esemény a végén **aktív** állapotban marad (nem záródik le), hogy utána böngészőben is lehessen vele kísérletezni. Ismételt futtatásra minden alkalommal új eseményt hoz létre (a befogadóhelyek/települések törzsadatai újrahasznosulnak).
 
 ## Tesztelés
 
@@ -333,6 +346,22 @@ cd frontend
 npm run build   # tsc -b && vite build
 npm run lint    # oxlint
 ```
+
+### Vizuális, statikus tesztriport (backend + frontend együtt)
+
+A `scripts/test-report.ps1` (Windows/PowerShell) vagy `scripts/test-report.sh` (bash) egy paranccsal lefuttatja mindkét teszt-csomagot, és egy önálló, böngészőben megnyíló HTML riportot generál — %-os összesítő, kördiagram sikeres/sikertelen/kihagyott arányról, osztályonkénti/fájlonkénti bontás és a hibaüzenetek listája:
+
+```powershell
+.\scripts\test-report.ps1              # mindkét csomag
+.\scripts\test-report.ps1 -Suite backend
+```
+
+```bash
+./scripts/test-report.sh               # mindkét csomag
+./scripts/test-report.sh backend
+```
+
+A script mindig a repo gyökeréből, egy friss terminálfolyamatból indítja közvetlenül a `vendor/bin/phpunit`-et/`vitest`-et (nem egy már futó Laravel-folyamaton, pl. egy Artisan parancson keresztül) — ez szándékos: egy korábbi kísérlet során kiderült, hogy egy már bootstrapolt Laravel-alkalmazásból indított gyermek tesztfolyamat örökölheti a szülő éles `.env`-jét, és emiatt a `RefreshDatabase` a valódi fejlesztői adatbázist törölhetné a teszt SQLite in-memory helyett. Innen indítva ez a kockázat nem áll fenn. Az eredmény a (git által figyelmen kívül hagyott) `reports/test-report.html` fájlba kerül.
 
 ## API dokumentáció
 
