@@ -50,6 +50,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::put('/me', [AuthController::class, 'updateProfile']);
     Route::get('/me/login-history', [AuthController::class, 'loginHistory']);
+    Route::put('/me/two-factor', [AuthController::class, 'updateTwoFactorPreference']);
 
     Route::get('/events', [EvacuationEventController::class, 'index']);
     Route::post('/events', [EvacuationEventController::class, 'store']);
