@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\AssemblyPointResource;
 use App\Models\AssemblyPoint;
 use App\Models\EvacuationEvent;
+use App\Services\AuditService;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 
@@ -61,7 +62,7 @@ class AssemblyPointController extends Controller
             new OA\Response(response: 403, description: 'Nincs jogosultság'),
         ]
     )]
-    public function store(Request $request, EvacuationEvent $event)
+    public function store(Request $request, EvacuationEvent $event, AuditService $auditService)
     {
         $this->authorize('create', AssemblyPoint::class);
 
@@ -74,6 +75,8 @@ class AssemblyPointController extends Controller
         ]);
 
         $assemblyPoint = AssemblyPoint::create($data + ['event_id' => $event->id]);
+
+        $auditService->log('create', $assemblyPoint, $request->user(), null, $assemblyPoint->toArray());
 
         return (new AssemblyPointResource($assemblyPoint))->response()->setStatusCode(201);
     }
@@ -91,7 +94,7 @@ class AssemblyPointController extends Controller
             new OA\Response(response: 403, description: 'Nincs jogosultság'),
         ]
     )]
-    public function update(Request $request, AssemblyPoint $assemblyPoint)
+    public function update(Request $request, AssemblyPoint $assemblyPoint, AuditService $auditService)
     {
         $this->authorize('update', $assemblyPoint);
 
@@ -103,7 +106,10 @@ class AssemblyPointController extends Controller
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
+        $before = $assemblyPoint->toArray();
         $assemblyPoint->update($data);
+
+        $auditService->log('update', $assemblyPoint, $request->user(), $before, $assemblyPoint->fresh()->toArray());
 
         return new AssemblyPointResource($assemblyPoint->fresh());
     }
@@ -121,11 +127,14 @@ class AssemblyPointController extends Controller
             new OA\Response(response: 403, description: 'Nincs jogosultság'),
         ]
     )]
-    public function destroy(AssemblyPoint $assemblyPoint)
+    public function destroy(Request $request, AssemblyPoint $assemblyPoint, AuditService $auditService)
     {
         $this->authorize('delete', $assemblyPoint);
 
+        $before = $assemblyPoint->toArray();
         $assemblyPoint->delete();
+
+        $auditService->log('delete', $assemblyPoint, $request->user(), $before, null);
 
         return response()->noContent();
     }
