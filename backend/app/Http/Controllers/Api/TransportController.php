@@ -8,6 +8,7 @@ use App\Events\TransportPositionUpdated;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\PersonResource;
 use App\Models\EvacuationEvent;
+use App\Models\EventShelter;
 use App\Models\Person;
 use App\Models\Transport;
 use App\Models\TransportManifestEntry;
@@ -112,7 +113,7 @@ class TransportController extends Controller
             new OA\Response(response: 409, description: 'A kiválasztott jármű már használatban van egy másik eseményben'),
         ]
     )]
-    public function store(Request $request, EvacuationEvent $event)
+    public function store(Request $request, EvacuationEvent $event, AuditService $auditService)
     {
         $this->authorize('create', Transport::class);
 
@@ -137,6 +138,8 @@ class TransportController extends Controller
         }
 
         $transport = $event->transports()->create($data);
+
+        $auditService->log('create', $transport, $request->user(), null, $transport->toArray());
 
         return response()->json(['data' => $this->serialize($transport)], 201);
     }
@@ -164,7 +167,7 @@ class TransportController extends Controller
             new OA\Response(response: 409, description: 'A kiválasztott jármű már használatban van egy másik eseményben'),
         ]
     )]
-    public function update(Request $request, Transport $transport)
+    public function update(Request $request, Transport $transport, AuditService $auditService)
     {
         $this->authorize('update', $transport);
 
@@ -188,7 +191,10 @@ class TransportController extends Controller
             ], 409);
         }
 
+        $before = $transport->toArray();
         $transport->update($data);
+
+        $auditService->log('update', $transport, $request->user(), $before, $transport->fresh()->toArray());
 
         return response()->json(['data' => $this->serialize($transport->fresh())]);
     }
@@ -288,7 +294,7 @@ class TransportController extends Controller
         // Egy véletlenszerű, koordinátával rendelkező befogadóhely
         // közelébe helyezzük a járművet, kis véletlenszerű eltéréssel
         // (jitter), hogy valós GPS-mozgást imitáljon demonstrációs célra
-        /** @var \App\Models\EventShelter $target */
+        /** @var EventShelter $target */
         $target = $withCoords->random();
         $jitter = fn () => mt_rand(-600, 600) / 100000; // kb. +/- 0.6 km
 
@@ -455,7 +461,7 @@ class TransportController extends Controller
 
         $auditService->log('transport_alight', $entry, $request->user(), $before, $entry->fresh()->toArray());
 
-        return (new PersonResource($person->fresh(['municipality', 'registration', 'specialNeeds'])));
+        return new PersonResource($person->fresh(['municipality', 'registration', 'specialNeeds']));
     }
 
     #[OA\Post(
@@ -524,6 +530,7 @@ class TransportController extends Controller
 
             if (! $person) {
                 $notFound[] = $docNumber;
+
                 continue;
             }
 
@@ -534,11 +541,13 @@ class TransportController extends Controller
 
             if ($onboard) {
                 $alreadyOnboard[] = $docNumber;
+
                 continue;
             }
 
             if ($transport->capacity && $onboardCount >= $transport->capacity) {
                 $capacityExceeded[] = $docNumber;
+
                 continue;
             }
 
