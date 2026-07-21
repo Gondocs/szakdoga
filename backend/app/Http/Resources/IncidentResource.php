@@ -23,10 +23,25 @@ class IncidentResource extends JsonResource
                 'id' => $this->person->id,
                 'full_name' => $this->person->fullName(),
             ] : null),
+            // A térképen a shelter (ha van) településének koordinátája alapján
+            // helyezzük el az incidenst, ennek hiányában a person lakóhelye
+            // szerint — az incidenshez magához nincs saját lat/lng mező.
+            'coordinates' => $this->resolveCoordinates(),
             'reported_by' => $this->whenLoaded('reportedBy', fn () => $this->reportedBy?->name),
             'resolved_by' => $this->whenLoaded('resolvedBy', fn () => $this->resolvedBy?->name),
             'resolved_at' => $this->resolved_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),
         ];
+    }
+
+    private function resolveCoordinates(): ?array
+    {
+        $municipality = $this->shelter?->municipality ?? $this->person?->municipality;
+
+        if (! $municipality || $municipality->lat === null || $municipality->lng === null) {
+            return null;
+        }
+
+        return ['lat' => (float) $municipality->lat, 'lng' => (float) $municipality->lng];
     }
 }
