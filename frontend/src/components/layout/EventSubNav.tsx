@@ -8,6 +8,7 @@ import HomeIcon from '@mui/icons-material/Home';
 import HomeWorkIcon from '@mui/icons-material/HomeWork';
 import DirectionsBusIcon from '@mui/icons-material/DirectionsBus';
 import MapIcon from '@mui/icons-material/Map';
+import PlaceIcon from '@mui/icons-material/Place';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { toast } from 'react-toastify';
 import { connectEcho } from '../../lib/echo';
@@ -32,6 +33,7 @@ const eventNavItems = [
   { to: 'csaladok', label: 'Családok', icon: <GroupsIcon fontSize="small" /> },
   { to: 'szallitas', label: 'Szállítás', icon: <DirectionsBusIcon fontSize="small" /> },
   { to: 'terkep', label: 'Térkép', icon: <MapIcon fontSize="small" /> },
+  { to: 'gyulekezopontok', label: 'Gyülekezőpontok', icon: <PlaceIcon fontSize="small" /> },
   { to: 'rendkivuli-esemenyek', label: 'Rendkívüli események', icon: <WarningAmberIcon fontSize="small" /> },
   { to: 'visszatelepites', label: 'Visszatelepítés', icon: <HomeIcon fontSize="small" /> },
 ];
