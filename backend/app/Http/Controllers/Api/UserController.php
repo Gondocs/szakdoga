@@ -132,7 +132,7 @@ class UserController extends Controller
             new OA\Response(response: 422, description: 'Validációs hiba'),
         ]
     )]
-    public function uploadAvatar(Request $request, User $targetUser)
+    public function uploadAvatar(Request $request, User $targetUser, AuditService $auditService)
     {
         $this->authorize('updateAvatar', $targetUser);
 
@@ -140,12 +140,16 @@ class UserController extends Controller
             'avatar' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ]);
 
+        $before = ['avatar_path' => $targetUser->avatar_path];
+
         if ($targetUser->avatar_path) {
             Storage::disk('public')->delete($targetUser->avatar_path);
         }
 
         $path = $request->file('avatar')->store('avatars', 'public');
         $targetUser->update(['avatar_path' => $path]);
+
+        $auditService->log('user_avatar_update', $targetUser, $request->user(), $before, ['avatar_path' => $path]);
 
         return new UserResource($targetUser->fresh(['role', 'shelter']));
     }
@@ -163,13 +167,17 @@ class UserController extends Controller
             new OA\Response(response: 403, description: 'Nincs jogosultság'),
         ]
     )]
-    public function deleteAvatar(User $targetUser)
+    public function deleteAvatar(Request $request, User $targetUser, AuditService $auditService)
     {
         $this->authorize('updateAvatar', $targetUser);
 
         if ($targetUser->avatar_path) {
+            $before = ['avatar_path' => $targetUser->avatar_path];
+
             Storage::disk('public')->delete($targetUser->avatar_path);
             $targetUser->update(['avatar_path' => null]);
+
+            $auditService->log('user_avatar_delete', $targetUser, $request->user(), $before, ['avatar_path' => null]);
         }
 
         return new UserResource($targetUser->fresh(['role', 'shelter']));
