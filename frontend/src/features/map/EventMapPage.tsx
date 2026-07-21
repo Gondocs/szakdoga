@@ -1,6 +1,6 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Popup, CircleMarker, useMapEvents } from 'react-leaflet';
+import { useEffect, useMemo, useState } from 'react';
+import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip as LeafletTooltip, useMapEvents } from 'react-leaflet';
 import {
   Box,
   Typography,
@@ -9,38 +9,67 @@ import {
   Button,
   CircularProgress,
   Alert,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Tooltip,
+  Chip,
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import AddLocationAltIcon from '@mui/icons-material/AddLocationAlt';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
+import ListAltIcon from '@mui/icons-material/ListAlt';
+import HomeWorkIcon from '@mui/icons-material/HomeWork';
+import DirectionsBusIcon from '@mui/icons-material/DirectionsBus';
+import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
+import PlaceIcon from '@mui/icons-material/Place';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import RouteIcon from '@mui/icons-material/Route';
 import { toast } from 'react-toastify';
 import 'leaflet/dist/leaflet.css';
-import { assemblyPointIcon, busIcon, shelterIcon } from '../../lib/leafletIcons';
-import type { AssemblyPoint, ShelterWithRisk, TransportPositionUpdatedPayload } from '../../types';
+import { assemblyPointIcon, busIcon, incidentIcon, municipalityIcon, shelterIcon } from '../../lib/leafletIcons';
+import type { AssemblyPoint, Incident, Municipality, ShelterWithRisk, TransportPositionUpdatedPayload } from '../../types';
 import { useAuth } from '../auth/AuthContext';
 import { connectEcho } from '../../lib/echo';
+import { AssemblyPointDialog } from '../assemblyPoints/AssemblyPointListPage';
 import {
-  createAssemblyPoint,
-  deleteAssemblyPoint,
   fetchAssemblyPoints,
+  fetchIncidents,
+  fetchMunicipalities,
   fetchPersonMunicipalitySummary,
   fetchShelters,
   fetchTransports,
   simulateTransportPosition,
-  updateAssemblyPoint,
   type MunicipalityPersonSummary,
   type Transport,
 } from '../../lib/api/endpoints';
 
 const GYMS_CENTER: [number, number] = [47.75, 17.35];
+
+type LayerKey = 'municipalities' | 'shelters' | 'transports' | 'assemblyPoints' | 'incidents' | 'plannedRoutes';
+
+const layerConfig: { key: LayerKey; label: string; icon: React.ReactNode }[] = [
+  { key: 'municipalities', label: 'Regisztráltak (település)', icon: <PeopleAltIcon fontSize="small" /> },
+  { key: 'shelters', label: 'Befogadóhelyek', icon: <HomeWorkIcon fontSize="small" /> },
+  { key: 'transports', label: 'Járművek', icon: <DirectionsBusIcon fontSize="small" /> },
+  { key: 'assemblyPoints', label: 'Gyülekezési pontok', icon: <PlaceIcon fontSize="small" /> },
+  { key: 'incidents', label: 'Incidensek', icon: <WarningAmberIcon fontSize="small" /> },
+  { key: 'plannedRoutes', label: 'Tervezett útvonalak', icon: <RouteIcon fontSize="small" /> },
+];
+
+const severityLabels: Record<Incident['severity'], string> = {
+  low: 'Alacsony',
+  medium: 'Közepes',
+  high: 'Magas',
+};
+
+/**
+ * A "tervezett útvonal" itt csak egy egyenes, szaggatott jelzővonal az induló
+ * és a célváros koordinátái között — nincs valós úthálózat-alapú
+ * útvonaltervezés (ahhoz külső routing szolgáltató kellene), ez csak azt
+ * mutatja meg vizuálisan, mely szállítóeszköz merre tart.
+ */
+function findMunicipalityCoords(name: string | null | undefined, municipalities: Municipality[]): [number, number] | null {
+  if (!name) return null;
+  const normalized = name.trim().toLowerCase();
+  const match = municipalities.find((m) => m.name.trim().toLowerCase() === normalized);
+  return match?.lat != null && match?.lng != null ? [match.lat, match.lng] : null;
+}
 
 export function EventMapPage() {
   const { eventId } = useParams<{ eventId: string }>();
@@ -51,11 +80,24 @@ export function EventMapPage() {
   const [transports, setTransports] = useState<Transport[]>([]);
   const [municipalitySummary, setMunicipalitySummary] = useState<MunicipalityPersonSummary[]>([]);
   const [assemblyPoints, setAssemblyPoints] = useState<AssemblyPoint[]>([]);
+  const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [simulatingId, setSimulatingId] = useState<string | null>(null);
   const [isPlacingPoint, setIsPlacingPoint] = useState(false);
-  const [editingPoint, setEditingPoint] = useState<AssemblyPoint | 'new' | null>(null);
   const [draftCoords, setDraftCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [layers, setLayers] = useState<Record<LayerKey, boolean>>({
+    municipalities: true,
+    shelters: true,
+    transports: true,
+    assemblyPoints: true,
+    incidents: true,
+    plannedRoutes: false,
+  });
+
+  function toggleLayer(key: LayerKey) {
+    setLayers((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
 
   function load() {
     if (!eventId) return;
@@ -65,12 +107,16 @@ export function EventMapPage() {
       fetchTransports(eventId),
       fetchPersonMunicipalitySummary(eventId),
       fetchAssemblyPoints(eventId),
+      fetchIncidents(eventId, 'open'),
+      fetchMunicipalities(),
     ])
-      .then(([shelterList, transportList, summary, assemblyPointList]) => {
+      .then(([shelterList, transportList, summary, assemblyPointList, incidentList, municipalityList]) => {
         setShelters(shelterList);
         setTransports(transportList);
         setMunicipalitySummary(summary);
         setAssemblyPoints(assemblyPointList);
+        setIncidents(incidentList);
+        setMunicipalities(municipalityList);
       })
       .finally(() => setIsLoading(false));
   }
@@ -103,18 +149,6 @@ export function EventMapPage() {
   function handleMapClickForNewPoint(lat: number, lng: number) {
     setIsPlacingPoint(false);
     setDraftCoords({ lat, lng });
-    setEditingPoint('new');
-  }
-
-  async function handleDeleteAssemblyPoint(point: AssemblyPoint) {
-    if (!window.confirm(`Biztosan törli a(z) "${point.name}" gyülekezési pontot?`)) return;
-    try {
-      await deleteAssemblyPoint(point.id);
-      setAssemblyPoints((prev) => prev.filter((p) => p.id !== point.id));
-      toast.success('Gyülekezési pont törölve.');
-    } catch {
-      toast.error('A törlés nem sikerült.');
-    }
   }
 
   async function handleSimulate(transportId: string) {
@@ -132,6 +166,19 @@ export function EventMapPage() {
 
   const shelterMarkers = shelters.filter((s) => s.shelter.coordinates);
   const transportMarkers = transports.filter((t) => t.last_lat !== null && t.last_lng !== null);
+  const incidentMarkers = incidents.filter((i) => i.coordinates);
+
+  const plannedRoutes = useMemo(() => {
+    if (municipalities.length === 0) return [];
+
+    return transports
+      .map((t) => {
+        const from = findMunicipalityCoords(t.origin, municipalities);
+        const to = findMunicipalityCoords(t.destination, municipalities);
+        return from && to ? { transport: t, from, to } : null;
+      })
+      .filter((r): r is { transport: Transport; from: [number, number]; to: [number, number] } => r !== null);
+  }, [transports, municipalities]);
 
   if (isLoading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
 
@@ -170,37 +217,46 @@ export function EventMapPage() {
         <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
           <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1}>
             <Typography variant="subtitle2" fontWeight={700}>Gyülekezési pontok</Typography>
-            <Button
-              size="small"
-              variant={isPlacingPoint ? 'contained' : 'outlined'}
-              color={isPlacingPoint ? 'secondary' : 'primary'}
-              startIcon={<AddLocationAltIcon fontSize="small" />}
-              onClick={() => setIsPlacingPoint((prev) => !prev)}
-            >
-              {isPlacingPoint ? 'Kattintson a térképre…' : 'Új gyülekezési pont'}
-            </Button>
-          </Stack>
-          {assemblyPoints.length > 0 && (
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1.5 }}>
-              {assemblyPoints.map((p) => (
-                <Paper key={p.id} variant="outlined" sx={{ px: 1.5, py: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <Typography variant="body2">{p.name}</Typography>
-                  <Tooltip title="Szerkesztés">
-                    <IconButton size="small" onClick={() => setEditingPoint(p)}>
-                      <EditIcon fontSize="inherit" />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Törlés">
-                    <IconButton size="small" color="error" onClick={() => handleDeleteAssemblyPoint(p)}>
-                      <DeleteIcon fontSize="inherit" />
-                    </IconButton>
-                  </Tooltip>
-                </Paper>
-              ))}
+            <Stack direction="row" spacing={1}>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<ListAltIcon fontSize="small" />}
+                component={RouterLink}
+                to={`/esemenyek/${eventId}/gyulekezopontok`}
+              >
+                Teljes lista
+              </Button>
+              <Button
+                size="small"
+                variant={isPlacingPoint ? 'contained' : 'outlined'}
+                color={isPlacingPoint ? 'secondary' : 'primary'}
+                startIcon={<AddLocationAltIcon fontSize="small" />}
+                onClick={() => setIsPlacingPoint((prev) => !prev)}
+              >
+                {isPlacingPoint ? 'Kattintson a térképre…' : 'Új gyülekezési pont'}
+              </Button>
             </Stack>
-          )}
+          </Stack>
         </Paper>
       )}
+
+      <Paper variant="outlined" sx={{ p: 1.5, mb: 2 }}>
+        <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Rétegek</Typography>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          {layerConfig.map((layer) => (
+            <Chip
+              key={layer.key}
+              icon={layer.icon as React.ReactElement}
+              label={layer.label}
+              clickable
+              color={layers[layer.key] ? 'primary' : 'default'}
+              variant={layers[layer.key] ? 'filled' : 'outlined'}
+              onClick={() => toggleLayer(layer.key)}
+            />
+          ))}
+        </Stack>
+      </Paper>
 
       <Paper variant="outlined" sx={{ overflow: 'hidden', height: { xs: 420, sm: 560 } }}>
         <MapContainer center={GYMS_CENTER} zoom={9} style={{ height: '100%', width: '100%' }}>
@@ -209,18 +265,18 @@ export function EventMapPage() {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           {isPlacingPoint && <MapClickCatcher onClick={handleMapClickForNewPoint} />}
-          {municipalitySummary.map((m) => (
-            <CircleMarker
+          {layers.municipalities && municipalitySummary.map((m) => (
+            <Marker
               key={m.municipality_id}
-              center={[m.lat, m.lng]}
-              // Négyzetgyökös skálázás, hogy a kör területe (és ne csak a
-              // sugara) legyen arányos a létszámmal, felső korláttal
-              radius={Math.min(6 + Math.sqrt(m.person_count) * 2, 22)}
-              pathOptions={{ color: '#a3172b', fillColor: '#a3172b', fillOpacity: 0.3, weight: 1 }}
+              position={[m.lat, m.lng]}
+              icon={municipalityIcon(m.person_count)}
               eventHandlers={{
                 click: () => navigate(`/esemenyek/${eventId}/szemelyek?municipality_id=${m.municipality_id}`),
               }}
             >
+              <LeafletTooltip direction="top" offset={[0, -10]} permanent opacity={0.9}>
+                {m.name}
+              </LeafletTooltip>
               <Popup>
                 <strong>{m.name}</strong>
                 <br />
@@ -228,9 +284,9 @@ export function EventMapPage() {
                 <br />
                 <em>Kattintson a listázáshoz</em>
               </Popup>
-            </CircleMarker>
+            </Marker>
           ))}
-          {shelterMarkers.map((s) => (
+          {layers.shelters && shelterMarkers.map((s) => (
             <Marker
               key={s.shelter.id}
               position={[s.shelter.coordinates!.lat, s.shelter.coordinates!.lng]}
@@ -245,7 +301,7 @@ export function EventMapPage() {
               </Popup>
             </Marker>
           ))}
-          {transportMarkers.map((t) => (
+          {layers.transports && transportMarkers.map((t) => (
             <Marker key={t.id} position={[t.last_lat!, t.last_lng!]} icon={busIcon}>
               <Popup>
                 <strong>{t.code}</strong>
@@ -256,7 +312,7 @@ export function EventMapPage() {
               </Popup>
             </Marker>
           ))}
-          {assemblyPoints.map((p) => (
+          {layers.assemblyPoints && assemblyPoints.map((p) => (
             <Marker key={p.id} position={[p.lat, p.lng]} icon={assemblyPointIcon}>
               <Popup>
                 <strong>{p.name}</strong>
@@ -271,6 +327,36 @@ export function EventMapPage() {
               </Popup>
             </Marker>
           ))}
+          {layers.incidents && incidentMarkers.map((i) => (
+            <Marker key={i.id} position={[i.coordinates!.lat, i.coordinates!.lng]} icon={incidentIcon(i.severity)}>
+              <Popup>
+                <strong>{severityLabels[i.severity]} súlyosságú incidens</strong>
+                <br />
+                {i.description}
+                {i.shelter && (
+                  <>
+                    <br />
+                    Befogadóhely: {i.shelter.name}
+                  </>
+                )}
+              </Popup>
+            </Marker>
+          ))}
+          {layers.plannedRoutes && plannedRoutes.map((r) => (
+            <Polyline
+              key={r.transport.id}
+              positions={[r.from, r.to]}
+              pathOptions={{ color: '#6d4c41', weight: 3, dashArray: '8 8' }}
+            >
+              <Popup>
+                <strong>{r.transport.code}</strong>
+                <br />
+                {r.transport.origin} → {r.transport.destination}
+                <br />
+                <em>Jelzésértékű egyenes, nem valós útvonal.</em>
+              </Popup>
+            </Polyline>
+          ))}
         </MapContainer>
       </Paper>
 
@@ -280,21 +366,14 @@ export function EventMapPage() {
         </Typography>
       )}
 
-      {editingPoint && eventId && (
+      {draftCoords && eventId && (
         <AssemblyPointDialog
           eventId={eventId}
-          point={editingPoint === 'new' ? null : editingPoint}
+          point={null}
           initialCoords={draftCoords}
-          onClose={() => {
-            setEditingPoint(null);
-            setDraftCoords(null);
-          }}
+          onClose={() => setDraftCoords(null)}
           onSaved={(saved) => {
-            setAssemblyPoints((prev) => {
-              const exists = prev.some((p) => p.id === saved.id);
-              return exists ? prev.map((p) => (p.id === saved.id ? saved : p)) : [...prev, saved];
-            });
-            setEditingPoint(null);
+            setAssemblyPoints((prev) => [...prev, saved]);
             setDraftCoords(null);
           }}
         />
@@ -308,81 +387,4 @@ function MapClickCatcher({ onClick }: { onClick: (lat: number, lng: number) => v
     click: (e) => onClick(e.latlng.lat, e.latlng.lng),
   });
   return null;
-}
-
-function AssemblyPointDialog({
-  eventId,
-  point,
-  initialCoords,
-  onClose,
-  onSaved,
-}: {
-  eventId: string;
-  point: AssemblyPoint | null;
-  initialCoords: { lat: number; lng: number } | null;
-  onClose: () => void;
-  onSaved: (point: AssemblyPoint) => void;
-}) {
-  const [name, setName] = useState(point?.name ?? '');
-  const [address, setAddress] = useState(point?.address ?? '');
-  const [lat, setLat] = useState(point?.lat ?? initialCoords?.lat ?? GYMS_CENTER[0]);
-  const [lng, setLng] = useState(point?.lng ?? initialCoords?.lng ?? GYMS_CENTER[1]);
-  const [notes, setNotes] = useState(point?.notes ?? '');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setIsSubmitting(true);
-    try {
-      const payload = { name, address: address || null, lat, lng, notes: notes || null };
-      const saved = point ? await updateAssemblyPoint(point.id, payload) : await createAssemblyPoint(eventId, payload);
-      toast.success('Gyülekezési pont mentve.');
-      onSaved(saved);
-    } catch {
-      toast.error('A mentés nem sikerült.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  return (
-    <Dialog open onClose={onClose} fullWidth maxWidth="xs">
-      <Box component="form" onSubmit={handleSubmit}>
-        <DialogTitle>{point ? 'Gyülekezési pont szerkesztése' : 'Új gyülekezési pont'}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField label="Név" required fullWidth value={name} onChange={(e) => setName(e.target.value)} />
-            <TextField label="Cím" fullWidth value={address} onChange={(e) => setAddress(e.target.value)} />
-            <Stack direction="row" spacing={1}>
-              <TextField
-                label="Szélesség (lat)"
-                type="number"
-                required
-                fullWidth
-                value={lat}
-                onChange={(e) => setLat(Number(e.target.value))}
-                inputProps={{ step: 'any' }}
-              />
-              <TextField
-                label="Hosszúság (lng)"
-                type="number"
-                required
-                fullWidth
-                value={lng}
-                onChange={(e) => setLng(Number(e.target.value))}
-                inputProps={{ step: 'any' }}
-              />
-            </Stack>
-            <TextField label="Megjegyzés" fullWidth multiline minRows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={onClose} color="inherit">Mégse</Button>
-          <Button type="submit" variant="contained" disabled={isSubmitting}>
-            {isSubmitting ? 'Mentés…' : 'Mentés'}
-          </Button>
-        </DialogActions>
-      </Box>
-    </Dialog>
-  );
 }
