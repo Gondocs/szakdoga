@@ -44,9 +44,11 @@ class ShelterController extends Controller
             new OA\Response(response: 403, description: 'Nincs jogosultság'),
         ]
     )]
-    public function store(StoreShelterRequest $request)
+    public function store(StoreShelterRequest $request, AuditService $auditService)
     {
         $shelter = Shelter::create($request->validated());
+
+        $auditService->log('create', $shelter, $request->user(), null, $shelter->toArray());
 
         return (new ShelterResource($shelter->load('municipality')))->response()->setStatusCode(201);
     }
@@ -64,9 +66,12 @@ class ShelterController extends Controller
             new OA\Response(response: 403, description: 'Nincs jogosultság'),
         ]
     )]
-    public function update(UpdateShelterRequest $request, Shelter $shelter)
+    public function update(UpdateShelterRequest $request, Shelter $shelter, AuditService $auditService)
     {
+        $before = $shelter->toArray();
         $shelter->update($request->validated());
+
+        $auditService->log('update', $shelter, $request->user(), $before, $shelter->fresh()->toArray());
 
         return new ShelterResource($shelter->fresh('municipality'));
     }
