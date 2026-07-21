@@ -15,6 +15,7 @@ const segmentLabels: Record<string, string> = {
   szallitas: 'Szállítás',
   jarmuvek: 'Járművek',
   terkep: 'Térkép',
+  gyulekezopontok: 'Gyülekezőpontok',
   csaladok: 'Családok',
   egyesites: 'Családegyesítés',
   'rendkivuli-esemenyek': 'Rendkívüli események',
