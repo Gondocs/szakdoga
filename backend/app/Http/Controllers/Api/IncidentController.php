@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\IncidentResource;
 use App\Models\EvacuationEvent;
 use App\Models\Incident;
+use App\Services\AuditService;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 
@@ -34,7 +35,7 @@ class IncidentController extends Controller
         $this->authorize('viewAny', Incident::class);
 
         $incidents = $event->incidents()
-            ->with(['shelter', 'person', 'reportedBy', 'resolvedBy'])
+            ->with(['shelter.municipality', 'person.municipality', 'reportedBy', 'resolvedBy'])
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')))
             ->latest()
             ->get();
@@ -69,7 +70,7 @@ class IncidentController extends Controller
             new OA\Response(response: 403, description: 'Nincs jogosultság'),
         ]
     )]
-    public function store(Request $request, EvacuationEvent $event)
+    public function store(Request $request, EvacuationEvent $event, AuditService $auditService)
     {
         $this->authorize('create', Incident::class);
 
@@ -89,6 +90,8 @@ class IncidentController extends Controller
 
         $incident->load(['shelter', 'person', 'reportedBy']);
 
+        $auditService->log('incident_create', $incident, $request->user(), null, $incident->toArray(), forceSignificant: true);
+
         event(new IncidentCreated($incident));
 
         return (new IncidentResource($incident))->response()->setStatusCode(201);
@@ -107,15 +110,19 @@ class IncidentController extends Controller
             new OA\Response(response: 403, description: 'Nincs jogosultság'),
         ]
     )]
-    public function resolve(Request $request, Incident $incident)
+    public function resolve(Request $request, Incident $incident, AuditService $auditService)
     {
         $this->authorize('resolve', $incident);
+
+        $before = $incident->toArray();
 
         $incident->update([
             'status' => 'resolved',
             'resolved_by' => $request->user()->id,
             'resolved_at' => now(),
         ]);
+
+        $auditService->log('incident_resolve', $incident, $request->user(), $before, $incident->fresh()->toArray(), forceSignificant: true);
 
         return new IncidentResource($incident->fresh(['shelter', 'person', 'reportedBy', 'resolvedBy']));
     }
