@@ -85,7 +85,7 @@ class VehicleController extends Controller
             new OA\Response(response: 403, description: 'Nincs jogosultság'),
         ]
     )]
-    public function store(Request $request)
+    public function store(Request $request, AuditService $auditService)
     {
         $this->authorize('create', Vehicle::class);
 
@@ -99,6 +99,8 @@ class VehicleController extends Controller
         ]);
 
         $vehicle = Vehicle::create($data);
+
+        $auditService->log('create', $vehicle, $request->user(), null, $vehicle->toArray());
 
         return response()->json(['data' => $this->serialize($vehicle)], 201);
     }
@@ -117,7 +119,7 @@ class VehicleController extends Controller
             new OA\Response(response: 403, description: 'Nincs jogosultság'),
         ]
     )]
-    public function update(Request $request, Vehicle $vehicle)
+    public function update(Request $request, Vehicle $vehicle, AuditService $auditService)
     {
         $this->authorize('update', $vehicle);
 
@@ -130,7 +132,10 @@ class VehicleController extends Controller
             'notes' => ['nullable', 'string', 'max:255'],
         ]);
 
+        $before = $vehicle->toArray();
         $vehicle->update($data);
+
+        $auditService->log('update', $vehicle, $request->user(), $before, $vehicle->fresh()->toArray());
 
         return response()->json(['data' => $this->serialize($vehicle->fresh())]);
     }
