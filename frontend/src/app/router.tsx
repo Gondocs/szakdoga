@@ -21,6 +21,7 @@ import { FamilyListPage } from '../features/families/FamilyListPage';
 import { FamilyReunificationPage } from '../features/families/FamilyReunificationPage';
 import { TransportPage } from '../features/transports/TransportPage';
 import { EventMapPage } from '../features/map/EventMapPage';
+import { AssemblyPointListPage } from '../features/assemblyPoints/AssemblyPointListPage';
 import { VehicleListPage } from '../features/vehicles/VehicleListPage';
 import { MunicipalityManagementPage } from '../features/municipalities/MunicipalityManagementPage';
 import { SettingsPage } from '../features/settings/SettingsPage';
@@ -53,6 +54,7 @@ export const router = createBrowserRouter([
           { path: 'befogadohelyek', element: <ShelterListPage /> },
           { path: 'szallitas', element: <TransportPage /> },
           { path: 'terkep', element: <EventMapPage /> },
+          { path: 'gyulekezopontok', element: <AssemblyPointListPage /> },
           { path: 'csaladok', element: <FamilyListPage /> },
           { path: 'csaladok/egyesites', element: <FamilyReunificationPage /> },
           { path: 'rendkivuli-esemenyek', element: <IncidentListPage /> },
