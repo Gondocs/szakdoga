@@ -52,7 +52,7 @@ class MunicipalityController extends Controller
             new OA\Response(response: 403, description: 'Nincs jogosultság'),
         ]
     )]
-    public function store(Request $request)
+    public function store(Request $request, AuditService $auditService)
     {
         $this->authorize('create', Municipality::class);
 
@@ -65,6 +65,8 @@ class MunicipalityController extends Controller
         ]);
 
         $municipality = Municipality::create($data);
+
+        $auditService->log('create', $municipality, $request->user(), null, $municipality->toArray());
 
         return response()->json(['data' => $municipality], 201);
     }
@@ -83,7 +85,7 @@ class MunicipalityController extends Controller
             new OA\Response(response: 403, description: 'Nincs jogosultság'),
         ]
     )]
-    public function update(Request $request, Municipality $municipality)
+    public function update(Request $request, Municipality $municipality, AuditService $auditService)
     {
         $this->authorize('update', Municipality::class);
 
@@ -95,7 +97,10 @@ class MunicipalityController extends Controller
             'lng' => ['nullable', 'numeric', 'between:-180,180'],
         ]);
 
+        $before = $municipality->toArray();
         $municipality->update($data);
+
+        $auditService->log('update', $municipality, $request->user(), $before, $municipality->fresh()->toArray());
 
         return response()->json(['data' => $municipality->fresh()]);
     }
