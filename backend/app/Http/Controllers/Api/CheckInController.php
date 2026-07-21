@@ -14,6 +14,7 @@ use App\Models\CheckIn;
 use App\Models\EvacuationEvent;
 use App\Models\Person;
 use App\Models\Shelter;
+use App\Services\AuditService;
 use App\Services\FamilySplitWarningService;
 use App\Services\QrTokenService;
 use Illuminate\Http\Request;
@@ -175,12 +176,15 @@ class CheckInController extends Controller
             new OA\Response(response: 422, description: 'A személy nincs befogadóhelyen'),
         ]
     )]
-    public function temporaryLeave(Person $person)
+    public function temporaryLeave(Request $request, Person $person, AuditService $auditService)
     {
         $checkIn = $this->currentCheckInOrFail($person);
         $this->authorize('checkIn', $checkIn->shelter);
 
+        $before = $checkIn->toArray();
         $checkIn->update(['temporary_leave_at' => now(), 'temporary_return_at' => null]);
+
+        $auditService->log('temporary_leave', $checkIn, $request->user(), $before, $checkIn->fresh()->toArray());
 
         return new CheckInResource($checkIn->fresh(['person', 'shelter', 'checkedInBy']));
     }
@@ -199,12 +203,15 @@ class CheckInController extends Controller
             new OA\Response(response: 422, description: 'A személy nincs befogadóhelyen'),
         ]
     )]
-    public function temporaryReturn(Person $person)
+    public function temporaryReturn(Request $request, Person $person, AuditService $auditService)
     {
         $checkIn = $this->currentCheckInOrFail($person);
         $this->authorize('checkIn', $checkIn->shelter);
 
+        $before = $checkIn->toArray();
         $checkIn->update(['temporary_return_at' => now()]);
+
+        $auditService->log('temporary_return', $checkIn, $request->user(), $before, $checkIn->fresh()->toArray());
 
         return new CheckInResource($checkIn->fresh(['person', 'shelter', 'checkedInBy']));
     }
@@ -231,7 +238,7 @@ class CheckInController extends Controller
             new OA\Response(response: 422, description: 'A személy nincs befogadóhelyen'),
         ]
     )]
-    public function updateBedAssignment(Request $request, Person $person)
+    public function updateBedAssignment(Request $request, Person $person, AuditService $auditService)
     {
         $data = $request->validate([
             'bed_label' => ['nullable', 'string', 'max:100'],
@@ -240,7 +247,10 @@ class CheckInController extends Controller
         $checkIn = $this->currentCheckInOrFail($person);
         $this->authorize('checkIn', $checkIn->shelter);
 
+        $before = ['bed_label' => $checkIn->bed_label];
         $checkIn->update(['bed_label' => $data['bed_label'] ?? null]);
+
+        $auditService->log('bed_assignment_update', $checkIn, $request->user(), $before, ['bed_label' => $checkIn->bed_label]);
 
         return new CheckInResource($checkIn->fresh(['person', 'shelter', 'checkedInBy']));
     }
