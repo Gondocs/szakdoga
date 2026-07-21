@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\EvacuationEvent;
 use App\Models\Municipality;
 use App\Models\RepatriationAuthorization;
+use App\Services\AuditService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
@@ -95,7 +96,7 @@ class RepatriationController extends Controller
             new OA\Response(response: 403, description: 'Nincs jogosultság'),
         ]
     )]
-    public function upsert(Request $request, EvacuationEvent $event)
+    public function upsert(Request $request, EvacuationEvent $event, AuditService $auditService)
     {
         if (! $request->user()->hasRole(RoleCode::Admin, RoleCode::Manager)) {
             throw new AuthorizationException('Nincs jogosultsága a visszatelepítési státusz módosításához.');
@@ -109,6 +110,11 @@ class RepatriationController extends Controller
             'window_ends_at' => ['nullable', 'date'],
         ]);
 
+        $before = RepatriationAuthorization::where('event_id', $event->id)
+            ->where('municipality_id', $data['municipality_id'])
+            ->first()
+            ?->toArray();
+
         $authorization = RepatriationAuthorization::updateOrCreate(
             ['event_id' => $event->id, 'municipality_id' => $data['municipality_id']],
             [
@@ -118,6 +124,14 @@ class RepatriationController extends Controller
                 'window_ends_at' => $data['window_ends_at'] ?? null,
                 'updated_by' => $request->user()->id,
             ]
+        );
+
+        $auditService->log(
+            'repatriation_authorization_update',
+            $authorization,
+            $request->user(),
+            $before,
+            $authorization->fresh()->toArray(),
         );
 
         return response()->json([
