@@ -10,6 +10,7 @@ use App\Http\Resources\PersonResource;
 use App\Http\Resources\QrTokenResource;
 use App\Models\Person;
 use App\Models\QrToken;
+use App\Services\AuditService;
 use App\Services\QrTokenService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
@@ -133,7 +134,7 @@ class QrController extends Controller
             new OA\Response(response: 403, description: 'Nincs jogosultság'),
         ]
     )]
-    public function deliver(Request $request, QrToken $qrToken)
+    public function deliver(Request $request, QrToken $qrToken, AuditService $auditService)
     {
         if (! $request->user()->hasRole(RoleCode::Admin, RoleCode::Manager, RoleCode::Registrar)) {
             throw new AuthorizationException('Nincs jogosultsága a kiosztás rögzítéséhez.');
@@ -143,11 +144,15 @@ class QrController extends Controller
             'delivery_method' => ['required', 'string', 'in:digital,card,wristband,paper'],
         ]);
 
+        $before = $qrToken->toArray();
+
         $qrToken->update([
             'delivery_method' => $data['delivery_method'],
             'delivered_at' => now(),
             'delivered_by' => $request->user()->id,
         ]);
+
+        $auditService->log('qr_deliver', $qrToken, $request->user(), $before, $qrToken->fresh()->toArray());
 
         return new QrTokenResource($qrToken->fresh());
     }
