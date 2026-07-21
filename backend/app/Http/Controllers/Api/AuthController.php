@@ -322,7 +322,7 @@ class AuthController extends Controller
             new OA\Response(response: 422, description: 'Validációs hiba vagy hibás jelenlegi jelszó'),
         ]
     )]
-    public function updateProfile(Request $request)
+    public function updateProfile(Request $request, AuditService $auditService)
     {
         $user = $request->user();
 
@@ -350,7 +350,22 @@ class AuthController extends Controller
             $update['password'] = bcrypt($data['password']);
         }
 
+        if (empty($update)) {
+            return new UserResource($user->fresh(['role', 'shelter']));
+        }
+
+        // A jelszó hash-e sosem kerül a naplóba — a before/after csak azt
+        // jelzi, hogy a jelszó változott, az értékét nem.
+        $before = array_intersect_key($user->toArray(), $update);
+        $after = $update;
+        if (array_key_exists('password', $before)) {
+            $before['password'] = '(changed)';
+            $after['password'] = '(changed)';
+        }
+
         $user->update($update);
+
+        $auditService->log('profile_update', $user, $user, $before, $after);
 
         return new UserResource($user->fresh(['role', 'shelter']));
     }
