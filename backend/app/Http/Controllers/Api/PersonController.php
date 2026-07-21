@@ -285,6 +285,7 @@ class PersonController extends Controller
 
             if (! $municipality) {
                 $errors[] = "{$lastName} {$firstName}: település nem található (\"{$municipalityName}\").";
+
                 continue;
             }
 
@@ -398,7 +399,7 @@ class PersonController extends Controller
             new OA\Response(response: 422, description: 'Validációs hiba'),
         ]
     )]
-    public function uploadDocumentPhoto(Request $request, Person $person)
+    public function uploadDocumentPhoto(Request $request, Person $person, AuditService $auditService)
     {
         $this->authorize('update', $person);
 
@@ -413,8 +414,11 @@ class PersonController extends Controller
             Storage::disk('public')->delete($person->{$column});
         }
 
+        $before = [$column => $person->{$column}];
         $path = $request->file('photo')->store('document-photos', 'public');
         $person->update([$column => $path]);
+
+        $auditService->log('document_photo_upload', $person, $request->user(), $before, [$column => $path]);
 
         return new PersonResource($person->fresh(['municipality', 'registration']));
     }
@@ -433,7 +437,7 @@ class PersonController extends Controller
             new OA\Response(response: 403, description: 'Nincs jogosultság'),
         ]
     )]
-    public function deleteDocumentPhoto(Request $request, Person $person)
+    public function deleteDocumentPhoto(Request $request, Person $person, AuditService $auditService)
     {
         $this->authorize('update', $person);
 
@@ -444,8 +448,12 @@ class PersonController extends Controller
         $column = $data['side'] === 'back' ? 'document_photo_back_path' : 'document_photo_front_path';
 
         if ($person->{$column}) {
+            $before = [$column => $person->{$column}];
+
             Storage::disk('public')->delete($person->{$column});
             $person->update([$column => null]);
+
+            $auditService->log('document_photo_delete', $person, $request->user(), $before, [$column => null]);
         }
 
         return new PersonResource($person->fresh(['municipality', 'registration']));
