@@ -250,6 +250,7 @@ export interface Incident {
   status: IncidentStatus;
   shelter: { id: string; name: string } | null;
   person: { id: string; full_name: string } | null;
+  coordinates: { lat: number; lng: number } | null;
   reported_by: string | null;
   resolved_by: string | null;
   resolved_at: string | null;
