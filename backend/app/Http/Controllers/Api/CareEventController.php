@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\CareEventResource;
 use App\Models\CareEvent;
 use App\Models\Person;
+use App\Services\AuditService;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 
@@ -62,7 +63,7 @@ class CareEventController extends Controller
             new OA\Response(response: 403, description: 'Nincs jogosultság'),
         ]
     )]
-    public function store(Request $request, Person $person)
+    public function store(Request $request, Person $person, AuditService $auditService)
     {
         $this->authorize('create', CareEvent::class);
 
@@ -83,6 +84,8 @@ class CareEventController extends Controller
             'recorded_by' => $request->user()->id,
             'recorded_at' => now(),
         ]);
+
+        $auditService->log('care_event_create', $careEvent, $request->user(), null, $careEvent->toArray());
 
         return (new CareEventResource($careEvent->load(['shelter', 'recordedBy'])))->response()->setStatusCode(201);
     }
