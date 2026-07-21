@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\RoleCode;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\PersonResource;
 use App\Models\EvacuationEvent;
 use App\Models\Family;
-use App\Enums\RoleCode;
 use App\Models\FamilyReunificationNote;
+use App\Services\AuditService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
@@ -173,7 +174,7 @@ class FamilyController extends Controller
             new OA\Response(response: 403, description: 'Nincs jogosultság'),
         ]
     )]
-    public function addReunificationNote(Request $request, Family $family)
+    public function addReunificationNote(Request $request, Family $family, AuditService $auditService)
     {
         if (! $request->user()->hasRole(RoleCode::Admin, RoleCode::Manager, RoleCode::Registrar)) {
             throw new AuthorizationException('Nincs jogosultsága a bejegyzés rögzítéséhez.');
@@ -190,6 +191,8 @@ class FamilyController extends Controller
             'resolved' => $data['resolved'] ?? false,
             'created_by' => $request->user()->id,
         ]);
+
+        $auditService->log('reunification_note_add', $note, $request->user(), null, $note->toArray());
 
         return response()->json([
             'data' => [
