@@ -330,6 +330,15 @@ export function personsExportUrl(eventId: string): string {
   return `${apiClient.defaults.baseURL}/api/events/${eventId}/persons/export`;
 }
 
+export function familiesExportUrl(eventId: string, familyIds?: string[]): string {
+  const base = `${apiClient.defaults.baseURL}/api/events/${eventId}/families/export`;
+  if (!familyIds || familyIds.length === 0) return base;
+
+  const params = new URLSearchParams();
+  familyIds.forEach((id) => params.append('family_ids[]', id));
+  return `${base}?${params.toString()}`;
+}
+
 export function shelterRosterExportUrl(eventId: string, shelterId: string): string {
   return `${apiClient.defaults.baseURL}/api/events/${eventId}/shelters/${shelterId}/roster-export`;
 }
