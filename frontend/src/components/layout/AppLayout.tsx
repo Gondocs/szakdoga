@@ -39,6 +39,7 @@ import { toast } from 'react-toastify';
 import { useAuth } from '../../features/auth/AuthContext';
 import { uploadUserAvatar } from '../../lib/api/endpoints';
 import { AppBreadcrumbs } from './AppBreadcrumbs';
+import { ConnectionStatusIndicator } from './ConnectionStatusIndicator';
 
 /**
  * Az esemény aloldalai (attekintes, szemelyek, befogadohelyek, stb.) egy közös
@@ -238,6 +239,8 @@ export function AppLayout() {
             )}
 
             <Box sx={{ flex: 1 }} />
+
+            {user && <ConnectionStatusIndicator />}
 
             {user && (
               <Chip
