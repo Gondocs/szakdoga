@@ -49,6 +49,7 @@ import {
 import { useAuth } from '../auth/AuthContext';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { scheduleUndoableDelete } from '../../lib/undoableDelete';
 
 const GYMS_CENTER: [number, number] = [47.75, 17.35];
 
@@ -96,7 +97,6 @@ export function VehicleListPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editVehicle, setEditVehicle] = useState<Vehicle | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Vehicle | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'plate' | 'label' | 'type' | 'capacity'>('label');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
@@ -147,20 +147,21 @@ export function VehicleListPage() {
     [vehicles]
   );
 
-  async function handleDelete() {
+  function handleDelete() {
     if (!deleteTarget) return;
-    setIsDeleting(true);
-    try {
-      await deleteVehicle(deleteTarget.id);
-      toast.success('Jármű törölve.');
-      setDeleteTarget(null);
-      load();
-    } catch (err: unknown) {
-      const apiMessage = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      toast.error(apiMessage ?? 'A jármű törlése nem sikerült.');
-    } finally {
-      setIsDeleting(false);
-    }
+    const target = deleteTarget;
+    setDeleteTarget(null);
+    setVehicles((prev) => prev.filter((v) => v.id !== target.id));
+
+    scheduleUndoableDelete({
+      message: `"${target.label}" törölve.`,
+      onCommit: () => deleteVehicle(target.id),
+      onUndo: () => setVehicles((prev) => [...prev, target]),
+      onError: (err: unknown) => {
+        const apiMessage = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+        toast.error(apiMessage ?? 'A jármű törlése nem sikerült — visszaállítva.');
+      },
+    });
   }
 
   if (isLoading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
@@ -337,7 +338,6 @@ export function VehicleListPage() {
         description={`Biztosan törli a(z) "${deleteTarget?.label}" járművet a flottából? A törlés csak akkor sikeres, ha jelenleg nincs folyamatban lévő eseményhez rendelve.`}
         confirmLabel="Törlés"
         severity="error"
-        isSubmitting={isDeleting}
         onCancel={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
       />
