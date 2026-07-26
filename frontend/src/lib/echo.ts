@@ -58,3 +58,20 @@ export function disconnectEcho(): void {
   echoInstance?.disconnect();
   echoInstance = null;
 }
+
+export type EchoConnectionState = 'initialized' | 'connecting' | 'connected' | 'unavailable' | 'failed' | 'disconnected';
+
+/**
+ * A pusher-js kapcsolatállapotára (nem magára az Echo-ra) iratkozik fel —
+ * ez a réteg jelzi ténylegesen, hogy a böngésző WS-kapcsolata a Reverb
+ * szerverrel élő-e, nem csak azt, hogy az Echo-példány létezik-e.
+ */
+export function subscribeConnectionState(callback: (state: EchoConnectionState) => void): () => void {
+  const connection = connectEcho().connector.pusher.connection;
+  const handler = () => callback(connection.state as EchoConnectionState);
+
+  handler();
+  connection.bind('state_change', handler);
+
+  return () => connection.unbind('state_change', handler);
+}
