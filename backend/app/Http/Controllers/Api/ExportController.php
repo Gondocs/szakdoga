@@ -12,6 +12,7 @@ use App\Models\Shelter;
 use App\Models\SpecialNeed;
 use App\Services\CapacityRiskService;
 use App\Services\DemographicsService;
+use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -65,6 +66,67 @@ class ExportController extends Controller
                     $person->registration?->status?->label(),
                     $person->registration?->central_transport_required ? 'igen' : 'nem',
                     $person->registration?->central_accommodation_required ? 'igen' : 'nem',
+                    $person->specialNeeds->map(fn ($n) => $n->category->label())->implode(', '),
+                ], ';');
+            }
+
+            fclose($handle);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    #[OA\Get(
+        path: '/api/events/{event}/families/export',
+        summary: 'Kijelölt családok és tagjaik exportálása CSV formátumban',
+        description: 'A family_ids[] paraméter nélkül az esemény összes családját exportálja, megadásával csak '.
+            'a kijelölteket (a Családok lista tömeges exportjához). Admin vagy vezető szerepkör szükséges.',
+        security: [['sanctumSession' => []]],
+        tags: ['Persons'],
+        parameters: [
+            new OA\Parameter(name: 'event', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid')),
+            new OA\Parameter(name: 'family_ids[]', in: 'query', required: false, schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'))),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'CSV fájl letöltése'),
+            new OA\Response(response: 403, description: 'Nincs jogosultság'),
+        ]
+    )]
+    public function familiesCsv(Request $request, EvacuationEvent $event): StreamedResponse
+    {
+        $this->authorize('export', $event);
+
+        $familyIds = $request->input('family_ids', []);
+
+        $persons = $event->persons()
+            ->whereHas('family', fn ($q) => $q->when(! empty($familyIds), fn ($q2) => $q2->whereIn('id', $familyIds)))
+            ->with(['municipality', 'registration', 'specialNeeds', 'family'])
+            ->orderBy('last_name')
+            ->get()
+            ->sortBy(fn ($person) => $person->family?->family_code ?? '')
+            ->values();
+
+        $filename = "csaladok-{$event->code}.csv";
+
+        return response()->streamDownload(function () use ($persons) {
+            $handle = fopen('php://output', 'w');
+            fwrite($handle, "\xEF\xBB\xBF");
+
+            fputcsv($handle, [
+                'Család kód', 'Vezetéknév', 'Keresztnév', 'Születési idő',
+                'Település', 'Cím', 'Telefon', 'Státusz', 'Speciális igények',
+            ], ';');
+
+            foreach ($persons as $person) {
+                fputcsv($handle, [
+                    $person->family?->family_code,
+                    $person->last_name,
+                    $person->first_name,
+                    $person->birth_date?->toDateString(),
+                    $person->municipality?->name,
+                    trim("{$person->address_postal_code} {$person->address_settlement}, {$person->address_street} {$person->address_house_number}"),
+                    $person->phone,
+                    $person->registration?->status?->label(),
                     $person->specialNeeds->map(fn ($n) => $n->category->label())->implode(', '),
                 ], ';');
             }
