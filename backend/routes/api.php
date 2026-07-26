@@ -61,6 +61,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/events/{event}/registrations-timeline', [DashboardController::class, 'timeline']);
     Route::get('/events/{event}/stock-forecast', [DashboardController::class, 'stockForecast']);
     Route::get('/events/{event}/persons/export', [ExportController::class, 'personsCsv']);
+    Route::get('/events/{event}/families/export', [ExportController::class, 'familiesCsv']);
     Route::get('/events/{event}/shelters/{shelter}/roster-export', [ExportController::class, 'shelterRosterCsv']);
     Route::get('/events/{event}/report-export', [ExportController::class, 'summaryReportCsv']);
 
