@@ -40,6 +40,7 @@ import { createShelter, deleteShelter, fetchAllShelters, fetchMunicipalities, up
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { MunicipalityAutocomplete } from '../../components/ui/MunicipalityAutocomplete';
+import { scheduleUndoableDelete } from '../../lib/undoableDelete';
 
 const statusLabels: Record<string, string> = {
   planned: 'Tervezett',
@@ -75,7 +76,6 @@ export function ShelterManagementPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [dialogShelter, setDialogShelter] = useState<Shelter | 'new' | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Shelter | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'municipality' | 'capacity' | 'status'>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
@@ -133,20 +133,21 @@ export function ShelterManagementPage() {
 
   useEffect(load, []);
 
-  async function handleDelete() {
+  function handleDelete() {
     if (!deleteTarget) return;
-    setIsDeleting(true);
-    try {
-      await deleteShelter(deleteTarget.id);
-      toast.success('Befogadóhely törölve.');
-      setDeleteTarget(null);
-      load();
-    } catch (err: unknown) {
-      const apiMessage = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      toast.error(apiMessage ?? 'A befogadóhely nem törölhető.');
-    } finally {
-      setIsDeleting(false);
-    }
+    const target = deleteTarget;
+    setDeleteTarget(null);
+    setShelters((prev) => prev.filter((s) => s.id !== target.id));
+
+    scheduleUndoableDelete({
+      message: `"${target.name}" törölve.`,
+      onCommit: () => deleteShelter(target.id),
+      onUndo: () => setShelters((prev) => [...prev, target]),
+      onError: (err: unknown) => {
+        const apiMessage = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+        toast.error(apiMessage ?? 'A befogadóhely nem törölhető — visszaállítva.');
+      },
+    });
   }
 
   return (
@@ -293,7 +294,6 @@ export function ShelterManagementPage() {
         description={`Biztosan törli a(z) "${deleteTarget?.name}" befogadóhelyet? A törlés csak akkor sikeres, ha jelenleg nincs eseményhez rendelve.`}
         confirmLabel="Törlés"
         severity="error"
-        isSubmitting={isDeleting}
         onCancel={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
       />
