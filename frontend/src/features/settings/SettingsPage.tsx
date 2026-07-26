@@ -22,6 +22,7 @@ import {
   FormControlLabel,
 } from '@mui/material';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import DeleteIcon from '@mui/icons-material/Delete';
 import LoginIcon from '@mui/icons-material/Login';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -42,6 +43,7 @@ import {
   type LoginHistoryEntry,
 } from '../../lib/api/endpoints';
 import { useFontScale, type FontScale } from './FontScaleContext';
+import { useSoundAlert } from './SoundAlertContext';
 
 const fontScaleOptions: { value: FontScale; label: string }[] = [
   { value: 'small', label: 'Kicsi' },
@@ -66,6 +68,7 @@ const loginHistoryMeta: Record<LoginHistoryEntry['action'], { label: string; ico
 export function SettingsPage() {
   const { user, setUser } = useAuth();
   const { fontScale, setFontScale } = useFontScale();
+  const { soundAlertsEnabled, setSoundAlertsEnabled, playAlertSound } = useSoundAlert();
 
   const [name, setName] = useState(user?.name ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
@@ -174,6 +177,35 @@ export function SettingsPage() {
                 </ToggleButton>
               ))}
             </ToggleButtonGroup>
+          </Paper>
+
+          <Paper variant="outlined" sx={{ p: 3 }}>
+            <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5 }}>Riasztások</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              Új incidens vagy kritikus kapacitási kockázat esetén (amíg egy esemény oldalán tartózkodik) rövid
+              hangjelzés is kísérheti a felugró értesítést — zsúfolt, hangos környezetben ez segít nem lemaradni
+              róla. Némítható, ha zavaró.
+            </Typography>
+            <Stack direction="row" alignItems="center" spacing={1}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={soundAlertsEnabled}
+                    onChange={(e) => setSoundAlertsEnabled(e.target.checked)}
+                  />
+                }
+                label={soundAlertsEnabled ? 'Bekapcsolva' : 'Némítva'}
+              />
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<VolumeUpIcon fontSize="small" />}
+                onClick={playAlertSound}
+                disabled={!soundAlertsEnabled}
+              >
+                Teszt
+              </Button>
+            </Stack>
           </Paper>
 
           <Paper variant="outlined" sx={{ p: 3 }}>
