@@ -13,6 +13,7 @@ import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { toast } from 'react-toastify';
 import { connectEcho } from '../../lib/echo';
 import { useNotificationCenter } from '../../features/notifications/NotificationCenterContext';
+import { useSoundAlert } from '../../features/settings/SoundAlertContext';
 import type { IncidentCreatedPayload, RiskLevel, ShelterCapacityUpdatedPayload } from '../../types';
 
 // Ugyanaz a két kis címke-térkép, mint amit az IncidentListPage használ a
@@ -50,6 +51,7 @@ export function EventSubNav({ eventId }: { eventId: string }) {
   const location = useLocation();
   const activeSegment = location.pathname.split('/').pop();
   const { addNotification } = useNotificationCenter();
+  const { playAlertSound } = useSoundAlert();
 
   // Az utoljára ismert kockázati szint befogadóhelyenként — ez azért kell,
   // hogy csak akkor toastoljunk, amikor egy befogadóhely ÚJONNAN éri el a
@@ -69,6 +71,7 @@ export function EventSubNav({ eventId }: { eventId: string }) {
       const message = `Új ${categoryLabels[payload.category]}${shelterInfo}: ${payload.description}`;
       toast.warn(message);
       addNotification({ message, severity: 'warning', link: `/esemenyek/${eventId}/rendkivuli-esemenyek` });
+      playAlertSound();
     });
 
     channel.listen('.shelter.capacity.updated', (payload: ShelterCapacityUpdatedPayload) => {
@@ -79,6 +82,7 @@ export function EventSubNav({ eventId }: { eventId: string }) {
         const message = `${payload.shelter_name} kritikus kockázati szintet ért el (${payload.checked_in_count}/${payload.capacity_limit} fő).`;
         toast.error(message);
         addNotification({ message, severity: 'error', link: `/esemenyek/${eventId}/befogadohelyek` });
+        playAlertSound();
       }
     });
 
@@ -87,7 +91,7 @@ export function EventSubNav({ eventId }: { eventId: string }) {
       channel.stopListening('.shelter.capacity.updated');
       connectEcho().leaveChannel(`event.${eventId}.updates`);
     };
-  }, [eventId, addNotification]);
+  }, [eventId, addNotification, playAlertSound]);
 
   return (
     <Paper variant="outlined" sx={{ p: 1.5, mb: 3 }}>
