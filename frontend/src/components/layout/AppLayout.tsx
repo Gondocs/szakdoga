@@ -40,6 +40,7 @@ import { useAuth } from '../../features/auth/AuthContext';
 import { uploadUserAvatar } from '../../lib/api/endpoints';
 import { AppBreadcrumbs } from './AppBreadcrumbs';
 import { ConnectionStatusIndicator } from './ConnectionStatusIndicator';
+import { NotificationBell } from '../../features/notifications/NotificationBell';
 
 /**
  * Az esemény aloldalai (attekintes, szemelyek, befogadohelyek, stb.) egy közös
@@ -241,6 +242,7 @@ export function AppLayout() {
             <Box sx={{ flex: 1 }} />
 
             {user && <ConnectionStatusIndicator />}
+            {user && <NotificationBell />}
 
             {user && (
               <Chip
