@@ -44,6 +44,7 @@ import type { AssemblyPoint } from '../../types';
 import { useAuth } from '../auth/AuthContext';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { scheduleUndoableDelete } from '../../lib/undoableDelete';
 
 const GYMS_CENTER: [number, number] = [47.75, 17.35];
 
@@ -59,7 +60,6 @@ export function AssemblyPointListPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editPoint, setEditPoint] = useState<AssemblyPoint | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AssemblyPoint | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'address'>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
@@ -95,19 +95,17 @@ export function AssemblyPointListPage() {
     });
   }, [points, search, sortBy, sortDir]);
 
-  async function handleDelete() {
+  function handleDelete() {
     if (!deleteTarget) return;
-    setIsDeleting(true);
-    try {
-      await deleteAssemblyPoint(deleteTarget.id);
-      toast.success('Gyülekezési pont törölve.');
-      setDeleteTarget(null);
-      load();
-    } catch {
-      toast.error('A törlés nem sikerült.');
-    } finally {
-      setIsDeleting(false);
-    }
+    const target = deleteTarget;
+    setDeleteTarget(null);
+    setPoints((prev) => prev.filter((p) => p.id !== target.id));
+
+    scheduleUndoableDelete({
+      message: `"${target.name}" törölve.`,
+      onCommit: () => deleteAssemblyPoint(target.id),
+      onUndo: () => setPoints((prev) => [...prev, target]),
+    });
   }
 
   if (isLoading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
@@ -256,7 +254,6 @@ export function AssemblyPointListPage() {
         description={`Biztosan törli a(z) "${deleteTarget?.name}" gyülekezési pontot?`}
         confirmLabel="Törlés"
         severity="error"
-        isSubmitting={isDeleting}
         onCancel={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
       />
