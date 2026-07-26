@@ -67,6 +67,7 @@ import { useAuth } from '../auth/AuthContext';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { QrScannerDialog } from '../../components/QrScannerDialog';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { scheduleUndoableDelete } from '../../lib/undoableDelete';
 import { connectEcho } from '../../lib/echo';
 import type { TransportPositionUpdatedPayload } from '../../types';
 
@@ -98,7 +99,6 @@ export function TransportPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editTransport, setEditTransport] = useState<Transport | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Transport | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   const [publicId, setPublicId] = useState('');
   const [previewPerson, setPreviewPerson] = useState<Person | null>(null);
@@ -281,21 +281,22 @@ export function TransportPage() {
     }
   }
 
-  async function handleDeleteTransport() {
+  function handleDeleteTransport() {
     if (!deleteTarget) return;
-    setIsDeleting(true);
-    try {
-      await deleteTransport(deleteTarget.id);
-      toast.success('Jármű törölve.');
-      setDeleteTarget(null);
-      if (selectedId === deleteTarget.id) setSelectedId('');
-      load();
-    } catch (err: unknown) {
-      const apiMessage = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      toast.error(apiMessage ?? 'A jármű törlése nem sikerült.');
-    } finally {
-      setIsDeleting(false);
-    }
+    const target = deleteTarget;
+    setDeleteTarget(null);
+    setTransports((prev) => prev.filter((t) => t.id !== target.id));
+    if (selectedId === target.id) setSelectedId('');
+
+    scheduleUndoableDelete({
+      message: `"${target.code}" törölve.`,
+      onCommit: () => deleteTransport(target.id),
+      onUndo: () => setTransports((prev) => [...prev, target]),
+      onError: (err: unknown) => {
+        const apiMessage = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+        toast.error(apiMessage ?? 'A jármű törlése nem sikerült — visszaállítva.');
+      },
+    });
   }
 
   if (isLoading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
@@ -659,7 +660,6 @@ export function TransportPage() {
         description={`Biztosan törli a(z) "${deleteTarget?.code}" járművet? A törlés csak akkor sikeres, ha jelenleg senki nincs a fedélzetén.`}
         confirmLabel="Törlés"
         severity="error"
-        isSubmitting={isDeleting}
         onCancel={() => setDeleteTarget(null)}
         onConfirm={handleDeleteTransport}
       />
