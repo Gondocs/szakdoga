@@ -38,6 +38,7 @@ import type { Municipality } from '../../types';
 import { createMunicipality, deleteMunicipality, fetchMunicipalities, updateMunicipality } from '../../lib/api/endpoints';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { scheduleUndoableDelete } from '../../lib/undoableDelete';
 
 const GYMS_CENTER: [number, number] = [47.75, 17.35];
 
@@ -49,7 +50,6 @@ export function MunicipalityManagementPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [dialogMunicipality, setDialogMunicipality] = useState<Municipality | 'new' | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Municipality | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [search, setSearch] = useState('');
 
   const normalizedSearch = search.trim().toLowerCase();
@@ -71,20 +71,21 @@ export function MunicipalityManagementPage() {
 
   useEffect(load, []);
 
-  async function handleDelete() {
+  function handleDelete() {
     if (!deleteTarget) return;
-    setIsDeleting(true);
-    try {
-      await deleteMunicipality(deleteTarget.id);
-      toast.success('Település törölve.');
-      setDeleteTarget(null);
-      load();
-    } catch (err: unknown) {
-      const apiMessage = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      toast.error(apiMessage ?? 'A település nem törölhető.');
-    } finally {
-      setIsDeleting(false);
-    }
+    const target = deleteTarget;
+    setDeleteTarget(null);
+    setMunicipalities((prev) => prev.filter((m) => m.id !== target.id));
+
+    scheduleUndoableDelete({
+      message: `"${target.name}" törölve.`,
+      onCommit: () => deleteMunicipality(target.id),
+      onUndo: () => setMunicipalities((prev) => [...prev, target]),
+      onError: (err: unknown) => {
+        const apiMessage = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+        toast.error(apiMessage ?? 'A település nem törölhető — visszaállítva.');
+      },
+    });
   }
 
   return (
@@ -199,7 +200,6 @@ export function MunicipalityManagementPage() {
         description={`Biztosan törli a(z) "${deleteTarget?.name}" települést? A törlés csak akkor sikeres, ha nincs hozzá kapcsolódó személy vagy befogadóhely.`}
         confirmLabel="Törlés"
         severity="error"
-        isSubmitting={isDeleting}
         onCancel={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
       />
