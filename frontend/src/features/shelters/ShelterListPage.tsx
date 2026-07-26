@@ -7,6 +7,7 @@ import {
   Stack,
   Button,
   Chip,
+  Checkbox,
   LinearProgress,
   CircularProgress,
   TextField,
@@ -17,6 +18,7 @@ import {
   Menu,
   ListItemIcon,
   ListItemText,
+  Alert,
 } from '@mui/material';
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
@@ -34,6 +36,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { KpiCard } from '../../components/ui/KpiCard';
 import { RiskBadge } from '../../components/ui/RiskBadge';
 import { ShelterRosterPrintDialog } from '../../components/ShelterRosterPrintDialog';
+import { BulkShelterRosterPrintDialog } from '../../components/BulkShelterRosterPrintDialog';
 import { useAuth } from '../auth/AuthContext';
 
 type SortKey = 'name' | 'utilization_desc' | 'risk_desc' | 'free_capacity_desc';
@@ -63,12 +66,15 @@ export function ShelterListPage() {
   const { eventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const canBulkPrint = user?.role?.code === 'admin' || user?.role?.code === 'manager';
   const [shelters, setShelters] = useState<ShelterWithRisk[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [rosterShelter, setRosterShelter] = useState<ShelterWithRisk | null>(null);
   const [menuState, setMenuState] = useState<{ anchor: HTMLElement; shelter: ShelterWithRisk } | null>(null);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [bulkRosterOpen, setBulkRosterOpen] = useState(false);
 
   useEffect(() => {
     if (!eventId) return;
@@ -117,6 +123,16 @@ export function ShelterListPage() {
     };
   }, [shelters]);
 
+  function toggleSelected(id: number) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  const selectedShelters = shelters.filter((s) => selected.has(s.event_shelter_id));
+
   if (isLoading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
 
   return (
@@ -156,6 +172,25 @@ export function ShelterListPage() {
         </TextField>
       </Stack>
 
+      {canBulkPrint && selected.size > 0 && (
+        <Alert
+          severity="info"
+          sx={{ mb: 2 }}
+          action={
+            <Stack direction="row" spacing={1}>
+              <Button size="small" color="inherit" startIcon={<PrintIcon fontSize="small" />} onClick={() => setBulkRosterOpen(true)}>
+                Nyomtatható névsor
+              </Button>
+              <Button size="small" color="inherit" onClick={() => setSelected(new Set())}>
+                Kijelölés törlése
+              </Button>
+            </Stack>
+          }
+        >
+          {selected.size} befogadóhely kijelölve.
+        </Alert>
+      )}
+
       <Stack spacing={1.25}>
         {visibleShelters.map((s) => {
           const utilizationPct = Math.round(s.utilization * 100);
@@ -176,13 +211,24 @@ export function ShelterListPage() {
                 spacing={{ xs: 2, md: 3 }}
                 alignItems={{ xs: 'stretch', md: 'center' }}
               >
-                <Box sx={{ flex: '1 1 220px', minWidth: 0 }}>
-                  <Tooltip title={s.shelter.name}>
-                    <Typography variant="subtitle1" fontWeight={700} noWrap>{s.shelter.name}</Typography>
-                  </Tooltip>
-                  <Typography variant="body2" color="text.secondary" noWrap>
-                    {s.shelter.municipality ? `${s.shelter.municipality}, ` : ''}{s.shelter.address}
-                  </Typography>
+                <Box sx={{ flex: '1 1 220px', minWidth: 0, display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                  {canBulkPrint && (
+                    <Checkbox
+                      size="small"
+                      checked={selected.has(s.event_shelter_id)}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={() => toggleSelected(s.event_shelter_id)}
+                      sx={{ mt: -0.5 }}
+                    />
+                  )}
+                  <Box sx={{ minWidth: 0 }}>
+                    <Tooltip title={s.shelter.name}>
+                      <Typography variant="subtitle1" fontWeight={700} noWrap>{s.shelter.name}</Typography>
+                    </Tooltip>
+                    <Typography variant="body2" color="text.secondary" noWrap>
+                      {s.shelter.municipality ? `${s.shelter.municipality}, ` : ''}{s.shelter.address}
+                    </Typography>
+                  </Box>
                 </Box>
 
                 <Box sx={{ flex: '1 1 240px', minWidth: 0 }}>
@@ -272,6 +318,15 @@ export function ShelterListPage() {
           onClose={() => setRosterShelter(null)}
           eventId={eventId}
           shelter={rosterShelter}
+        />
+      )}
+
+      {bulkRosterOpen && eventId && (
+        <BulkShelterRosterPrintDialog
+          open
+          onClose={() => setBulkRosterOpen(false)}
+          eventId={eventId}
+          shelters={selectedShelters}
         />
       )}
     </Box>
