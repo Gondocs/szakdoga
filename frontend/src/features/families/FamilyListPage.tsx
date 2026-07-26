@@ -19,6 +19,7 @@ import {
   Tooltip,
   TableSortLabel,
   Alert,
+  Checkbox,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
@@ -26,8 +27,9 @@ import SearchIcon from '@mui/icons-material/Search';
 import GroupsIcon from '@mui/icons-material/Groups';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import DownloadIcon from '@mui/icons-material/Download';
 import type { FamilySummary } from '../../types';
-import { fetchFamilies } from '../../lib/api/endpoints';
+import { familiesExportUrl, fetchFamilies } from '../../lib/api/endpoints';
 import { EmptyState } from '../../components/ui/EmptyState';
 
 const SPLIT_TOOLTIP = 'A család tagjai jelenleg különböző befogadóhelyeken tartózkodnak.';
@@ -43,6 +45,7 @@ export function FamilyListPage() {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'code' | 'members'>('code');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!eventId) return;
@@ -75,6 +78,18 @@ export function FamilyListPage() {
   // A szétszakadt (több befogadóhelyen tartózkodó tagú) családok száma, a
   // figyelmeztető sáv megjelenítéséhez
   const splitCount = useMemo(() => families.filter((f) => f.is_split).length, [families]);
+
+  function toggleSelected(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    setSelected((prev) => (prev.size === filtered.length ? new Set() : new Set(filtered.map((f) => f.id))));
+  }
 
   return (
     <Box>
@@ -109,6 +124,33 @@ export function FamilyListPage() {
         }}
       />
 
+      {selected.size > 0 && (
+        <Alert
+          severity="info"
+          sx={{ mb: 2 }}
+          action={
+            <Stack direction="row" spacing={1}>
+              <Button
+                size="small"
+                color="inherit"
+                startIcon={<DownloadIcon fontSize="small" />}
+                component="a"
+                href={eventId ? familiesExportUrl(eventId, [...selected]) : undefined}
+                target="_blank"
+                rel="noopener"
+              >
+                CSV export
+              </Button>
+              <Button size="small" color="inherit" onClick={() => setSelected(new Set())}>
+                Kijelölés törlése
+              </Button>
+            </Stack>
+          }
+        >
+          {selected.size} család kijelölve.
+        </Alert>
+      )}
+
       {isLoading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>
       ) : isMobile ? (
@@ -117,6 +159,13 @@ export function FamilyListPage() {
             <Paper key={f.id} variant="outlined" sx={{ p: 2, cursor: 'pointer' }} onClick={() => navigate(`/csaladok/${f.id}`)}>
               <Stack direction="row" justifyContent="space-between" alignItems="center">
                 <Stack direction="row" spacing={1} alignItems="center">
+                  <Checkbox
+                    size="small"
+                    checked={selected.has(f.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={() => toggleSelected(f.id)}
+                    sx={{ p: 0 }}
+                  />
                   <GroupsIcon color="secondary" />
                   <Box>
                     <Typography fontWeight={700}>{f.family_code}</Typography>
@@ -139,6 +188,14 @@ export function FamilyListPage() {
           <Table>
             <TableHead>
               <TableRow>
+                <TableCell padding="checkbox">
+                  <Checkbox
+                    size="small"
+                    indeterminate={selected.size > 0 && selected.size < filtered.length}
+                    checked={filtered.length > 0 && selected.size === filtered.length}
+                    onChange={toggleSelectAll}
+                  />
+                </TableCell>
                 <TableCell sortDirection={sortBy === 'code' ? sortDir : false}>
                   <TableSortLabel active={sortBy === 'code'} direction={sortBy === 'code' ? sortDir : 'asc'} onClick={() => handleSort('code')}>
                     Családkód
@@ -155,6 +212,9 @@ export function FamilyListPage() {
             <TableBody>
               {filtered.map((f) => (
                 <TableRow key={f.id} hover sx={{ cursor: 'pointer' }} onClick={() => navigate(`/csaladok/${f.id}`)}>
+                  <TableCell padding="checkbox" onClick={(e) => e.stopPropagation()}>
+                    <Checkbox size="small" checked={selected.has(f.id)} onChange={() => toggleSelected(f.id)} />
+                  </TableCell>
                   <TableCell>{f.family_code}</TableCell>
                   <TableCell>{f.members_count} fő</TableCell>
                   <TableCell>
@@ -168,7 +228,7 @@ export function FamilyListPage() {
               ))}
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={3}>
+                  <TableCell colSpan={4}>
                     <EmptyState title="Nincs találat" description="A keresésnek megfelelő család nem található." />
                   </TableCell>
                 </TableRow>
