@@ -34,6 +34,7 @@ import { createEvent, deleteEvent, fetchAllShelters, fetchEvents } from '../../l
 import { EventStatusBadge } from './EventStatusBadge';
 import { useAuth } from '../auth/AuthContext';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { scheduleUndoableDelete } from '../../lib/undoableDelete';
 
 export function EventListPage() {
   const { user } = useAuth();
@@ -44,7 +45,6 @@ export function EventListPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<EvacuationEvent | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   const canCreate = user?.role?.code === 'admin' || user?.role?.code === 'manager';
   const isAdmin = user?.role?.code === 'admin';
@@ -58,20 +58,21 @@ export function EventListPage() {
 
   useEffect(load, []);
 
-  async function handleDelete() {
+  function handleDelete() {
     if (!deleteTarget) return;
-    setIsDeleting(true);
-    try {
-      await deleteEvent(deleteTarget.id);
-      toast.success('Esemény törölve.');
-      setDeleteTarget(null);
-      load();
-    } catch (err: unknown) {
-      const apiMessage = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      toast.error(apiMessage ?? 'Az esemény nem törölhető.');
-    } finally {
-      setIsDeleting(false);
-    }
+    const target = deleteTarget;
+    setDeleteTarget(null);
+    setEvents((prev) => prev.filter((e) => e.id !== target.id));
+
+    scheduleUndoableDelete({
+      message: `"${target.name}" törölve.`,
+      onCommit: () => deleteEvent(target.id),
+      onUndo: () => setEvents((prev) => [...prev, target]),
+      onError: (err: unknown) => {
+        const apiMessage = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+        toast.error(apiMessage ?? 'Az esemény nem törölhető — visszaállítva.');
+      },
+    });
   }
 
   return (
@@ -193,7 +194,6 @@ export function EventListPage() {
         description={`Biztosan törli a(z) "${deleteTarget?.name}" eseményt? A törlés csak akkor sikeres, ha még nincs hozzá regisztrált személy.`}
         confirmLabel="Törlés"
         severity="error"
-        isSubmitting={isDeleting}
         onCancel={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
       />
