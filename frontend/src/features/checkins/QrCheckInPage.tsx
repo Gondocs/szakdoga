@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import {
   Box,
@@ -11,11 +11,15 @@ import {
   Alert,
   Chip,
   Divider,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import StarIcon from '@mui/icons-material/Star';
+import TabletMacIcon from '@mui/icons-material/TabletMac';
+import CloseIcon from '@mui/icons-material/Close';
 import { toast } from 'react-toastify';
 import type { Person, ShelterWithRisk } from '../../types';
 import { checkInPerson, fetchShelters, resolveQrToken } from '../../lib/api/endpoints';
@@ -37,6 +41,14 @@ export function QrCheckInPage() {
   const [bedLabel, setBedLabel] = useState('');
   const [isBusy, setIsBusy] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
+  // Kioszk mód: a befogadóhely bejáratánál álló, sok egymás utáni idegen
+  // felhasználó (regisztrált személy) által kezelt tablet nézete — lezárt
+  // befogadóhely-választó, nagy gombok, automatikusan újranyíló kamera,
+  // teljes képernyő. Nem tárolt/perzisztált állapot: minden alkalommal a
+  // személyzet indítja el, amikor felállítja a tabletet.
+  const [kioskMode, setKioskMode] = useState(false);
+  const [kioskSuccessName, setKioskSuccessName] = useState<string | null>(null);
+  const kioskResumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!eventId) return;
@@ -94,13 +106,18 @@ export function QrCheckInPage() {
         public_id: publicId.trim(),
         bed_label: bedLabel.trim() || undefined,
       });
-      toast.success(`${previewPerson?.full_name ?? 'A személy'} sikeresen érkeztetve.`);
+      const name = previewPerson?.full_name ?? 'A személy';
+      toast.success(`${name} sikeresen érkeztetve.`);
       if (familySplitWarning) {
         toast.warning(familySplitWarning, { autoClose: 10000 });
       }
       setPreviewPerson(null);
       setPublicId('');
       setBedLabel('');
+
+      if (kioskMode) {
+        setKioskSuccessName(name);
+      }
     } catch (err: unknown) {
       const apiMessage = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       toast.error(apiMessage ?? 'Az érkeztetés nem sikerült.');
@@ -109,9 +126,145 @@ export function QrCheckInPage() {
     }
   }
 
+  function enterKioskMode() {
+    if (!shelterId) {
+      toast.error('Kioszk mód indításához előbb válasszon befogadóhelyet.');
+      return;
+    }
+    setKioskMode(true);
+    setScannerOpen(true);
+    document.documentElement.requestFullscreen?.().catch(() => {});
+  }
+
+  function exitKioskMode() {
+    setKioskMode(false);
+    setScannerOpen(false);
+    setKioskSuccessName(null);
+    if (kioskResumeTimer.current) clearTimeout(kioskResumeTimer.current);
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    }
+  }
+
+  // Kioszk módban a kamera automatikusan újranyílik, amint a rendszer újra
+  // "üresjáratban" van (nincs előnézet, nincs folyamatban lévő hívás, nincs
+  // épp sikeres-érkeztetés-visszajelzés) — a személyzetnek nem kell minden
+  // egyes látogató után külön a "Kamera" gombra koppintania.
+  useEffect(() => {
+    if (!kioskMode || previewPerson || isBusy || scannerOpen || kioskSuccessName) return;
+    const timer = setTimeout(() => setScannerOpen(true), 1200);
+    return () => clearTimeout(timer);
+  }, [kioskMode, previewPerson, isBusy, scannerOpen, kioskSuccessName]);
+
+  // A sikeres érkeztetés visszaigazolása pár másodpercig látszik, utána
+  // magától visszavált szkennelésre — nincs szükség kézi "OK" koppintásra.
+  useEffect(() => {
+    if (!kioskSuccessName) return;
+    kioskResumeTimer.current = setTimeout(() => setKioskSuccessName(null), 3000);
+    return () => {
+      if (kioskResumeTimer.current) clearTimeout(kioskResumeTimer.current);
+    };
+  }, [kioskSuccessName]);
+
+  useEffect(() => {
+    function handleFullscreenChange() {
+      if (!document.fullscreenElement) setKioskMode(false);
+    }
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  if (kioskMode) {
+    const selectedShelter = shelters.find((s) => s.shelter.id === shelterId);
+
+    return (
+      <Box
+        sx={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 1300,
+          bgcolor: 'primary.main',
+          color: '#fff',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          p: 3,
+        }}
+      >
+        <Tooltip title="Kilépés a kioszk módból">
+          <IconButton onClick={exitKioskMode} sx={{ position: 'absolute', top: 16, right: 16, color: 'rgba(255,255,255,0.5)' }}>
+            <CloseIcon />
+          </IconButton>
+        </Tooltip>
+
+        <Typography variant="h3" fontWeight={700} textAlign="center" sx={{ mb: 0.5 }}>
+          {selectedShelter?.shelter.name ?? 'Érkeztetés'}
+        </Typography>
+        <Typography variant="h6" sx={{ mb: 5, opacity: 0.85 }}>QR-kódos érkeztetés</Typography>
+
+        {kioskSuccessName ? (
+          <Paper sx={{ p: 5, borderRadius: 4, textAlign: 'center', maxWidth: 480, width: '100%' }}>
+            <CheckCircleIcon color="success" sx={{ fontSize: 96, mb: 2 }} />
+            <Typography variant="h4" fontWeight={700}>{kioskSuccessName}</Typography>
+            <Typography variant="h6" color="text.secondary">Sikeresen érkeztetve</Typography>
+          </Paper>
+        ) : previewPerson ? (
+          <Paper sx={{ p: 4, borderRadius: 4, maxWidth: 480, width: '100%' }}>
+            <Stack spacing={2}>
+              <Typography variant="h5" fontWeight={700} textAlign="center">{previewPerson.full_name}</Typography>
+              {previewPerson.special_needs && previewPerson.special_needs.length > 0 && (
+                <Alert severity="warning">
+                  Egyedi igény: {[...new Set(previewPerson.special_needs.map((n) => specialNeedCategoryLabels[n.category] ?? n.category))].join(', ')}
+                </Alert>
+              )}
+              <Button
+                variant="contained"
+                color="success"
+                size="large"
+                startIcon={<CheckCircleIcon />}
+                onClick={handleConfirmCheckIn}
+                disabled={isBusy}
+                sx={{ py: 2, fontSize: '1.25rem' }}
+              >
+                Érkeztetés megerősítése
+              </Button>
+              <Button
+                variant="text"
+                color="inherit"
+                onClick={() => {
+                  setPreviewPerson(null);
+                  setPublicId('');
+                }}
+              >
+                Mégse
+              </Button>
+            </Stack>
+          </Paper>
+        ) : (
+          <Typography variant="h6" sx={{ opacity: 0.85 }}>Tartsa a QR-kódot a kamera elé…</Typography>
+        )}
+
+        <QrScannerDialog
+          open={scannerOpen}
+          onClose={() => setScannerOpen(false)}
+          onDetected={(value) => {
+            setScannerOpen(false);
+            handleLookup(value);
+          }}
+        />
+      </Box>
+    );
+  }
+
   return (
     <Box>
-      <Typography variant="h4" fontWeight={700} sx={{ mb: 3 }}>QR érkeztetés</Typography>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 3 }}>
+        <Typography variant="h4" fontWeight={700}>QR érkeztetés</Typography>
+        <Button variant="outlined" startIcon={<TabletMacIcon />} onClick={enterKioskMode}>
+          Kioszk mód
+        </Button>
+      </Stack>
 
       <Paper variant="outlined" sx={{ p: 3, maxWidth: 640 }}>
         <Stack spacing={3}>
