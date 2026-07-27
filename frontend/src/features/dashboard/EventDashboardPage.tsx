@@ -50,6 +50,8 @@ import {
 import { ErrorState } from '../../components/ui/ErrorState';
 import { KpiCard } from '../../components/ui/KpiCard';
 import { RiskBadge } from '../../components/ui/RiskBadge';
+import { HelpTip } from '../../components/ui/HelpTip';
+import { GettingStartedCard } from './GettingStartedCard';
 import { EventStatusBadge } from '../events/EventStatusBadge';
 import { useAuth } from '../auth/AuthContext';
 import { specialNeedCategoryLabels } from '../../constants/specialNeeds';
@@ -136,6 +138,12 @@ export function EventDashboardPage() {
           </Tooltip>
         )}
       </Stack>
+
+      <GettingStartedCard
+        eventId={eventId}
+        sheltersAssigned={data.shelters.length > 0}
+        hasRegistrations={data.registered_count > 0}
+      />
 
       <Paper variant="outlined" sx={{ p: 1.5, mb: 3 }}>
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap justifyContent="flex-end">
@@ -241,7 +249,12 @@ export function EventDashboardPage() {
                 <TableCell>Befogadóhely</TableCell>
                 <TableCell>Foglalt / Kapacitás</TableCell>
                 <TableCell>Telítettség</TableCell>
-                <TableCell>Kockázat</TableCell>
+                <TableCell>
+                  <Stack direction="row" alignItems="center" spacing={0}>
+                    <span>Kockázat</span>
+                    <HelpTip text="A kockázati szint egy számított pontszám: a telítettség 70%, az egyedi igényű személyek aránya 20%, a még szállításra váró (nem érkeztetett) regisztráltak aránya 10% súllyal számít bele. 51 pont alatt alacsony, 51–70 közepes, 71–90 magas, 91 felett kritikus." />
+                  </Stack>
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
