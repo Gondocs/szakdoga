@@ -189,4 +189,99 @@ class FamilyAndExportTest extends TestCase
         $this->actingAsRole(RoleCode::Registrar);
         $this->get("/api/events/{$eventId}/report-export")->assertForbidden();
     }
+
+    // A Családok lista tömeges CSV exportja (family_ids[] szűrő nélkül) az
+    // esemény MINDEN családjának tagjait tartalmazza — ez a lista-oldal
+    // "Kijelölés törlése melletti" (üres kijelölés = minden család) esetét
+    // fedi le.
+    public function test_admin_can_export_all_families_as_csv(): void
+    {
+        $this->actingAsRole(RoleCode::Admin);
+        $municipality = Municipality::factory()->create();
+
+        $eventId = $this->postJson('/api/events', [
+            'code' => 'EVT-FAMILY-EXPORT-1',
+            'name' => 'Teszt esemény',
+            'status' => 'active',
+        ])->assertCreated()->json('data.id');
+
+        $this->actingAsRole(RoleCode::Registrar);
+        $this->postJson("/api/events/{$eventId}/persons", [
+            'last_name' => 'Elso',
+            'first_name' => 'Csalad',
+            'municipality_id' => $municipality->id,
+            'create_new_family' => true,
+            'is_primary_contact' => true,
+        ])->assertCreated();
+        $this->postJson("/api/events/{$eventId}/persons", [
+            'last_name' => 'Masodik',
+            'first_name' => 'Csalad',
+            'municipality_id' => $municipality->id,
+            'create_new_family' => true,
+            'is_primary_contact' => true,
+        ])->assertCreated();
+
+        $this->actingAsRole(RoleCode::Admin);
+        $response = $this->get("/api/events/{$eventId}/families/export");
+
+        $response->assertOk();
+        $response->assertHeader('content-type', 'text/csv; charset=UTF-8');
+        $content = $response->streamedContent();
+        $this->assertStringContainsString('Elso', $content);
+        $this->assertStringContainsString('Masodik', $content);
+    }
+
+    // A kijelölt családokra szűrt tömeges export (family_ids[]) csak a
+    // megadott család(ok) tagjait tartalmazza, a kijelöletlen családét nem —
+    // ez a lényegi különbség a sima (szűretlen) exporthoz képest.
+    public function test_admin_can_export_only_selected_families_as_csv(): void
+    {
+        $this->actingAsRole(RoleCode::Admin);
+        $municipality = Municipality::factory()->create();
+
+        $eventId = $this->postJson('/api/events', [
+            'code' => 'EVT-FAMILY-EXPORT-2',
+            'name' => 'Teszt esemény',
+            'status' => 'active',
+        ])->assertCreated()->json('data.id');
+
+        $this->actingAsRole(RoleCode::Registrar);
+        $keptPerson = $this->postJson("/api/events/{$eventId}/persons", [
+            'last_name' => 'Megtartott',
+            'first_name' => 'Csalad',
+            'municipality_id' => $municipality->id,
+            'create_new_family' => true,
+            'is_primary_contact' => true,
+        ])->assertCreated()->json('data');
+        $this->postJson("/api/events/{$eventId}/persons", [
+            'last_name' => 'Kihagyott',
+            'first_name' => 'Csalad',
+            'municipality_id' => $municipality->id,
+            'create_new_family' => true,
+            'is_primary_contact' => true,
+        ])->assertCreated();
+
+        $this->actingAsRole(RoleCode::Admin);
+        $response = $this->get("/api/events/{$eventId}/families/export?".http_build_query(['family_ids' => [$keptPerson['family_id']]]));
+
+        $response->assertOk();
+        $content = $response->streamedContent();
+        $this->assertStringContainsString('Megtartott', $content);
+        $this->assertStringNotContainsString('Kihagyott', $content);
+    }
+
+    // A családok exportja is admin/vezető jogosultsághoz kötött, ugyanúgy,
+    // mint a személyi export — regisztrátorként 403-at ad.
+    public function test_registrar_cannot_export_families_csv(): void
+    {
+        $this->actingAsRole(RoleCode::Admin);
+        $eventId = $this->postJson('/api/events', [
+            'code' => 'EVT-FAMILY-EXPORT-3',
+            'name' => 'Teszt esemény',
+            'status' => 'active',
+        ])->assertCreated()->json('data.id');
+
+        $this->actingAsRole(RoleCode::Registrar);
+        $this->get("/api/events/{$eventId}/families/export")->assertForbidden();
+    }
 }
