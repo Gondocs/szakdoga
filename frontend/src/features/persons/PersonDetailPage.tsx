@@ -879,7 +879,7 @@ export function PersonDetailPage() {
   );
 }
 
-function EditPersonDialog({ person, onClose, onSaved }: { person: Person; onClose: () => void; onSaved: () => void }) {
+export function EditPersonDialog({ person, onClose, onSaved }: { person: Person; onClose: () => void; onSaved: () => void }) {
   const [lastName, setLastName] = useState(person.last_name);
   const [firstName, setFirstName] = useState(person.first_name);
   const [phone, setPhone] = useState(person.phone ?? '');
