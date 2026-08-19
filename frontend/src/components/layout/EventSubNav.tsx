@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Paper, Stack, Button } from '@mui/material';
+import { Paper, Stack, Button, Typography, Divider } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
 import GroupsIcon from '@mui/icons-material/Groups';
@@ -28,16 +28,34 @@ const categoryLabels: Record<IncidentCreatedPayload['category'], string> = {
   other: 'Egyéb',
 };
 
-const eventNavItems = [
-  { to: 'attekintes', label: 'Áttekintés', icon: <DashboardIcon fontSize="small" /> },
-  { to: 'szemelyek', label: 'Regisztráltak', icon: <PeopleAltIcon fontSize="small" /> },
-  { to: 'befogadohelyek', label: 'Befogadóhelyek', icon: <HomeWorkIcon fontSize="small" /> },
-  { to: 'csaladok', label: 'Családok', icon: <GroupsIcon fontSize="small" /> },
-  { to: 'szallitas', label: 'Szállítás', icon: <DirectionsBusIcon fontSize="small" /> },
-  { to: 'terkep', label: 'Térkép', icon: <MapIcon fontSize="small" /> },
-  { to: 'gyulekezopontok', label: 'Gyülekezőpontok', icon: <PlaceIcon fontSize="small" /> },
-  { to: 'rendkivuli-esemenyek', label: 'Rendkívüli események', icon: <WarningAmberIcon fontSize="small" /> },
-  { to: 'visszatelepites', label: 'Visszatelepítés', icon: <HomeIcon fontSize="small" /> },
+// A korábbi, egyetlen sík listába rendezett menü helyett a fülek négy,
+// vizuálisan elkülönített, a kitelepítés valós fázisaihoz igazodó
+// csoportba vannak rendezve — ez segít eldönteni, mikor melyik
+// menüpontra van szükség (lásd Súgó, "Mikor van rá szükség" szakaszok).
+const eventNavGroups: { label: string | null; items: { to: string; label: string; icon: React.ReactNode }[] }[] = [
+  {
+    label: null,
+    items: [{ to: 'attekintes', label: 'Áttekintés', icon: <DashboardIcon fontSize="small" /> }],
+  },
+  {
+    label: 'Előkészítés',
+    items: [{ to: 'gyulekezopontok', label: 'Gyülekezőpontok', icon: <PlaceIcon fontSize="small" /> }],
+  },
+  {
+    label: 'Napi működés',
+    items: [
+      { to: 'szemelyek', label: 'Regisztráltak', icon: <PeopleAltIcon fontSize="small" /> },
+      { to: 'befogadohelyek', label: 'Befogadóhelyek', icon: <HomeWorkIcon fontSize="small" /> },
+      { to: 'csaladok', label: 'Családok', icon: <GroupsIcon fontSize="small" /> },
+      { to: 'szallitas', label: 'Szállítás', icon: <DirectionsBusIcon fontSize="small" /> },
+      { to: 'terkep', label: 'Térkép', icon: <MapIcon fontSize="small" /> },
+      { to: 'rendkivuli-esemenyek', label: 'Rendkívüli események', icon: <WarningAmberIcon fontSize="small" /> },
+    ],
+  },
+  {
+    label: 'Lezárás',
+    items: [{ to: 'visszatelepites', label: 'Visszatelepítés', icon: <HomeIcon fontSize="small" /> }],
+  },
 ];
 
 /**
@@ -95,22 +113,36 @@ export function EventSubNav({ eventId }: { eventId: string }) {
 
   return (
     <Paper variant="outlined" sx={{ p: 1.5, mb: 3 }}>
-      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-        {eventNavItems.map((item) => {
-          const isActive = activeSegment === item.to;
-          return (
-            <Button
-              key={item.to}
-              variant={isActive ? 'contained' : 'outlined'}
-              size="small"
-              color={isActive ? 'primary' : 'inherit'}
-              startIcon={item.icon}
-              onClick={() => navigate(`/esemenyek/${eventId}/${item.to}`)}
-            >
-              {item.label}
-            </Button>
-          );
-        })}
+      <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap alignItems="center">
+        {eventNavGroups.map((group, groupIndex) => (
+          <Stack key={group.label ?? 'root'} direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
+            {groupIndex > 0 && <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />}
+            {group.label && (
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 700, mr: 0.5 }}
+              >
+                {group.label}
+              </Typography>
+            )}
+            {group.items.map((item) => {
+              const isActive = activeSegment === item.to;
+              return (
+                <Button
+                  key={item.to}
+                  variant={isActive ? 'contained' : 'outlined'}
+                  size="small"
+                  color={isActive ? 'primary' : 'inherit'}
+                  startIcon={item.icon}
+                  onClick={() => navigate(`/esemenyek/${eventId}/${item.to}`)}
+                >
+                  {item.label}
+                </Button>
+              );
+            })}
+          </Stack>
+        ))}
       </Stack>
     </Paper>
   );
