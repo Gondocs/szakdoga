@@ -354,6 +354,8 @@ class PersonController extends Controller
                     new OA\Property(property: 'first_name', type: 'string'),
                     new OA\Property(property: 'phone', type: 'string', nullable: true),
                     new OA\Property(property: 'email', type: 'string', format: 'email', nullable: true),
+                    new OA\Property(property: 'central_transport_required', type: 'boolean'),
+                    new OA\Property(property: 'central_accommodation_required', type: 'boolean'),
                 ]
             )
         ),
@@ -366,7 +368,18 @@ class PersonController extends Controller
     {
         $before = $person->toArray();
 
-        $person->update($request->validated() + ['updated_by' => $request->user()->id]);
+        $validated = $request->validated();
+        $registrationFields = array_intersect_key($validated, array_flip([
+            'central_transport_required',
+            'central_accommodation_required',
+        ]));
+        $personFields = array_diff_key($validated, $registrationFields);
+
+        $person->update($personFields + ['updated_by' => $request->user()->id]);
+
+        if ($registrationFields && $person->registration) {
+            $person->registration->update($registrationFields);
+        }
 
         $auditService->log('update', $person, $request->user(), $before, $person->fresh()->toArray());
 
