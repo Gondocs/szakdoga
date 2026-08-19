@@ -23,6 +23,8 @@ import {
   TextField,
   MenuItem,
   Alert,
+  Checkbox,
+  FormControlLabel,
 } from '@mui/material';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
 import EditIcon from '@mui/icons-material/Edit';
@@ -886,6 +888,8 @@ function EditPersonDialog({ person, onClose, onSaved }: { person: Person; onClos
   const [idDocumentNumber, setIdDocumentNumber] = useState(person.id_document_number ?? '');
   const [municipalityId, setMunicipalityId] = useState<number | ''>(person.municipality?.id ?? '');
   const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
+  const [centralTransportRequired, setCentralTransportRequired] = useState(person.registration?.central_transport_required ?? false);
+  const [centralAccommodationRequired, setCentralAccommodationRequired] = useState(person.registration?.central_accommodation_required ?? false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -904,6 +908,8 @@ function EditPersonDialog({ person, onClose, onSaved }: { person: Person; onClos
         gender: gender || undefined,
         id_document_number: idDocumentNumber || undefined,
         ...(municipalityId !== '' ? { municipality_id: municipalityId } : {}),
+        central_transport_required: centralTransportRequired,
+        central_accommodation_required: centralAccommodationRequired,
       };
       await updatePerson(person.id, payload);
       toast.success('Adatok frissítve.');
@@ -933,6 +939,14 @@ function EditPersonDialog({ person, onClose, onSaved }: { person: Person; onClos
             <MunicipalityAutocomplete municipalities={municipalities} value={municipalityId} onChange={setMunicipalityId} sx={{ width: '100%' }} />
             <TextField label="Telefon" fullWidth value={phone} onChange={(e) => setPhone(e.target.value)} />
             <TextField label="E-mail" type="email" fullWidth value={email} onChange={(e) => setEmail(e.target.value)} />
+            <FormControlLabel
+              control={<Checkbox checked={centralTransportRequired} onChange={(e) => setCentralTransportRequired(e.target.checked)} />}
+              label="Kér központi szállítást"
+            />
+            <FormControlLabel
+              control={<Checkbox checked={centralAccommodationRequired} onChange={(e) => setCentralAccommodationRequired(e.target.checked)} />}
+              label="Kér elszállásolást"
+            />
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
