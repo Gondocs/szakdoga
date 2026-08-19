@@ -405,6 +405,18 @@ export function PersonDetailPage() {
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <InfoField label="E-mail" value={person.email ?? '–'} />
           </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <InfoField
+              label="Kér központi szállítást"
+              value={person.registration?.central_transport_required ? 'Igen' : 'Nem'}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <InfoField
+              label="Kér elszállásolást"
+              value={person.registration?.central_accommodation_required ? 'Igen' : 'Nem'}
+            />
+          </Grid>
           {person.registration?.own_vehicle && (
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <InfoField
