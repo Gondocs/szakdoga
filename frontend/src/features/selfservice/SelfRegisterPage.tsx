@@ -56,6 +56,8 @@ export function SelfRegisterPage() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [ownVehicle, setOwnVehicle] = useState(false);
+  const [centralTransportRequired, setCentralTransportRequired] = useState(false);
+  const [centralAccommodationRequired, setCentralAccommodationRequired] = useState(false);
   const [specialNeeds, setSpecialNeeds] = useState<SpecialNeedRow[]>([]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -88,6 +90,8 @@ export function SelfRegisterPage() {
         phone: phone || undefined,
         email: email || undefined,
         own_vehicle: ownVehicle,
+        central_transport_required: centralTransportRequired,
+        central_accommodation_required: centralAccommodationRequired,
         special_needs: specialNeeds.length
           ? specialNeeds.map((row) => ({ category: row.category, type: row.type || undefined, description: row.description || undefined }))
           : undefined,
@@ -239,6 +243,18 @@ export function SelfRegisterPage() {
                 <FormControlLabel
                   control={<Checkbox checked={ownVehicle} onChange={(e) => setOwnVehicle(e.target.checked)} />}
                   label="Saját járművel, magam választotta helyre utazom (nem központi szállítással/befogadóhelyre)"
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <FormControlLabel
+                  control={<Checkbox checked={centralTransportRequired} onChange={(e) => setCentralTransportRequired(e.target.checked)} />}
+                  label="Központi szállítást igénylek"
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <FormControlLabel
+                  control={<Checkbox checked={centralAccommodationRequired} onChange={(e) => setCentralAccommodationRequired(e.target.checked)} />}
+                  label="Központi elszállásolást igénylek"
                 />
               </Grid>
             </Grid>
