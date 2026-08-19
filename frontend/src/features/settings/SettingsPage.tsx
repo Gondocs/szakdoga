@@ -31,6 +31,7 @@ import HistoryEduIcon from '@mui/icons-material/HistoryEdu';
 import GroupIcon from '@mui/icons-material/Group';
 import DescriptionIcon from '@mui/icons-material/Description';
 import ShieldMoonIcon from '@mui/icons-material/ShieldMoon';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import { toast } from 'react-toastify';
 import { useAuth } from '../auth/AuthContext';
 import {
@@ -326,6 +327,9 @@ export function SettingsPage() {
               Kitelepítés Támogató Rendszer — GYMS Vármegyei Katasztrófavédelmi Igazgatóság.
             </Typography>
             <Stack spacing={1}>
+              <Link component={RouterLink} to="/sugo" underline="hover" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <HelpOutlineIcon fontSize="small" /> Szoftver használata
+              </Link>
               {canViewAuditLog && (
                 <Link component={RouterLink} to="/naplo" underline="hover" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <HistoryEduIcon fontSize="small" /> Műveleti napló
