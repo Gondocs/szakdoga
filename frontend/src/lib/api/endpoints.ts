@@ -266,6 +266,8 @@ export interface UpdatePersonPayload {
   address_house_number?: string;
   phone?: string;
   email?: string;
+  central_transport_required?: boolean;
+  central_accommodation_required?: boolean;
 }
 
 export async function updatePerson(personId: string, payload: UpdatePersonPayload): Promise<Person> {
