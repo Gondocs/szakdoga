@@ -25,6 +25,7 @@ import { AssemblyPointListPage } from '../features/assemblyPoints/AssemblyPointL
 import { VehicleListPage } from '../features/vehicles/VehicleListPage';
 import { MunicipalityManagementPage } from '../features/municipalities/MunicipalityManagementPage';
 import { SettingsPage } from '../features/settings/SettingsPage';
+import { HelpGuidePage } from '../features/help/HelpGuidePage';
 import { IncidentListPage } from '../features/incidents/IncidentListPage';
 import { RepatriationPage } from '../features/repatriation/RepatriationPage';
 import { NotFoundPage } from '../features/errors/NotFoundPage';
@@ -76,6 +77,7 @@ export const router = createBrowserRouter([
       },
       { path: 'naplo', element: <AuditLogPage /> },
       { path: 'beallitasok', element: <SettingsPage /> },
+      { path: 'sugo', element: <HelpGuidePage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },
