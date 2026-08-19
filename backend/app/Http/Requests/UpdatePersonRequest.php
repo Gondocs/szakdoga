@@ -36,6 +36,8 @@ class UpdatePersonRequest extends FormRequest
             'address_house_number' => ['nullable', 'string', 'max:50'],
             'phone' => ['nullable', 'string', 'max:50'],
             'email' => ['nullable', 'email', 'max:255'],
+            'central_transport_required' => ['sometimes', 'boolean'],
+            'central_accommodation_required' => ['sometimes', 'boolean'],
         ];
     }
 }
