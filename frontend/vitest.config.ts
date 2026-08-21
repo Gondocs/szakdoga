@@ -8,5 +8,11 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
     css: true,
+    // Sok teszt-fájl párhuzamos futtatásakor (pl. teljes `vitest run`) a
+    // gép terhelése miatt az 5s alapértelmezett timeout időnként túl
+    // szűkös egyes userEvent-interakciókra — ez nem valódi tesztsiker/
+    // -hiba kérdés, csak erőforrás-versengés, ezért nagyobb tartalékkal
+    // számolunk.
+    testTimeout: 10000,
   },
 })
