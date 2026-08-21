@@ -1,6 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Paper, Stack, Button, Typography, Divider } from '@mui/material';
+import { Paper, Stack, Box, Typography, IconButton, Tooltip, Divider } from '@mui/material';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
 import GroupsIcon from '@mui/icons-material/Groups';
@@ -58,11 +60,20 @@ const eventNavGroups: { label: string | null; items: { to: string; label: string
   },
 ];
 
+const WIDTH_EXPANDED = 220;
+const WIDTH_COLLAPSED = 60;
+const COLLAPSED_STORAGE_KEY = 'event_subnav_collapsed';
+
 /**
  * Az esemény aloldalai (dashboard, regisztráltak, befogadóhelyek, családok,
  * szállítás, térkép, rendkívüli események, visszatelepítés) közötti gyors
  * váltást biztosítja — korábban csak az Áttekintés oldalról lehetett egy
  * másik szekcióba ugrani, minden más aloldalon vissza kellett navigálni oda.
+ *
+ * Ugyanúgy összecsukható (csak ikonos módra váltható), mint a fő oldalsáv
+ * (AppLayout) — enélkül a szélesebb tartalmú oldalak (pl. a dashboard
+ * kártya-/diagram-rácsa) mindig elveszítenék az oldalsáv szélességét, akár
+ * kell éppen a felhasználónak a navigáció, akár nem.
  */
 export function EventSubNav({ eventId }: { eventId: string }) {
   const navigate = useNavigate();
@@ -70,6 +81,7 @@ export function EventSubNav({ eventId }: { eventId: string }) {
   const activeSegment = location.pathname.split('/').pop();
   const { addNotification } = useNotificationCenter();
   const { playAlertSound } = useSoundAlert();
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSED_STORAGE_KEY) === '1');
 
   // Az utoljára ismert kockázati szint befogadóhelyenként — ez azért kell,
   // hogy csak akkor toastoljunk, amikor egy befogadóhely ÚJONNAN éri el a
@@ -111,38 +123,96 @@ export function EventSubNav({ eventId }: { eventId: string }) {
     };
   }, [eventId, addNotification, playAlertSound]);
 
+  function toggleCollapsed() {
+    setCollapsed((current) => {
+      const next = !current;
+      localStorage.setItem(COLLAPSED_STORAGE_KEY, next ? '1' : '0');
+      return next;
+    });
+  }
+
   return (
-    <Paper variant="outlined" sx={{ p: 1.5, mb: 3 }}>
-      <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap alignItems="center">
+    <Paper
+      variant="outlined"
+      sx={{
+        p: 1,
+        width: { xs: '100%', md: collapsed ? WIDTH_COLLAPSED : WIDTH_EXPANDED },
+        flexShrink: 0,
+        alignSelf: 'flex-start',
+        transition: 'width 0.15s ease',
+      }}
+    >
+      <Stack spacing={0.5}>
         {eventNavGroups.map((group, groupIndex) => (
-          <Stack key={group.label ?? 'root'} direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
-            {groupIndex > 0 && <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />}
-            {group.label && (
+          <Box key={group.label ?? 'root'}>
+            {group.label && (collapsed ? (
+              <Divider sx={{ my: 0.75 }} />
+            ) : (
               <Typography
                 variant="caption"
                 color="text.secondary"
-                sx={{ textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 700, mr: 0.5 }}
+                sx={{ display: 'block', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 700, pt: groupIndex === 0 ? 0.5 : 1.75, pb: 0.75, px: 1.5 }}
               >
                 {group.label}
               </Typography>
-            )}
-            {group.items.map((item) => {
-              const isActive = activeSegment === item.to;
-              return (
-                <Button
-                  key={item.to}
-                  variant={isActive ? 'contained' : 'outlined'}
-                  size="small"
-                  color={isActive ? 'primary' : 'inherit'}
-                  startIcon={item.icon}
-                  onClick={() => navigate(`/esemenyek/${eventId}/${item.to}`)}
-                >
-                  {item.label}
-                </Button>
-              );
-            })}
-          </Stack>
+            ))}
+            <Stack spacing={0.25}>
+              {group.items.map((item) => {
+                const isActive = activeSegment === item.to;
+                const button = (
+                  <Box
+                    key={item.to}
+                    component="button"
+                    aria-current={isActive ? 'page' : undefined}
+                    onClick={() => navigate(`/esemenyek/${eventId}/${item.to}`)}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: collapsed ? 'center' : 'flex-start',
+                      gap: 1.375,
+                      width: '100%',
+                      minHeight: 44,
+                      px: collapsed ? 0 : 1.5,
+                      py: 1,
+                      border: 'none',
+                      borderLeft: '3px solid',
+                      borderLeftColor: isActive ? 'primary.main' : 'transparent',
+                      borderRadius: 1,
+                      bgcolor: isActive ? 'rgba(163, 23, 43, 0.09)' : 'transparent',
+                      color: isActive ? 'primary.main' : 'text.primary',
+                      fontWeight: isActive ? 700 : 500,
+                      fontSize: '0.875rem',
+                      fontFamily: 'inherit',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      '&:hover': { bgcolor: isActive ? 'rgba(163, 23, 43, 0.09)' : 'action.hover' },
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', color: isActive ? 'primary.main' : 'text.secondary' }}>{item.icon}</Box>
+                    {!collapsed && item.label}
+                  </Box>
+                );
+
+                return collapsed ? (
+                  <Tooltip key={item.to} title={item.label} placement="right">
+                    {button}
+                  </Tooltip>
+                ) : (
+                  button
+                );
+              })}
+            </Stack>
+          </Box>
         ))}
+
+        <Divider sx={{ mt: 0.5 }} />
+        <Box sx={{ display: 'flex', justifyContent: collapsed ? 'center' : 'flex-end' }}>
+          <Tooltip title={collapsed ? 'Menü kibontása' : 'Menü összecsukása'} placement="right">
+            <IconButton onClick={toggleCollapsed} size="small">
+              {collapsed ? <ChevronRightIcon fontSize="small" /> : <ChevronLeftIcon fontSize="small" />}
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Stack>
     </Paper>
   );
