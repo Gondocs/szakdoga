@@ -38,6 +38,7 @@ function renderNav(path: string) {
 
 beforeEach(() => {
   navigateMock.mockClear();
+  localStorage.clear();
 });
 
 describe('EventSubNav', () => {
@@ -54,11 +55,11 @@ describe('EventSubNav', () => {
     expect(screen.getByRole('button', { name: /Visszatelepítés/ })).toBeInTheDocument();
   });
 
-  it('az aktuális útvonalnak megfelelő menüpontot kiemelve (contained) jeleníti meg', () => {
+  it('az aktuális útvonalnak megfelelő menüpontot jelöli aktívként (aria-current)', () => {
     renderNav('/esemenyek/event-1/szemelyek');
 
-    expect(screen.getByRole('button', { name: /Regisztráltak/ })).toHaveClass('MuiButton-contained');
-    expect(screen.getByRole('button', { name: /Áttekintés/ })).toHaveClass('MuiButton-outlined');
+    expect(screen.getByRole('button', { name: /Regisztráltak/ })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('button', { name: /Áttekintés/ })).not.toHaveAttribute('aria-current');
   });
 
   it('egy menüpontra kattintva az esemény adott aloldalára navigál', async () => {
@@ -68,5 +69,24 @@ describe('EventSubNav', () => {
     await user.click(screen.getByRole('button', { name: /Befogadóhelyek/ }));
 
     expect(navigateMock).toHaveBeenCalledWith('/esemenyek/event-1/befogadohelyek');
+  });
+
+  it('összecsukáskor eltűnnek a szöveges címkék, de a gombok (tooltippel) továbbra is elérhetők maradnak', async () => {
+    const user = userEvent.setup();
+    renderNav('/esemenyek/event-1/attekintes');
+
+    await user.click(screen.getByRole('button', { name: 'Menü összecsukása' }));
+
+    expect(screen.queryByText('Regisztráltak')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Regisztráltak' })).toBeInTheDocument();
+    expect(localStorage.getItem('event_subnav_collapsed')).toBe('1');
+  });
+
+  it('a korábban elmentett összecsukott állapotot betöltéskor visszaállítja', () => {
+    localStorage.setItem('event_subnav_collapsed', '1');
+    renderNav('/esemenyek/event-1/attekintes');
+
+    expect(screen.queryByText('Napi működés')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Menü kibontása' })).toBeInTheDocument();
   });
 });
