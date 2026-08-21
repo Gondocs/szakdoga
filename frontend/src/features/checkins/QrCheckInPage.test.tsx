@@ -59,6 +59,7 @@ const shelterA: ShelterWithRisk = {
   risk_level: 'low',
   match_score: null,
   match_reasons: [],
+  recommended: false,
 };
 
 function makePerson(overrides: Partial<Person> = {}): Person {
