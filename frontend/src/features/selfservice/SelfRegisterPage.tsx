@@ -4,20 +4,15 @@ import {
   Box,
   Paper,
   Typography,
-  TextField,
-  MenuItem,
   Button,
   Stack,
   Alert,
-  Grid,
   CircularProgress,
   Avatar,
   Divider,
   FormControlLabel,
   Checkbox,
 } from '@mui/material';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { format } from 'date-fns';
 import { Link as RouterLink } from 'react-router-dom';
 import ShieldMoonIcon from '@mui/icons-material/ShieldMoon';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -34,8 +29,9 @@ import {
   type SelfRegisterResult,
 } from '../../lib/api/endpoints';
 import { SpecialNeedsEditor, type SpecialNeedRow } from '../persons/SpecialNeedsEditor';
+import { PersonalDetailsFields, usePersonalDetailsForm } from '../persons/PersonalDetailsFields';
+import { TransportAccommodationFields } from '../persons/TransportAccommodationFields';
 import { IdCardDialog } from '../../components/IdCardDialog';
-import { MunicipalityAutocomplete } from '../../components/ui/MunicipalityAutocomplete';
 
 export function SelfRegisterPage() {
   const { eventCode } = useParams<{ eventCode: string }>();
@@ -44,17 +40,8 @@ export function SelfRegisterPage() {
   const [eventError, setEventError] = useState<string | null>(null);
   const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
 
-  const [lastName, setLastName] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [birthPlace, setBirthPlace] = useState('');
-  const [birthDate, setBirthDate] = useState<Date | null>(null);
-  const [gender, setGender] = useState('');
-  const [idDocumentNumber, setIdDocumentNumber] = useState('');
-  const [municipalityId, setMunicipalityId] = useState<number | ''>('');
-  const [street, setStreet] = useState('');
-  const [houseNumber, setHouseNumber] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
+  const { values, setField, toPayloadBase } = usePersonalDetailsForm();
+
   const [ownVehicle, setOwnVehicle] = useState(false);
   const [centralTransportRequired, setCentralTransportRequired] = useState(false);
   const [centralAccommodationRequired, setCentralAccommodationRequired] = useState(false);
@@ -74,21 +61,11 @@ export function SelfRegisterPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!eventCode || municipalityId === '') return;
+    if (!eventCode || values.municipalityId === '') return;
     setIsSubmitting(true);
     try {
       const res = await selfRegister(eventCode, {
-        last_name: lastName,
-        first_name: firstName,
-        birth_place: birthPlace || undefined,
-        birth_date: birthDate ? format(birthDate, 'yyyy-MM-dd') : undefined,
-        gender: gender || undefined,
-        id_document_number: idDocumentNumber || undefined,
-        municipality_id: municipalityId,
-        address_street: street || undefined,
-        address_house_number: houseNumber || undefined,
-        phone: phone || undefined,
-        email: email || undefined,
+        ...toPayloadBase(),
         own_vehicle: ownVehicle,
         central_transport_required: centralTransportRequired,
         central_accommodation_required: centralAccommodationRequired,
@@ -193,71 +170,29 @@ export function SelfRegisterPage() {
             </Alert>
 
             <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>Személyes adatok</Typography>
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField label="Vezetéknév" required fullWidth value={lastName} onChange={(e) => setLastName(e.target.value)} />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField label="Keresztnév" required fullWidth value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 4 }}>
-                <TextField select label="Nem" fullWidth value={gender} onChange={(e) => setGender(e.target.value)}>
-                  <MenuItem value="">Nincs megadva</MenuItem>
-                  <MenuItem value="male">Férfi</MenuItem>
-                  <MenuItem value="female">Nő</MenuItem>
-                  <MenuItem value="other">Egyéb</MenuItem>
-                </TextField>
-              </Grid>
-              <Grid size={{ xs: 12, sm: 4 }}>
-                <TextField label="Születési hely" fullWidth value={birthPlace} onChange={(e) => setBirthPlace(e.target.value)} />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 4 }}>
-                <DatePicker
-                  label="Születési idő"
-                  value={birthDate}
-                  onChange={setBirthDate}
-                  format="yyyy.MM.dd"
-                  disableFuture
-                  slotProps={{ textField: { fullWidth: true } }}
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField label="Személyazonosító okmány száma" fullWidth value={idDocumentNumber} onChange={(e) => setIdDocumentNumber(e.target.value)} />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <MunicipalityAutocomplete municipalities={municipalities} value={municipalityId} onChange={setMunicipalityId} required sx={{ width: '100%' }} />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 4 }}>
-                <TextField label="Utca" fullWidth value={street} onChange={(e) => setStreet(e.target.value)} />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 4 }}>
-                <TextField label="Házszám" fullWidth value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 4 }}>
-                <TextField label="Telefon" fullWidth value={phone} onChange={(e) => setPhone(e.target.value)} />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 4 }}>
-                <TextField label="E-mail" type="email" fullWidth value={email} onChange={(e) => setEmail(e.target.value)} />
-              </Grid>
-              <Grid size={12}>
-                <FormControlLabel
-                  control={<Checkbox checked={ownVehicle} onChange={(e) => setOwnVehicle(e.target.checked)} />}
-                  label="Saját járművel, magam választotta helyre utazom (nem központi szállítással/befogadóhelyre)"
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <FormControlLabel
-                  control={<Checkbox checked={centralTransportRequired} onChange={(e) => setCentralTransportRequired(e.target.checked)} />}
-                  label="Központi szállítást igénylek"
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <FormControlLabel
-                  control={<Checkbox checked={centralAccommodationRequired} onChange={(e) => setCentralAccommodationRequired(e.target.checked)} />}
-                  label="Központi elszállásolást igénylek"
-                />
-              </Grid>
-            </Grid>
+            <Box sx={{ mb: 3 }}>
+              <PersonalDetailsFields
+                values={values}
+                setField={setField}
+                municipalities={municipalities}
+                idDocumentNumberLabel="Személyazonosító okmány száma"
+              />
+            </Box>
+
+            <Stack spacing={0.5} sx={{ mb: 3 }}>
+              <FormControlLabel
+                control={<Checkbox checked={ownVehicle} onChange={(e) => setOwnVehicle(e.target.checked)} />}
+                label="Saját járművel, magam választotta helyre utazom (nem központi szállítással/befogadóhelyre)"
+              />
+              <TransportAccommodationFields
+                centralTransportRequired={centralTransportRequired}
+                onCentralTransportRequiredChange={setCentralTransportRequired}
+                centralAccommodationRequired={centralAccommodationRequired}
+                onCentralAccommodationRequiredChange={setCentralAccommodationRequired}
+                transportLabel="Központi szállítást igénylek"
+                accommodationLabel="Központi elszállásolást igénylek"
+              />
+            </Stack>
 
             <Divider sx={{ mb: 3 }} />
 
