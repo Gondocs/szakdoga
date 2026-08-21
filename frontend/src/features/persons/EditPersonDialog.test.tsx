@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { EditPersonDialog } from './PersonDetailPage';
+import { EditPersonDialog } from './EditPersonDialog';
 import { fetchMunicipalities, updatePerson } from '../../lib/api/endpoints';
 import type { Person } from '../../types';
 
