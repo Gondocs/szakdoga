@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { NotificationCenterProvider, useNotificationCenter } from './NotificationCenterContext';
 
@@ -98,13 +98,18 @@ describe('NotificationCenterProvider / useNotificationCenter', () => {
     expect(screen.getByTestId('unread-count')).toHaveTextContent('0');
   });
 
-  it('a lista legfeljebb 50 bejegyzést tart meg, a legrégebbit eldobva', async () => {
-    const user = userEvent.setup();
+  it('a lista legfeljebb 50 bejegyzést tart meg, a legrégebbit eldobva', () => {
     renderConsumer();
+    const addButton = screen.getByRole('button', { name: 'Hozzáadás' });
 
+    // 55 gombnyomást szimulálunk — a userEvent.click valós felhasználói
+    // interakciót utánozva (pointer/fókusz-eseményekkel, késleltetéssel)
+    // ennyi ismétlésnél terhelés alatt könnyen túllépi a teszt timeoutját;
+    // a fireEvent.click szinkron, azonnali eseményt vált ki, ami a nyers
+    // állapotfrissítési logikát (max. 50 elem, FIFO eldobás) ugyanúgy teszteli,
+    // csak a felhasználói interakció realisztikus szimulációja nélkül.
     for (let i = 0; i < 55; i++) {
-      // eslint-disable-next-line no-await-in-loop
-      await user.click(screen.getByRole('button', { name: 'Hozzáadás' }));
+      fireEvent.click(addButton);
     }
 
     expect(screen.getByTestId('total-count')).toHaveTextContent('50');
