@@ -9,6 +9,7 @@ import {
   fetchPublicEvent,
   fetchPublicMunicipalities,
   selfRegister,
+  selfRegisterFamily,
   type PublicEventInfo,
   type SelfRegisterResult,
 } from '../../lib/api/endpoints';
@@ -31,6 +32,7 @@ vi.mock('../../lib/api/endpoints', () => ({
   fetchPublicEvent: vi.fn(),
   fetchPublicMunicipalities: vi.fn(),
   selfRegister: vi.fn(),
+  selfRegisterFamily: vi.fn(),
 }));
 
 // A valódi QRCodeCanvas jsdom alatt (a `canvas` csomag hiányában) a
@@ -68,6 +70,7 @@ beforeEach(() => {
   vi.mocked(fetchPublicEvent).mockReset().mockResolvedValue(event);
   vi.mocked(fetchPublicMunicipalities).mockReset().mockResolvedValue(municipalities);
   vi.mocked(selfRegister).mockReset();
+  vi.mocked(selfRegisterFamily).mockReset();
   vi.mocked(toast.error).mockClear();
 });
 
@@ -104,8 +107,8 @@ describe('SelfRegisterPage', () => {
 
     await screen.findByText('Árvíz 2026 (ARVIZ-2026)');
     await fillRequiredFields(user);
-    await user.click(screen.getByLabelText('Központi szállítást igénylek'));
-    await user.click(screen.getByLabelText('Központi elszállásolást igénylek'));
+    await user.click(screen.getByRole('checkbox', { name: /Központi szállítást igénylek/ }));
+    await user.click(screen.getByRole('checkbox', { name: /Központi elszállásolást igénylek/ }));
     await user.click(screen.getByRole('button', { name: /Előregisztráció és QR-kód igénylése/ }));
 
     await waitFor(() => expect(selfRegister).toHaveBeenCalledTimes(1));
@@ -116,6 +119,26 @@ describe('SelfRegisterPage', () => {
         central_accommodation_required: true,
       })
     );
+  });
+
+  it('a "Központi szállítást igénylek" és a "Saját járművel…" jelölők kölcsönösen kizárják egymást', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('Árvíz 2026 (ARVIZ-2026)');
+
+    const transportCheckbox = screen.getByRole('checkbox', { name: /Központi szállítást igénylek/ });
+    const ownVehicleCheckbox = screen.getByRole('checkbox', { name: /Saját járművel, magam választotta helyre utazom/ });
+
+    await user.click(ownVehicleCheckbox);
+    expect(ownVehicleCheckbox).toBeChecked();
+
+    await user.click(transportCheckbox);
+    expect(transportCheckbox).toBeChecked();
+    expect(ownVehicleCheckbox).not.toBeChecked();
+
+    await user.click(ownVehicleCheckbox);
+    expect(ownVehicleCheckbox).toBeChecked();
+    expect(transportCheckbox).not.toBeChecked();
   });
 
   it('sikeres előregisztráció után a QR-kódos visszaigazolást jeleníti meg a nevével és azonosítójával', async () => {
@@ -129,7 +152,7 @@ describe('SelfRegisterPage', () => {
     await fillRequiredFields(user);
     await user.click(screen.getByRole('button', { name: /Előregisztráció és QR-kód igénylése/ }));
 
-    expect(await screen.findByText(/Nagy Katalin/)).toBeInTheDocument();
+    expect((await screen.findAllByText(/Nagy Katalin/)).length).toBeGreaterThan(0);
     expect(screen.getByTestId('qr-canvas')).toHaveAttribute('data-value', 'PUB-XYZ');
     expect(screen.getByText(/PUB-XYZ/)).toBeInTheDocument();
   });
@@ -154,5 +177,68 @@ describe('SelfRegisterPage', () => {
     renderPage();
 
     expect(await screen.findByText(/Nincs ilyen kódú/)).toBeInTheDocument();
+  });
+
+  it('"Családtag hozzáadása" gombra kattintva egy második, önálló adatlapot jelenít meg', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('Árvíz 2026 (ARVIZ-2026)');
+
+    await user.click(screen.getByRole('button', { name: 'Családtag hozzáadása' }));
+
+    expect(screen.getByText('1. családtag')).toBeInTheDocument();
+    expect(screen.getByText('2. családtag')).toBeInTheDocument();
+    expect(screen.getAllByLabelText(/Vezetéknév/)).toHaveLength(2);
+  });
+
+  it('két családtaggal a selfRegisterFamily-t hívja, mindkettő saját adataival', async () => {
+    vi.mocked(selfRegisterFamily).mockResolvedValue({
+      members: [
+        { person_id: 'person-1', full_name: 'Nagy Katalin', public_id: 'PUB-1' },
+        { person_id: 'person-2', full_name: 'Nagy Béla', public_id: 'PUB-2' },
+      ],
+    });
+
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('Árvíz 2026 (ARVIZ-2026)');
+
+    await fillRequiredFields(user);
+
+    await user.click(screen.getByRole('button', { name: 'Családtag hozzáadása' }));
+    await user.type(screen.getAllByLabelText(/Vezetéknév/)[1], 'Nagy');
+    await user.type(screen.getAllByLabelText(/Keresztnév/)[1], 'Béla');
+    await user.click(screen.getAllByRole('combobox', { name: /Település/ })[1]);
+    await user.click((await screen.findAllByRole('option', { name: 'Győr' }))[0]);
+
+    await user.click(screen.getByRole('button', { name: /Család előregisztrációja \(2 fő\)/ }));
+
+    await waitFor(() => expect(selfRegisterFamily).toHaveBeenCalledTimes(1));
+    expect(selfRegisterFamily).toHaveBeenCalledWith('ARVIZ-2026', {
+      members: [
+        expect.objectContaining({ last_name: 'Nagy', first_name: 'Katalin' }),
+        expect.objectContaining({ last_name: 'Nagy', first_name: 'Béla' }),
+      ],
+    });
+    expect(selfRegister).not.toHaveBeenCalled();
+
+    expect(await screen.findByText('Nagy Katalin')).toBeInTheDocument();
+    expect(screen.getByText('Nagy Béla')).toBeInTheDocument();
+    expect(screen.getByText(/PUB-1/)).toBeInTheDocument();
+    expect(screen.getByText(/PUB-2/)).toBeInTheDocument();
+  });
+
+  it('a családtag eltávolítása gombra kattintva megszünteti az adott adatlapot', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('Árvíz 2026 (ARVIZ-2026)');
+
+    await user.click(screen.getByRole('button', { name: 'Családtag hozzáadása' }));
+    expect(screen.getAllByLabelText(/Vezetéknév/)).toHaveLength(2);
+
+    await user.click(screen.getAllByRole('button', { name: 'Családtag eltávolítása' })[1]);
+
+    expect(screen.getAllByLabelText(/Vezetéknév/)).toHaveLength(1);
+    expect(screen.queryByText('1. családtag')).not.toBeInTheDocument();
   });
 });
