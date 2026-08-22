@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { RegistrationWizardPage } from './RegistrationWizardPage';
-import { createPerson, fetchFamilies, fetchMunicipalities } from '../../lib/api/endpoints';
+import { createPerson, createPersonFamily, fetchFamilies, fetchMunicipalities } from '../../lib/api/endpoints';
 import type { Municipality, Person } from '../../types';
 
 const navigateMock = vi.fn();
@@ -25,6 +25,7 @@ vi.mock('react-toastify', () => ({
 
 vi.mock('../../lib/api/endpoints', () => ({
   createPerson: vi.fn(),
+  createPersonFamily: vi.fn(),
   fetchFamilies: vi.fn(),
   fetchMunicipalities: vi.fn(),
 }));
@@ -69,6 +70,7 @@ async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
 
 beforeEach(() => {
   vi.mocked(createPerson).mockReset().mockResolvedValue(makePerson());
+  vi.mocked(createPersonFamily).mockReset();
   vi.mocked(fetchFamilies).mockReset().mockResolvedValue([]);
   vi.mocked(fetchMunicipalities).mockReset().mockResolvedValue(municipalities);
   navigateMock.mockClear();
@@ -102,8 +104,8 @@ describe('RegistrationWizardPage', () => {
     renderPage();
 
     await fillRequiredFields(user);
-    await user.click(screen.getByLabelText('Központi szállítást igényel'));
-    await user.click(screen.getByLabelText('Központi elszállásolást igényel'));
+    await user.click(screen.getByRole('checkbox', { name: /Központi szállítást igényel/ }));
+    await user.click(screen.getByRole('checkbox', { name: /Központi elszállásolást igényel/ }));
     await user.click(screen.getByRole('button', { name: 'Regisztráció rögzítése' }));
 
     await waitFor(() => expect(createPerson).toHaveBeenCalledTimes(1));
@@ -161,5 +163,66 @@ describe('RegistrationWizardPage', () => {
 
     resolveCreate(makePerson());
     await waitFor(() => expect(screen.getByRole('button', { name: 'Regisztráció rögzítése' })).not.toBeDisabled());
+  });
+
+  it('"Családtag hozzáadása" gombra kattintva egy második, önálló adatlapot jelenít meg', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole('button', { name: 'Családtag hozzáadása' }));
+
+    expect(screen.getByText('1. családtag')).toBeInTheDocument();
+    expect(screen.getByText('2. családtag')).toBeInTheDocument();
+    expect(screen.getAllByLabelText(/Vezetéknév/)).toHaveLength(2);
+  });
+
+  it('két családtaggal, "Új család létrehozása" kiválasztva a createPersonFamily-t hívja a helyes payloaddal', async () => {
+    vi.mocked(createPersonFamily).mockResolvedValue([
+      makePerson({ id: 'person-1', full_name: 'Kovács Béla' }),
+      makePerson({ id: 'person-2', full_name: 'Kovács Anna' }),
+    ]);
+
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole('combobox', { name: 'Családi kapcsolat' }));
+    await user.click(await screen.findByRole('option', { name: /Új család létrehozása/ }));
+
+    await fillRequiredFields(user);
+
+    await user.click(screen.getByRole('button', { name: 'Családtag hozzáadása' }));
+    await user.type(screen.getAllByLabelText(/Vezetéknév/)[1], 'Kovács');
+    await user.type(screen.getAllByLabelText(/Keresztnév/)[1], 'Anna');
+    await user.click(screen.getAllByRole('combobox', { name: /Település/ })[1]);
+    await user.click((await screen.findAllByRole('option', { name: 'Győr' }))[0]);
+
+    await user.click(screen.getByRole('button', { name: /Család regisztrálása \(2 fő\)/ }));
+
+    await waitFor(() => expect(createPersonFamily).toHaveBeenCalledTimes(1));
+    expect(createPersonFamily).toHaveBeenCalledWith('event-1', {
+      family_id: undefined,
+      create_new_family: true,
+      members: [
+        expect.objectContaining({ last_name: 'Kovács', first_name: 'Béla' }),
+        expect.objectContaining({ last_name: 'Kovács', first_name: 'Anna' }),
+      ],
+    });
+    expect(createPerson).not.toHaveBeenCalled();
+
+    expect(await screen.findByText('Kovács Béla')).toBeInTheDocument();
+    expect(screen.getByText('Kovács Anna')).toBeInTheDocument();
+  });
+
+  it('a családtag eltávolítása gombra kattintva megszünteti az adott adatlapot', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole('button', { name: 'Családtag hozzáadása' }));
+    expect(screen.getAllByLabelText(/Vezetéknév/)).toHaveLength(2);
+
+    await user.click(screen.getAllByRole('button', { name: 'Családtag eltávolítása' })[1]);
+
+    expect(screen.getAllByLabelText(/Vezetéknév/)).toHaveLength(1);
+    expect(screen.queryByText('1. családtag')).not.toBeInTheDocument();
   });
 });
