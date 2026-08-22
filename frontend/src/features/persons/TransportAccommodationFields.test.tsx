@@ -14,8 +14,8 @@ describe('TransportAccommodationFields', () => {
       />
     );
 
-    expect(screen.getByLabelText('Központi szállítást igényel')).not.toBeChecked();
-    expect(screen.getByLabelText('Központi elszállásolást igényel')).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /Központi szállítást igényel/ })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /Központi elszállásolást igényel/ })).not.toBeChecked();
   });
 
   it('egyedi feliratokat is elfogad (pl. első személyű önkiszolgáló szöveg)', () => {
@@ -30,8 +30,8 @@ describe('TransportAccommodationFields', () => {
       />
     );
 
-    expect(screen.getByLabelText('Központi szállítást igénylek')).toBeChecked();
-    expect(screen.getByLabelText('Központi elszállásolást igénylek')).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /Központi szállítást igénylek/ })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /Központi elszállásolást igénylek/ })).not.toBeChecked();
   });
 
   it('kattintáskor a megfelelő callbacket hívja a jelenlegi érték ellentettjével', async () => {
@@ -48,8 +48,8 @@ describe('TransportAccommodationFields', () => {
       />
     );
 
-    await user.click(screen.getByLabelText('Központi szállítást igényel'));
-    await user.click(screen.getByLabelText('Központi elszállásolást igényel'));
+    await user.click(screen.getByRole('checkbox', { name: /Központi szállítást igényel/ }));
+    await user.click(screen.getByRole('checkbox', { name: /Központi elszállásolást igényel/ }));
 
     expect(onTransportChange).toHaveBeenCalledWith(true);
     expect(onAccommodationChange).toHaveBeenCalledWith(false);
