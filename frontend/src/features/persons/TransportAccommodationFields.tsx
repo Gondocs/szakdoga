@@ -1,4 +1,6 @@
-import { FormControlLabel, Checkbox, Stack } from '@mui/material';
+import DirectionsBusIcon from '@mui/icons-material/DirectionsBus';
+import HotelIcon from '@mui/icons-material/Hotel';
+import { SelectableToggleCard } from '../../components/ui/SelectableToggleCard';
 
 interface TransportAccommodationFieldsProps {
   centralTransportRequired: boolean;
@@ -7,6 +9,8 @@ interface TransportAccommodationFieldsProps {
   onCentralAccommodationRequiredChange: (value: boolean) => void;
   transportLabel?: string;
   accommodationLabel?: string;
+  transportDescription?: string;
+  accommodationDescription?: string;
 }
 
 /**
@@ -15,6 +19,11 @@ interface TransportAccommodationFieldsProps {
  * másikból (előregisztráció) hiányzott, mire észrevettük. Ide kiemelve egy
  * jövőbeli hasonló mezőbővítés strukturálisan nem tud csak az egyik oldalon
  * megjelenni.
+ *
+ * Csak a két kártyát adja vissza (nincs saját elrendező konténere) — a
+ * hívó fél dönti el, hogy egy nagyobb jelölő-rács részeként vagy önállóan,
+ * egy függőleges lista elemeiként jelenjenek meg (lásd FamilyMemberForm,
+ * EditPersonDialog).
  */
 export function TransportAccommodationFields({
   centralTransportRequired,
@@ -23,17 +32,25 @@ export function TransportAccommodationFields({
   onCentralAccommodationRequiredChange,
   transportLabel = 'Központi szállítást igényel',
   accommodationLabel = 'Központi elszállásolást igényel',
+  transportDescription = 'Akkor válassza, ha nincs saját járműve, és a hatóság által szervezett busszal/kisbusszal szeretne eljutni a gyülekezőpontra vagy a befogadóhelyre.',
+  accommodationDescription = 'Akkor válassza, ha nincs hova mennie, és a hatóság által kijelölt befogadóhelyen szeretne megszállni a kitelepítés alatt.',
 }: TransportAccommodationFieldsProps) {
   return (
-    <Stack direction="row" flexWrap="wrap" useFlexGap>
-      <FormControlLabel
-        control={<Checkbox checked={centralTransportRequired} onChange={(e) => onCentralTransportRequiredChange(e.target.checked)} />}
+    <>
+      <SelectableToggleCard
+        checked={centralTransportRequired}
+        onChange={onCentralTransportRequiredChange}
+        icon={<DirectionsBusIcon fontSize="small" />}
         label={transportLabel}
+        description={transportDescription}
       />
-      <FormControlLabel
-        control={<Checkbox checked={centralAccommodationRequired} onChange={(e) => onCentralAccommodationRequiredChange(e.target.checked)} />}
+      <SelectableToggleCard
+        checked={centralAccommodationRequired}
+        onChange={onCentralAccommodationRequiredChange}
+        icon={<HotelIcon fontSize="small" />}
         label={accommodationLabel}
+        description={accommodationDescription}
       />
-    </Stack>
+    </>
   );
 }
