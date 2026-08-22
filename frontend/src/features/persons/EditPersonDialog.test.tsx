@@ -65,8 +65,8 @@ describe('EditPersonDialog', () => {
 
     render(<EditPersonDialog person={person} onClose={vi.fn()} onSaved={vi.fn()} />);
 
-    expect(screen.getByLabelText('Kér központi szállítást')).toBeChecked();
-    expect(screen.getByLabelText('Kér elszállásolást')).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /Kér központi szállítást/ })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /Kér elszállásolást/ })).not.toBeChecked();
   });
 
   it('a jelölők átállítása és mentés az updatePerson-t a helyes payloaddal hívja', async () => {
@@ -74,8 +74,8 @@ describe('EditPersonDialog', () => {
     const user = userEvent.setup();
     render(<EditPersonDialog person={makePerson()} onClose={vi.fn()} onSaved={onSaved} />);
 
-    await user.click(screen.getByLabelText('Kér központi szállítást'));
-    await user.click(screen.getByLabelText('Kér elszállásolást'));
+    await user.click(screen.getByRole('checkbox', { name: /Kér központi szállítást/ }));
+    await user.click(screen.getByRole('checkbox', { name: /Kér elszállásolást/ }));
     await user.click(screen.getByRole('button', { name: 'Mentés' }));
 
     await waitFor(() =>
@@ -95,7 +95,7 @@ describe('EditPersonDialog', () => {
     const user = userEvent.setup();
     render(<EditPersonDialog person={makePerson()} onClose={onClose} onSaved={vi.fn()} />);
 
-    await user.click(screen.getByLabelText('Kér központi szállítást'));
+    await user.click(screen.getByRole('checkbox', { name: /Kér központi szállítást/ }));
     await user.click(screen.getByRole('button', { name: 'Mégse' }));
 
     expect(updatePerson).not.toHaveBeenCalled();
