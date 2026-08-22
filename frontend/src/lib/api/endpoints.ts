@@ -249,6 +249,19 @@ export async function createPerson(eventId: string, payload: CreatePersonPayload
   return data.data;
 }
 
+export type CreatePersonFamilyMemberPayload = Omit<CreatePersonPayload, 'family_id' | 'create_new_family' | 'is_primary_contact'>;
+
+export interface CreatePersonFamilyPayload {
+  family_id?: string | null;
+  create_new_family?: boolean;
+  members: CreatePersonFamilyMemberPayload[];
+}
+
+export async function createPersonFamily(eventId: string, payload: CreatePersonFamilyPayload): Promise<Person[]> {
+  const { data } = await apiClient.post<{ data: Person[] }>(`/api/events/${eventId}/persons/family`, payload);
+  return data.data;
+}
+
 export interface UpdatePersonPayload {
   last_name?: string;
   first_name?: string;
@@ -910,6 +923,19 @@ export interface SelfRegisterResult {
 
 export async function selfRegister(code: string, payload: SelfRegisterPayload): Promise<SelfRegisterResult> {
   const { data } = await apiClient.post<{ data: SelfRegisterResult }>(`/api/public/events/${code}/self-register`, payload);
+  return data.data;
+}
+
+export interface SelfRegisterFamilyPayload {
+  members: SelfRegisterPayload[];
+}
+
+export interface SelfRegisterFamilyResult {
+  members: SelfRegisterResult[];
+}
+
+export async function selfRegisterFamily(code: string, payload: SelfRegisterFamilyPayload): Promise<SelfRegisterFamilyResult> {
+  const { data } = await apiClient.post<{ data: SelfRegisterFamilyResult }>(`/api/public/events/${code}/self-register-family`, payload);
   return data.data;
 }
 
