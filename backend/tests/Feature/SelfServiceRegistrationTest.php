@@ -215,4 +215,73 @@ class SelfServiceRegistrationTest extends TestCase
             ->assertStatus(422)
             ->assertJsonPath('code', 'NOT_OWN_VEHICLE');
     }
+
+    // Egy család (több tag) egyetlen kéréssel, bejelentkezés nélkül is
+    // előregisztrálhat: mindegyik tag saját, önálló adatlappal szerepel,
+    // de egyetlen új családhoz kerülnek, és mindegyikük saját QR
+    // public_id-t kap.
+    public function test_family_can_self_register_together_in_one_request(): void
+    {
+        [$event, $municipality] = $this->createActiveEventWithShelter();
+
+        $this->app['auth']->forgetGuards();
+
+        $response = $this->postJson("/api/public/events/{$event->code}/self-register-family", [
+            'members' => [
+                ['last_name' => 'Szabó', 'first_name' => 'Anna', 'municipality_id' => $municipality->id, 'gender' => 'female'],
+                ['last_name' => 'Szabó', 'first_name' => 'Bence', 'municipality_id' => $municipality->id, 'gender' => 'male'],
+                ['last_name' => 'Szabó', 'first_name' => 'Csenge', 'municipality_id' => $municipality->id, 'gender' => 'female'],
+            ],
+        ]);
+
+        $response->assertCreated();
+        $members = $response->json('data.members');
+        $this->assertCount(3, $members);
+        foreach ($members as $member) {
+            $this->assertNotEmpty($member['public_id']);
+        }
+
+        $persons = \App\Models\Person::whereIn('id', array_column($members, 'person_id'))->get();
+        $familyIds = $persons->pluck('family_id')->unique();
+        $this->assertCount(1, $familyIds, 'Minden családtagnak ugyanahhoz a családhoz kell tartoznia.');
+        $this->assertNotNull($familyIds->first());
+
+        $family = \App\Models\Family::findOrFail($familyIds->first());
+        $firstPersonId = $persons->firstWhere('first_name', 'Anna')->id;
+        $this->assertSame($firstPersonId, $family->primary_contact_person_id, 'Az első megadott családtagnak kell a kapcsolattartónak lennie.');
+    }
+
+    // "draft" (tervezet) státuszú eseményhez a családi előregisztráció sem
+    // érhető el.
+    public function test_self_register_family_fails_for_inactive_event(): void
+    {
+        $this->actingAsRole(RoleCode::Admin);
+        $municipality = Municipality::factory()->create();
+        $this->postJson('/api/events', [
+            'code' => 'EVT-SELF-FAM-DRAFT',
+            'name' => 'Tervezet esemény',
+            'status' => 'draft',
+        ])->assertCreated();
+
+        $this->app['auth']->forgetGuards();
+
+        $this->postJson('/api/public/events/EVT-SELF-FAM-DRAFT/self-register-family', [
+            'members' => [
+                ['last_name' => 'Teszt', 'first_name' => 'Elek', 'municipality_id' => $municipality->id],
+            ],
+        ])->assertStatus(404)->assertJsonPath('code', 'EVENT_NOT_FOUND');
+    }
+
+    // Legalább egy családtag megadása kötelező — üres members tömbbel a
+    // kérés validációs hibával (422) utasítódik el.
+    public function test_self_register_family_requires_at_least_one_member(): void
+    {
+        [$event] = $this->createActiveEventWithShelter();
+
+        $this->app['auth']->forgetGuards();
+
+        $this->postJson("/api/public/events/{$event->code}/self-register-family", ['members' => []])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['members']);
+    }
 }
