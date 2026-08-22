@@ -1,24 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import {
-  Box,
-  Typography,
-  Paper,
-  TextField,
-  MenuItem,
-  FormControlLabel,
-  Checkbox,
-  Button,
-  Stack,
-  Alert,
-  Divider,
-} from '@mui/material';
+import { Box, Typography, Paper, TextField, MenuItem, Button, Stack, Alert } from '@mui/material';
+import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1';
 import { toast } from 'react-toastify';
 import type { FamilySummary, Municipality } from '../../types';
-import { createPerson, fetchFamilies, fetchMunicipalities } from '../../lib/api/endpoints';
-import { SpecialNeedsEditor, type SpecialNeedRow } from '../persons/SpecialNeedsEditor';
-import { PersonalDetailsFields, usePersonalDetailsForm } from '../persons/PersonalDetailsFields';
-import { TransportAccommodationFields } from '../persons/TransportAccommodationFields';
+import { createPerson, createPersonFamily, fetchFamilies, fetchMunicipalities } from '../../lib/api/endpoints';
+import { FamilyMemberForm, makeEmptyMember, memberToPayloadBase, type MemberFormState } from '../persons/FamilyMemberForm';
+import { FamilyMemberCard } from '../persons/FamilyMemberCard';
 
 export function RegistrationWizardPage() {
   const { eventId } = useParams<{ eventId: string }>();
@@ -27,18 +15,11 @@ export function RegistrationWizardPage() {
   const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
   const [families, setFamilies] = useState<FamilySummary[]>([]);
 
-  const { values, setField, reset, toPayloadBase } = usePersonalDetailsForm();
-
+  const [members, setMembers] = useState<MemberFormState[]>([makeEmptyMember()]);
   const [familyChoice, setFamilyChoice] = useState<'none' | 'new' | string>('none');
 
-  const [centralTransport, setCentralTransport] = useState(false);
-  const [centralAccommodation, setCentralAccommodation] = useState(false);
-  const [medicalCare, setMedicalCare] = useState(false);
-  const [ownVehicle, setOwnVehicle] = useState(false);
-
-  const [specialNeeds, setSpecialNeeds] = useState<SpecialNeedRow[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [lastCreated, setLastCreated] = useState<{ id: string; name: string } | null>(null);
+  const [lastCreated, setLastCreated] = useState<{ id: string; name: string }[] | null>(null);
 
   useEffect(() => {
     fetchMunicipalities().then(setMunicipalities).catch(() => setMunicipalities([]));
@@ -49,30 +30,50 @@ export function RegistrationWizardPage() {
     fetchFamilies(eventId).then(setFamilies).catch(() => setFamilies([]));
   }, [eventId, lastCreated]);
 
+  function setMemberField<K extends keyof MemberFormState['values']>(index: number, key: K, value: MemberFormState['values'][K]) {
+    setMembers((prev) => prev.map((m, i) => (i === index ? { ...m, values: { ...m.values, [key]: value } } : m)));
+  }
+
+  function updateMember(index: number, patch: Partial<Omit<MemberFormState, 'values'>>) {
+    setMembers((prev) => prev.map((m, i) => (i === index ? { ...m, ...patch } : m)));
+  }
+
+  function addMember() {
+    setMembers((prev) => [...prev, makeEmptyMember()]);
+  }
+
+  function removeMember(index: number) {
+    setMembers((prev) => prev.filter((_, i) => i !== index));
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!eventId || values.municipalityId === '') return;
+    if (!eventId || members.some((m) => m.values.municipalityId === '')) return;
     setIsSubmitting(true);
 
     try {
-      const person = await createPerson(eventId, {
-        ...toPayloadBase(),
-        family_id: familyChoice !== 'none' && familyChoice !== 'new' ? familyChoice : null,
-        create_new_family: familyChoice === 'new',
-        is_primary_contact: familyChoice === 'new',
-        central_transport_required: centralTransport,
-        central_accommodation_required: centralAccommodation,
-        under_regular_medical_care: medicalCare,
-        own_vehicle: ownVehicle,
-        special_needs: specialNeeds.length
-          ? specialNeeds.map((row) => ({ category: row.category, type: row.type || undefined, description: row.description || undefined }))
-          : undefined,
-      });
+      if (members.length === 1) {
+        const person = await createPerson(eventId, {
+          ...memberToPayloadBase(members[0]),
+          municipality_id: members[0].values.municipalityId as number,
+          family_id: familyChoice !== 'none' && familyChoice !== 'new' ? familyChoice : null,
+          create_new_family: familyChoice === 'new',
+          is_primary_contact: familyChoice === 'new',
+        });
+        toast.success(`${person.full_name} sikeresen regisztrálva.`);
+        setLastCreated([{ id: person.id, name: person.full_name }]);
+      } else {
+        const persons = await createPersonFamily(eventId, {
+          family_id: familyChoice !== 'none' && familyChoice !== 'new' ? familyChoice : undefined,
+          create_new_family: familyChoice === 'new',
+          members: members.map((m) => ({ ...memberToPayloadBase(m), municipality_id: m.values.municipalityId as number })),
+        });
+        toast.success(`${persons.length} fő sikeresen regisztrálva.`);
+        setLastCreated(persons.map((p) => ({ id: p.id, name: p.full_name })));
+      }
 
-      toast.success(`${person.full_name} sikeresen regisztrálva.`);
-      setLastCreated({ id: person.id, name: person.full_name });
-      reset();
-      setSpecialNeeds([]);
+      setMembers([makeEmptyMember()]);
+      setFamilyChoice('none');
     } catch {
       toast.error('A regisztráció rögzítése nem sikerült. Ellenőrizze a kötelező mezőket, és hogy az esemény aktív-e.');
     } finally {
@@ -85,59 +86,62 @@ export function RegistrationWizardPage() {
       <Typography variant="h4" fontWeight={700} sx={{ mb: 3 }}>Személy/család regisztráció</Typography>
 
       {lastCreated && (
-        <Alert
-          severity="success"
-          sx={{ mb: 3 }}
-          action={
-            <Stack direction="row" spacing={1}>
-              <Button size="small" color="inherit" onClick={() => navigate(`/szemelyek/${lastCreated.id}`)}>QR-kód</Button>
-              <Button size="small" color="inherit" onClick={() => navigate(`/esemenyek/${eventId}/szemelyek`)}>Lista</Button>
-            </Stack>
-          }
-        >
-          <strong>{lastCreated.name}</strong> sikeresen regisztrálva.
+        <Alert severity="success" sx={{ mb: 3, borderRadius: 2 }}>
+          <Stack spacing={1}>
+            {lastCreated.map((p) => (
+              <Stack key={p.id} direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
+                <Typography variant="body2"><strong>{p.name}</strong> sikeresen regisztrálva.</Typography>
+                <Button size="small" color="inherit" onClick={() => navigate(`/szemelyek/${p.id}`)}>QR-kód</Button>
+              </Stack>
+            ))}
+            <Box>
+              <Button size="small" color="inherit" onClick={() => navigate(`/esemenyek/${eventId}/szemelyek`)}>Lista megnyitása</Button>
+            </Box>
+          </Stack>
         </Alert>
       )}
 
-      <Paper component="form" onSubmit={handleSubmit} variant="outlined" sx={{ p: 3 }}>
-        <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>Személyes adatok</Typography>
-        <Box sx={{ mb: 3 }}>
-          <PersonalDetailsFields values={values} setField={setField} municipalities={municipalities} />
-        </Box>
-
-        <Divider sx={{ mb: 3 }} />
-
-        <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>Családi kapcsolat</Typography>
-        <TextField select fullWidth value={familyChoice} onChange={(e) => setFamilyChoice(e.target.value)} sx={{ mb: 3 }}>
-          <MenuItem value="none">Egyedül utazik</MenuItem>
-          <MenuItem value="new">Új család létrehozása (ő lesz a kapcsolattartó)</MenuItem>
+      <Paper component="form" onSubmit={handleSubmit} variant="outlined" sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3 }}>
+        <TextField select label="Családi kapcsolat" fullWidth value={familyChoice} onChange={(e) => setFamilyChoice(e.target.value)} sx={{ mb: 3 }}>
+          <MenuItem value="none">Egyedül utazik / nem tartozik családhoz</MenuItem>
+          <MenuItem value="new">Új család létrehozása (az 1. családtag lesz a kapcsolattartó)</MenuItem>
           {families.map((f) => (
             <MenuItem key={f.id} value={f.id}>Csatlakozás: {f.family_code} ({f.members_count} fő)</MenuItem>
           ))}
         </TextField>
 
-        <Divider sx={{ mb: 3 }} />
-
-        <Typography variant="h6" fontWeight={700} sx={{ mb: 1 }}>Szállítási és ellátási igények</Typography>
-        <Stack direction="row" flexWrap="wrap" useFlexGap sx={{ mb: 3 }}>
-          <TransportAccommodationFields
-            centralTransportRequired={centralTransport}
-            onCentralTransportRequiredChange={setCentralTransport}
-            centralAccommodationRequired={centralAccommodation}
-            onCentralAccommodationRequiredChange={setCentralAccommodation}
-          />
-          <FormControlLabel control={<Checkbox checked={medicalCare} onChange={(e) => setMedicalCare(e.target.checked)} />} label="Állandó egészségügyi ellátás alatt áll" />
-          <FormControlLabel control={<Checkbox checked={ownVehicle} onChange={(e) => setOwnVehicle(e.target.checked)} />} label="Saját járművel távozik" />
+        <Stack spacing={2.5} sx={{ mb: 2.5 }}>
+          {members.map((member, index) => (
+            <FamilyMemberCard
+              key={index}
+              index={index}
+              total={members.length}
+              primaryContact={members.length > 1 && index === 0 && familyChoice === 'new'}
+              onRemove={members.length > 1 ? () => removeMember(index) : undefined}
+            >
+              <FamilyMemberForm
+                member={member}
+                setField={(key, value) => setMemberField(index, key, value)}
+                onChange={(patch) => updateMember(index, patch)}
+                municipalities={municipalities}
+                showMedicalCare
+                transportDescription="Akkor jelölje, ha a személynek nincs saját járműve, és a hatóság által szervezett busszal/kisbusszal jut el a gyülekezőpontra vagy a befogadóhelyre."
+                accommodationDescription="Akkor jelölje, ha a személynek nincs hova mennie, és a hatóság által kijelölt befogadóhelyen fog megszállni a kitelepítés alatt."
+              />
+            </FamilyMemberCard>
+          ))}
         </Stack>
 
-        <Divider sx={{ mb: 3 }} />
+        <Button variant="outlined" startIcon={<PersonAddAlt1Icon />} onClick={addMember} sx={{ mb: 3, borderStyle: 'dashed' }} fullWidth>
+          Családtag hozzáadása
+        </Button>
 
-        <Box sx={{ mb: 3 }}>
-          <SpecialNeedsEditor rows={specialNeeds} onChange={setSpecialNeeds} />
-        </Box>
-
-        <Button type="submit" variant="contained" size="large" disabled={isSubmitting}>
-          {isSubmitting ? 'Mentés…' : 'Regisztráció rögzítése'}
+        <Button type="submit" variant="contained" size="large" fullWidth disabled={isSubmitting} sx={{ py: 1.5, fontSize: '1rem' }}>
+          {isSubmitting
+            ? 'Mentés…'
+            : members.length === 1
+              ? 'Regisztráció rögzítése'
+              : `Család regisztrálása (${members.length} fő)`}
         </Button>
       </Paper>
     </Box>
