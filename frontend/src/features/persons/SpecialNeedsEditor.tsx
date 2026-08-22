@@ -1,6 +1,7 @@
-import { Box, Grid, IconButton, MenuItem, Paper, Stack, TextField, Typography, Button, Chip } from '@mui/material';
+import { Box, Grid, IconButton, MenuItem, Paper, Stack, TextField, Typography, Button } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
+import AccessibleForwardIcon from '@mui/icons-material/AccessibleForward';
 import { specialNeedCategoryLabels, specialNeedOptions } from '../../constants/specialNeeds';
 import { SpecialNeedIcon } from '../../components/ui/SpecialNeedIcon';
 import type { SpecialNeedCategory } from '../../types';
@@ -43,7 +44,9 @@ export function SpecialNeedsEditor({ rows, onChange }: Props) {
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
         <Typography variant="h6" fontWeight={700}>Speciális igények</Typography>
-        <Button startIcon={<AddIcon />} onClick={addRow}>Igény hozzáadása</Button>
+        <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={addRow} sx={{ borderRadius: 5 }}>
+          Igény hozzáadása
+        </Button>
       </Stack>
       <Stack spacing={2}>
         {rows.map((row, index) => (
@@ -86,7 +89,22 @@ export function SpecialNeedsEditor({ rows, onChange }: Props) {
           </Paper>
         ))}
         {rows.length === 0 && (
-          <Chip variant="outlined" label="Nincs jelzett speciális igény" sx={{ alignSelf: 'flex-start' }} />
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.5,
+              py: 2,
+              px: 2.5,
+              border: '1.5px dashed',
+              borderColor: 'divider',
+              borderRadius: 2,
+              color: 'text.secondary',
+            }}
+          >
+            <AccessibleForwardIcon fontSize="small" />
+            <Typography variant="body2">Nincs jelzett speciális igény.</Typography>
+          </Box>
         )}
       </Stack>
     </Box>
