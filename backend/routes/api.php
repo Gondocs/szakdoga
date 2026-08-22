@@ -38,6 +38,7 @@ Route::middleware('throttle:20,1')->group(function () {
 Route::middleware('throttle:20,1')->group(function () {
     Route::get('/public/events/{code}', [SelfServiceController::class, 'showEvent']);
     Route::post('/public/events/{code}/self-register', [SelfServiceController::class, 'selfRegister']);
+    Route::post('/public/events/{code}/self-register-family', [SelfServiceController::class, 'selfRegisterFamily']);
     Route::get('/public/municipalities', [MunicipalityController::class, 'index']);
     Route::get('/public/self-profile/{publicId}', [SelfServiceController::class, 'showProfile']);
     Route::put('/public/self-profile/{publicId}', [SelfServiceController::class, 'updateProfile']);
@@ -67,6 +68,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/events/{event}/persons', [PersonController::class, 'index']);
     Route::post('/events/{event}/persons', [PersonController::class, 'store']);
+    Route::post('/events/{event}/persons/family', [PersonController::class, 'storeFamily']);
     Route::post('/events/{event}/persons/bulk-import', [PersonController::class, 'bulkImport']);
     Route::get('/persons/{person}', [PersonController::class, 'show']);
     Route::put('/persons/{person}', [PersonController::class, 'update']);
