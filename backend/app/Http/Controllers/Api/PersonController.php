@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Actions\Qr\IssueQrTokenAction;
 use App\Actions\Registrations\CreateRegistrationAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StorePersonFamilyRequest;
 use App\Http\Requests\StorePersonRequest;
 use App\Http\Requests\UpdatePersonRequest;
 use App\Http\Resources\PersonResource;
@@ -14,6 +15,7 @@ use App\Models\Person;
 use App\Models\StatusHistory;
 use App\Services\AuditService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use OpenApi\Attributes as OA;
@@ -218,6 +220,51 @@ class PersonController extends Controller
         $person = $action->execute($event, $request->validated(), $request->user());
 
         return (new PersonResource($person))->response()->setStatusCode(201);
+    }
+
+    #[OA\Post(
+        path: '/api/events/{event}/persons/family',
+        summary: 'Egy család (több tag) helyszíni regisztrációja egy kérésben',
+        description: 'Minden megadott családtagot saját, önálló adatlappal rögzít, egyetlen (új vagy meglévő) '.
+            'családhoz rendelve — az első tag lesz az új család kapcsolattartója, ha új családot hozunk létre. '.
+            'Admin, vezető vagy regisztrátor szerepkör szükséges, csak aktív eseményhez.',
+        security: [['sanctumSession' => []]],
+        tags: ['Persons'],
+        parameters: [
+            new OA\Parameter(name: 'event', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid')),
+        ],
+        responses: [
+            new OA\Response(response: 201, description: 'A létrehozott családtagok listája'),
+            new OA\Response(response: 403, description: 'Nincs jogosultság'),
+            new OA\Response(response: 422, description: 'Validációs hiba vagy nem aktív esemény'),
+        ]
+    )]
+    public function storeFamily(StorePersonFamilyRequest $request, EvacuationEvent $event, CreateRegistrationAction $action)
+    {
+        if (! $event->isActive()) {
+            abort(422, 'Regisztráció csak aktív eseményhez rögzíthető.');
+        }
+
+        $createNewFamily = (bool) $request->validated('create_new_family');
+        $familyId = $request->validated('family_id');
+
+        $persons = DB::transaction(function () use ($request, $event, $action, $createNewFamily, &$familyId) {
+            $created = [];
+
+            foreach ($request->validated('members') as $index => $memberData) {
+                $memberData['family_id'] = $familyId;
+                $memberData['create_new_family'] = $createNewFamily && $index === 0;
+                $memberData['is_primary_contact'] = $createNewFamily && $index === 0;
+
+                $person = $action->execute($event, $memberData, $request->user());
+                $familyId = $person->family_id ?? $familyId;
+                $created[] = $person;
+            }
+
+            return $created;
+        });
+
+        return PersonResource::collection(collect($persons))->response()->setStatusCode(201);
     }
 
     #[OA\Post(
