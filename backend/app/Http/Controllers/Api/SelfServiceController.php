@@ -10,6 +10,7 @@ use App\Enums\RegistrationStatus;
 use App\Enums\RepatriationStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SelfProfileUpdateRequest;
+use App\Http\Requests\SelfRegisterFamilyRequest;
 use App\Http\Requests\SelfRegisterRequest;
 use App\Http\Resources\PersonResource;
 use App\Models\EvacuationEvent;
@@ -119,6 +120,65 @@ class SelfServiceController extends Controller
                 'public_id' => $qrToken->public_id,
             ],
         ], 201);
+    }
+
+    #[OA\Post(
+        path: '/api/public/events/{code}/self-register-family',
+        summary: 'Lakossági önkiszolgáló CSALÁDI előregisztráció (több családtag egy kérésben) és QR-kódok kiadása',
+        description: 'Hitelesítés nélkül hívható. Egy vadonatúj családot hoz létre, és minden megadott családtagot '.
+            'ehhez a családhoz regisztrál — az első tag lesz a kapcsolattartó. Csak aktív eseményhez engedélyezett.',
+        tags: ['SelfService'],
+        parameters: [
+            new OA\Parameter(name: 'code', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
+        ],
+        responses: [
+            new OA\Response(response: 201, description: 'A generált QR-tokenek public_id-jei és a rögzített adatok családtagonként'),
+            new OA\Response(response: 404, description: 'Nincs ilyen kódú aktív esemény'),
+            new OA\Response(response: 422, description: 'Validációs hiba'),
+        ]
+    )]
+    public function selfRegisterFamily(SelfRegisterFamilyRequest $request, string $code, CreateRegistrationAction $createAction, IssueQrTokenAction $issueQrAction)
+    {
+        $event = EvacuationEvent::where('code', $code)->first();
+
+        if (! $event || ! $event->isActive()) {
+            return response()->json([
+                'message' => 'Nincs ilyen kódú, jelenleg aktív kitelepítési esemény.',
+                'code' => 'EVENT_NOT_FOUND',
+            ], 404);
+        }
+
+        $members = DB::transaction(function () use ($event, $request, $createAction, $issueQrAction) {
+            $system = User::system();
+            $familyId = null;
+            $created = [];
+
+            foreach ($request->validated('members') as $index => $memberData) {
+                // Az első családtag hozza létre a családot és lesz a
+                // kapcsolattartó; a többiek ehhez az újonnan létrehozott
+                // családhoz csatlakoznak — a kliens nem adhat meg saját
+                // family_id-t, mert ez egy hitelesítés nélküli, publikus
+                // végpont (nem csatlakozhatna véletlenszerűen egy másik
+                // család regisztrációjához).
+                $memberData['create_new_family'] = $index === 0;
+                $memberData['family_id'] = $familyId;
+                $memberData['is_primary_contact'] = $index === 0;
+
+                $person = $createAction->execute($event, $memberData, $system, RegistrationChannel::SelfService);
+                $familyId = $person->family_id;
+                $qrToken = $issueQrAction->execute($person, $system);
+
+                $created[] = [
+                    'person_id' => $person->id,
+                    'full_name' => $person->fullName(),
+                    'public_id' => $qrToken->public_id,
+                ];
+            }
+
+            return $created;
+        });
+
+        return response()->json(['data' => ['members' => $members]], 201);
     }
 
     #[OA\Get(
