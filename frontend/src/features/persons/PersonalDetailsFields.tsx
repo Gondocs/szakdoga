@@ -52,23 +52,30 @@ export function usePersonalDetailsForm(initial: PersonalDetailsValues = initialP
     setValues(initialPersonalDetailsValues);
   }
 
-  function toPayloadBase() {
-    return {
-      last_name: values.lastName,
-      first_name: values.firstName,
-      birth_place: values.birthPlace || undefined,
-      birth_date: values.birthDate ? format(values.birthDate, 'yyyy-MM-dd') : undefined,
-      municipality_id: values.municipalityId as number,
-      address_street: values.street || undefined,
-      address_house_number: values.houseNumber || undefined,
-      phone: values.phone || undefined,
-      email: values.email || undefined,
-      ...(values.gender ? { gender: values.gender } : {}),
-      ...(values.idDocumentNumber ? { id_document_number: values.idDocumentNumber } : {}),
-    };
-  }
+  return { values, setField, reset, toPayloadBase: () => personalDetailsToPayloadBase(values) };
+}
 
-  return { values, setField, reset, toPayloadBase };
+/**
+ * Ugyanaz a payload-leképezés, mint a hook `toPayloadBase`-je, de egy sima
+ * `PersonalDetailsValues` objektumból — olyan helyeken kell, ahol a
+ * mezőket NEM a hook, hanem egy tömbös állapot (pl. családi
+ * előregisztrációnál, tagonként) tartja karban, így a hook saját
+ * `useState`-jét nem lehet többször, dinamikus számban meghívni.
+ */
+export function personalDetailsToPayloadBase(values: PersonalDetailsValues) {
+  return {
+    last_name: values.lastName,
+    first_name: values.firstName,
+    birth_place: values.birthPlace || undefined,
+    birth_date: values.birthDate ? format(values.birthDate, 'yyyy-MM-dd') : undefined,
+    municipality_id: values.municipalityId as number,
+    address_street: values.street || undefined,
+    address_house_number: values.houseNumber || undefined,
+    phone: values.phone || undefined,
+    email: values.email || undefined,
+    ...(values.gender ? { gender: values.gender } : {}),
+    ...(values.idDocumentNumber ? { id_document_number: values.idDocumentNumber } : {}),
+  };
 }
 
 interface PersonalDetailsFieldsProps {
