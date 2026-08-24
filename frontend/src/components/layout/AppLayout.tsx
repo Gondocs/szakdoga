@@ -190,6 +190,13 @@ export function AppLayout() {
           );
         })}
       </List>
+
+      {/* A lista alatti maradék helyet egy rugalmas térköz tölti ki, hogy az
+          összecsukó gomb az oldalsáv aljához legyen rögzítve — enélkül a
+          gomb közvetlenül a menüpontok alatt "lógott", a maradék sáv pedig
+          egy indokolatlanul üres, sehova nem kötődő színes felületnek tűnt. */}
+      <Box sx={{ flex: 1 }} />
+
       {!isMobile && (
         <>
           <Divider sx={{ borderColor: 'rgba(255,255,255,0.18)' }} />
