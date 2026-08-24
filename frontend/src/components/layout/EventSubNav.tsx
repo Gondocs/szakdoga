@@ -140,6 +140,16 @@ export function EventSubNav({ eventId }: { eventId: string }) {
         flexShrink: 0,
         alignSelf: 'flex-start',
         transition: 'width 0.15s ease',
+        // A menü a saját tartalmához igazodó magasságú, ezért hosszú
+        // aloldalakon (pl. a dashboard) lejjebb görgetve simán "kifutott
+        // volna" a nézetből, a tartalom pedig továbbra is csak a menü
+        // szélességével keskenyebb oszlopban maradt — a bal oldalon üresen
+        // tátongó hellyel. A sticky pozícióval a menü az AppBar alatt
+        // végig a helyén marad, ameddig a mellette lévő tartalom tart.
+        position: { xs: 'static', md: 'sticky' },
+        top: { md: 80 },
+        maxHeight: { md: 'calc(100vh - 96px)' },
+        overflowY: { md: 'auto' },
       }}
     >
       <Stack spacing={0.5}>
