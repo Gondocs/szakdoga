@@ -187,7 +187,7 @@ export function PersonDetailPage() {
     try {
       const updated = await uploadPersonDocumentPhoto(personId, file, side);
       setPerson(updated);
-      toast.success(side === 'front' ? 'Okmány elülső oldala rögzítve.' : 'Okmány hátulja rögzítve.');
+      toast.success(side === 'front' ? 'Okmány első oldala rögzítve.' : 'Okmány hátulja rögzítve.');
     } catch {
       toast.error('A fénykép feltöltése nem sikerült.');
     } finally {
@@ -361,12 +361,12 @@ export function PersonDetailPage() {
         </Typography>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3}>
           <Box sx={{ flex: 1 }}>
-            <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Elülső oldal</Typography>
+            <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Első oldal</Typography>
             {person.document_photo_front_url && (
               <Box
                 component="img"
                 src={person.document_photo_front_url}
-                alt="Okmány elülső oldala"
+                alt="Okmány első oldala"
                 sx={{ maxWidth: '100%', maxHeight: 220, borderRadius: 1, display: 'block', mb: 1.5, border: '1px solid', borderColor: 'divider' }}
               />
             )}
