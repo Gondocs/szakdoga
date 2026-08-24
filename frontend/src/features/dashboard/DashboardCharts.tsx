@@ -135,8 +135,14 @@ export function DashboardCharts({ data, eventId }: { data: DashboardData; eventI
 
   return (
     <Stack spacing={2} sx={{ mb: 3 }}>
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="stretch">
-        <Paper variant="outlined" sx={{ p: 3, flex: 0.8, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+      {/* flexWrap-alapú elrendezés Stack direction={{md:'row'}} helyett: az utóbbi
+          a viewport szélessége alapján vált sorba, nem a ténylegesen rendelkezésre
+          álló hely alapján — eseményoldalakon a fő oldalsáv + az EventSubNav együtt
+          annyi helyet foglal, hogy egy önmagában elég széles viewport mellett is
+          összepréselődött a két diagram. A flex-basis + flexWrap a tényleges
+          konténerszélesség szerint tör sorba, függetlenül a viewporttól. */}
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'stretch' }}>
+        <Paper variant="outlined" sx={{ p: 3, flex: '1 1 300px', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
             <Typography variant="h6" fontWeight={700}>Összesített kapacitáskockázat</Typography>
             <RiskBadge level={data.overall_risk.level} />
@@ -176,7 +182,7 @@ export function DashboardCharts({ data, eventId }: { data: DashboardData; eventI
           </Typography>
         </Paper>
 
-        <Paper variant="outlined" sx={{ p: 3, flex: 1.6, minWidth: 0 }}>
+        <Paper variant="outlined" sx={{ p: 3, flex: '2.2 1 420px', minWidth: 0 }}>
           <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={1} sx={{ mb: 2 }}>
             <Typography variant="h6" fontWeight={700}>Regisztrációk időbeli alakulása</Typography>
             <ToggleButtonGroup
@@ -221,10 +227,10 @@ export function DashboardCharts({ data, eventId }: { data: DashboardData; eventI
             </Box>
           )}
         </Paper>
-      </Stack>
+      </Box>
 
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="stretch">
-        <Paper variant="outlined" sx={{ p: 3, flex: 1, minWidth: 0 }}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'stretch' }}>
+        <Paper variant="outlined" sx={{ p: 3, flex: '1 1 320px', minWidth: 0 }}>
           <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>Státusz megoszlás</Typography>
           {statusData.length === 0 ? (
             <Typography color="text.secondary">Nincs még megjeleníthető adat.</Typography>
@@ -255,7 +261,7 @@ export function DashboardCharts({ data, eventId }: { data: DashboardData; eventI
         </Paper>
 
         {specialNeedsData.length > 0 && (
-          <Paper variant="outlined" sx={{ p: 3, flex: 1, minWidth: 0 }}>
+          <Paper variant="outlined" sx={{ p: 3, flex: '1 1 320px', minWidth: 0 }}>
             <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>Speciális igények</Typography>
             <Box sx={{ width: '100%', height: Math.max(isMobile ? 220 : 260, specialNeedsData.length * 42) }}>
               <ResponsiveContainer width="100%" height="100%">
@@ -270,11 +276,11 @@ export function DashboardCharts({ data, eventId }: { data: DashboardData; eventI
             </Box>
           </Paper>
         )}
-      </Stack>
+      </Box>
 
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="stretch">
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'stretch' }}>
         {genderData.length > 0 && (
-          <Paper variant="outlined" sx={{ p: 3, flex: 1, minWidth: 0 }}>
+          <Paper variant="outlined" sx={{ p: 3, flex: '1 1 300px', minWidth: 0 }}>
             <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>Nem szerinti megoszlás</Typography>
             <Box sx={{ width: '100%', height: isMobile ? 220 : 260 }}>
               <ResponsiveContainer width="100%" height="100%">
@@ -302,7 +308,7 @@ export function DashboardCharts({ data, eventId }: { data: DashboardData; eventI
         )}
 
         {ageData.length > 0 && (
-          <Paper variant="outlined" sx={{ p: 3, flex: 1, minWidth: 0 }}>
+          <Paper variant="outlined" sx={{ p: 3, flex: '1 1 300px', minWidth: 0 }}>
             <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>Kor szerinti megoszlás</Typography>
             <Box sx={{ width: '100%', height: isMobile ? 220 : 260 }}>
               <ResponsiveContainer width="100%" height="100%">
@@ -317,7 +323,7 @@ export function DashboardCharts({ data, eventId }: { data: DashboardData; eventI
             </Box>
           </Paper>
         )}
-      </Stack>
+      </Box>
     </Stack>
   );
 }
