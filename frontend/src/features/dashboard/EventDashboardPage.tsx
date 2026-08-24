@@ -13,6 +13,7 @@ import {
   TableContainer,
   Button,
   CircularProgress,
+  LinearProgress,
   TextField,
   InputAdornment,
   IconButton,
@@ -26,6 +27,7 @@ import {
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
 import GroupsIcon from '@mui/icons-material/Groups';
 import HomeIcon from '@mui/icons-material/Home';
+import HomeWorkIcon from '@mui/icons-material/HomeWork';
 import DirectionsBusIcon from '@mui/icons-material/DirectionsBus';
 import HotelIcon from '@mui/icons-material/Hotel';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
@@ -37,7 +39,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DownloadIcon from '@mui/icons-material/Download';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { toast } from 'react-toastify';
-import type { DashboardData, EvacuationEvent, Shelter, SpecialNeedCategory } from '../../types';
+import type { DashboardData, EvacuationEvent, RiskLevel, Shelter, SpecialNeedCategory } from '../../types';
 import {
   fetchAllShelters,
   fetchDashboard,
@@ -58,6 +60,13 @@ import { specialNeedCategoryLabels } from '../../constants/specialNeeds';
 import { SpecialNeedIcon } from '../../components/ui/SpecialNeedIcon';
 import { DashboardCharts } from './DashboardCharts';
 import { connectEcho } from '../../lib/echo';
+
+const riskBarColor: Record<RiskLevel, string> = {
+  low: 'success.main',
+  medium: 'warning.main',
+  high: 'error.main',
+  critical: 'error.dark',
+};
 
 export function EventDashboardPage() {
   const { eventId } = useParams<{ eventId: string }>();
@@ -240,40 +249,63 @@ export function EventDashboardPage() {
       <DashboardCharts data={data} eventId={eventId} />
 
       <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5 }}>Befogadóhelyi kapacitások</Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Kattintson egy sorra az ott tartózkodók listázásához.</Typography>
-        <TableContainer>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Befogadóhely</TableCell>
-                <TableCell>Foglalt / Kapacitás</TableCell>
-                <TableCell>Telítettség</TableCell>
-                <TableCell>
-                  <Stack direction="row" alignItems="center" spacing={0}>
-                    <span>Kockázat</span>
-                    <HelpTip text="A kockázati szint egy számított pontszám: a telítettség 70%, az egyedi igényű személyek aránya 20%, a még szállításra váró (nem érkeztetett) regisztráltak aránya 10% súllyal számít bele. 51 pont alatt alacsony, 51–70 közepes, 71–90 magas, 91 felett kritikus." />
-                  </Stack>
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {data.shelters.map((s) => (
-                <TableRow
-                  key={s.shelter_id}
-                  hover
-                  sx={{ cursor: 'pointer' }}
-                  onClick={() => navigate(`/esemenyek/${eventId}/szemelyek?shelter_id=${s.shelter_id}`)}
-                >
-                  <TableCell>{s.shelter_name}</TableCell>
-                  <TableCell>{s.checked_in_count} / {s.capacity_limit}</TableCell>
-                  <TableCell>{Math.round(s.utilization * 100)}%</TableCell>
-                  <TableCell><RiskBadge level={s.risk_level} /></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <Stack direction="row" alignItems="center" spacing={0} sx={{ mb: 0.5 }}>
+          <Typography variant="h6" fontWeight={700}>Befogadóhelyi kapacitások</Typography>
+          <HelpTip text="A kockázati szint egy számított pontszám: a telítettség 70%, az egyedi igényű személyek aránya 20%, a még szállításra váró (nem érkeztetett) regisztráltak aránya 10% súllyal számít bele. 51 pont alatt alacsony, 51–70 közepes, 71–90 magas, 91 felett kritikus." />
+        </Stack>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Kattintson egy befogadóhelyre az ott tartózkodók listázásához.</Typography>
+        <Stack spacing={1.25}>
+          {data.shelters.map((s) => {
+            const pct = Math.round(s.utilization * 100);
+            return (
+              <Box
+                key={s.shelter_id}
+                onClick={() => navigate(`/esemenyek/${eventId}/szemelyek?shelter_id=${s.shelter_id}`)}
+                sx={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  gap: 2,
+                  p: 1.5,
+                  borderRadius: 1.5,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderLeft: '4px solid',
+                  borderLeftColor: riskBarColor[s.risk_level],
+                  cursor: 'pointer',
+                  transition: 'background-color 0.1s ease',
+                  '&:hover': { bgcolor: 'action.hover' },
+                }}
+              >
+                <HomeWorkIcon fontSize="small" sx={{ color: 'text.secondary', flexShrink: 0 }} />
+                <Box sx={{ minWidth: 170, flexShrink: 0 }}>
+                  <Typography variant="body2" fontWeight={700} noWrap>{s.shelter_name}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {s.checked_in_count} / {s.capacity_limit} fő
+                  </Typography>
+                </Box>
+                <LinearProgress
+                  variant="determinate"
+                  value={Math.min(pct, 100)}
+                  sx={{
+                    flex: 1,
+                    minWidth: 100,
+                    height: 8,
+                    borderRadius: 4,
+                    bgcolor: 'action.hover',
+                    '& .MuiLinearProgress-bar': { borderRadius: 4, bgcolor: riskBarColor[s.risk_level] },
+                  }}
+                />
+                <Typography variant="body2" fontWeight={700} sx={{ width: 44, textAlign: 'right', flexShrink: 0 }}>
+                  {pct}%
+                </Typography>
+                <Box sx={{ flexShrink: 0 }}>
+                  <RiskBadge level={s.risk_level} />
+                </Box>
+              </Box>
+            );
+          })}
+        </Stack>
       </Paper>
 
       {stockForecast && (
