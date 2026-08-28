@@ -8,13 +8,14 @@ import { SelfRegisterPage } from './SelfRegisterPage';
 import {
   fetchPublicEvent,
   fetchPublicMunicipalities,
+  fetchPublicAssemblyPoints,
   selfRegister,
   selfRegisterFamily,
   type PublicEventInfo,
   type SelfRegisterResult,
 } from '../../lib/api/endpoints';
 import { toast } from 'react-toastify';
-import type { Municipality } from '../../types';
+import type { AssemblyPoint, Municipality } from '../../types';
 
 vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router-dom')>();
@@ -31,6 +32,7 @@ vi.mock('react-toastify', () => ({
 vi.mock('../../lib/api/endpoints', () => ({
   fetchPublicEvent: vi.fn(),
   fetchPublicMunicipalities: vi.fn(),
+  fetchPublicAssemblyPoints: vi.fn(),
   selfRegister: vi.fn(),
   selfRegisterFamily: vi.fn(),
 }));
@@ -45,6 +47,10 @@ vi.mock('qrcode.react', () => ({
 
 const municipalities: Municipality[] = [
   { id: 1, name: 'Győr', county: 'Győr-Moson-Sopron', postal_code: '9021' },
+];
+
+const assemblyPoints: AssemblyPoint[] = [
+  { id: 1, event_id: 'event-1', name: 'Városháza', address: 'Győr, Fő tér 1.', lat: 47.68, lng: 17.63, notes: null, created_at: '2026-08-20T09:00:00Z' },
 ];
 
 const event: PublicEventInfo = { id: 'event-1', code: 'ARVIZ-2026', name: 'Árvíz 2026', status: 'active' };
@@ -64,11 +70,14 @@ async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/Keresztnév/), 'Katalin');
   await user.click(screen.getByRole('combobox', { name: /Település/ }));
   await user.click(await screen.findByRole('option', { name: 'Győr' }));
+  await user.click(screen.getByRole('combobox', { name: /Válasszon gyülekezőpontot/ }));
+  await user.click(await screen.findByRole('option', { name: /Városháza/ }));
 }
 
 beforeEach(() => {
   vi.mocked(fetchPublicEvent).mockReset().mockResolvedValue(event);
   vi.mocked(fetchPublicMunicipalities).mockReset().mockResolvedValue(municipalities);
+  vi.mocked(fetchPublicAssemblyPoints).mockReset().mockResolvedValue(assemblyPoints);
   vi.mocked(selfRegister).mockReset();
   vi.mocked(selfRegisterFamily).mockReset();
   vi.mocked(toast.error).mockClear();
@@ -210,6 +219,8 @@ describe('SelfRegisterPage', () => {
     await user.type(screen.getAllByLabelText(/Keresztnév/)[1], 'Béla');
     await user.click(screen.getAllByRole('combobox', { name: /Település/ })[1]);
     await user.click((await screen.findAllByRole('option', { name: 'Győr' }))[0]);
+    await user.click(screen.getAllByRole('combobox', { name: /Válasszon gyülekezőpontot/ })[1]);
+    await user.click((await screen.findAllByRole('option', { name: /Városháza/ }))[0]);
 
     await user.click(screen.getByRole('button', { name: /Család előregisztrációja \(2 fő\)/ }));
 
