@@ -426,6 +426,11 @@ export async function fetchAssemblyPoints(eventId: string): Promise<AssemblyPoin
   return data.data;
 }
 
+export async function fetchPublicAssemblyPoints(eventCode: string): Promise<AssemblyPoint[]> {
+  const { data } = await apiClient.get<{ data: AssemblyPoint[] }>(`/api/public/events/${eventCode}/assembly-points`);
+  return data.data;
+}
+
 export async function createAssemblyPoint(eventId: string, payload: AssemblyPointPayload): Promise<AssemblyPoint> {
   const { data } = await apiClient.post<{ data: AssemblyPoint }>(`/api/events/${eventId}/assembly-points`, payload);
   return data.data;
