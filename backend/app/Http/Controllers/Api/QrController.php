@@ -105,7 +105,7 @@ class QrController extends Controller
             ], 404);
         }
 
-        $person->load(['municipality', 'family.members', 'registration', 'specialNeeds']);
+        $person->load(['municipality', 'family.members', 'registration.assemblyPoint', 'specialNeeds']);
 
         return new PersonResource($person);
     }
