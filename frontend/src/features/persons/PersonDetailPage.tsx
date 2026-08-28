@@ -321,6 +321,11 @@ export function PersonDetailPage() {
               value={person.registration?.central_accommodation_required ? 'Igen' : 'Nem'}
             />
           </Grid>
+          {!person.registration?.own_vehicle && (
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <InfoField label="Gyülekezőpont" value={person.registration?.assembly_point?.name ?? '–'} />
+            </Grid>
+          )}
           {person.registration?.own_vehicle && (
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <InfoField
