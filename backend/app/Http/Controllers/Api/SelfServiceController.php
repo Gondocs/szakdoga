@@ -12,6 +12,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\SelfProfileUpdateRequest;
 use App\Http\Requests\SelfRegisterFamilyRequest;
 use App\Http\Requests\SelfRegisterRequest;
+use App\Http\Resources\AssemblyPointResource;
 use App\Http\Resources\PersonResource;
 use App\Models\EvacuationEvent;
 use App\Models\RepatriationAuthorization;
@@ -62,6 +63,32 @@ class SelfServiceController extends Controller
                 'status' => $event->status->value,
             ],
         ]);
+    }
+
+    #[OA\Get(
+        path: '/api/public/events/{code}/assembly-points',
+        summary: 'Eseményhez tartozó gyülekezési pontok listája (előregisztrációhoz, hitelesítés nélkül)',
+        tags: ['SelfService'],
+        parameters: [
+            new OA\Parameter(name: 'code', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Gyülekezési pontok listája'),
+            new OA\Response(response: 404, description: 'Nincs ilyen kódú aktív esemény'),
+        ]
+    )]
+    public function assemblyPoints(string $code)
+    {
+        $event = EvacuationEvent::where('code', $code)->first();
+
+        if (! $event || ! $event->isActive()) {
+            return response()->json([
+                'message' => 'Nincs ilyen kódú, jelenleg aktív kitelepítési esemény.',
+                'code' => 'EVENT_NOT_FOUND',
+            ], 404);
+        }
+
+        return AssemblyPointResource::collection($event->assemblyPoints()->orderBy('name')->get());
     }
 
     #[OA\Post(
@@ -204,7 +231,7 @@ class SelfServiceController extends Controller
             return $person;
         }
 
-        return new PersonResource($person->load(['municipality', 'registration', 'specialNeeds']), bypassMasking: true);
+        return new PersonResource($person->load(['municipality', 'registration.assemblyPoint', 'specialNeeds']), bypassMasking: true);
     }
 
     #[OA\Put(
@@ -267,7 +294,7 @@ class SelfServiceController extends Controller
             }
         });
 
-        $person = $person->fresh(['municipality', 'registration', 'specialNeeds']);
+        $person = $person->fresh(['municipality', 'registration.assemblyPoint', 'specialNeeds']);
 
         $auditService->log('self_update', $person, $system, $before, $person->toArray());
 
@@ -312,7 +339,7 @@ class SelfServiceController extends Controller
 
         $auditService->log('self_arrival_confirmed', $person->registration, $system, $before, $person->registration->fresh()->toArray());
 
-        return new PersonResource($person->fresh(['municipality', 'registration', 'specialNeeds']), bypassMasking: true);
+        return new PersonResource($person->fresh(['municipality', 'registration.assemblyPoint', 'specialNeeds']), bypassMasking: true);
     }
 
     #[OA\Post(
@@ -362,7 +389,7 @@ class SelfServiceController extends Controller
 
         $auditService->log('self_return_confirmed', $person->registration, $system, null, ['status' => RegistrationStatus::ReturnedHome->value]);
 
-        return new PersonResource($person->fresh(['municipality', 'registration', 'specialNeeds']), bypassMasking: true);
+        return new PersonResource($person->fresh(['municipality', 'registration.assemblyPoint', 'specialNeeds']), bypassMasking: true);
     }
 
     private function resolveEditablePerson(string $publicId, QrTokenService $qrTokenService)
