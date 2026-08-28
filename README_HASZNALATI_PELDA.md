@@ -40,7 +40,7 @@ Mivel a veszélyhelyzet 24 órával a tényleges kitelepítés előtt ismertté 
 https://kitelepites.gyms-katved.hu/onkiszolgalo/ARVIZ-2026-03
 ```
 
-Egy érintett lakos, **Kovács Béláné** (Vámosszabadi) a linken keresztül, bejelentkezés nélkül kitölti saját és két gyermeke adatait, jelzi, hogy nincs saját járműve (tehát központi szállítást igényel), és hogy kisebbik gyermeke ágyhoz kötött nagyanyjukkal egy háztartásban élnek — ezt egyedi igényként (mozgás-/érzékszervi korlátozottság kategóriában, "Ágyhoz kötött" típussal) rögzíti. A regisztráció végén a rendszer digitális QR-kódot állít elő, amit Kovácsné a telefonjára ment, illetve igény esetén ki is nyomtathat.
+Egy érintett lakos, **Kovács Béláné** (Vámosszabadi) a linken keresztül, bejelentkezés nélkül kitölti saját és két gyermeke adatait, jelzi, hogy nincs saját járműve (tehát központi szállítást igényel), és hogy kisebbik gyermeke ágyhoz kötött nagyanyjukkal egy háztartásban élnek — ezt egyedi igényként (mozgás-/érzékszervi korlátozottság kategóriában, "Ágyhoz kötött" típussal) rögzíti. Mivel nem saját járművel utazik, az űrlapon megjelenő térképen és listában ki kell választania a hozzájuk legközelebbi gyülekezőpontot (a vámosszabadi művelődési házat) — ez kötelező mező, enélkül a regisztráció nem küldhető be. A regisztráció végén a rendszer digitális QR-kódot állít elő, amit Kovácsné a telefonjára ment, illetve igény esetén ki is nyomtathat.
 
 ## 3. lépés — Helyszíni regisztráció a gyülekezőponton
 
