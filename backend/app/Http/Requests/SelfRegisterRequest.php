@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Models\EvacuationEvent;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Lakossági önkiszolgáló előregisztráció (Interreg tanulmány "1. fázis":
@@ -20,6 +22,8 @@ class SelfRegisterRequest extends FormRequest
 
     public function rules(): array
     {
+        $eventId = EvacuationEvent::where('code', $this->route('code'))->value('id');
+
         return [
             'last_name' => ['required', 'string', 'max:100'],
             'first_name' => ['required', 'string', 'max:100'],
@@ -40,6 +44,11 @@ class SelfRegisterRequest extends FormRequest
             'central_accommodation_required' => ['nullable', 'boolean'],
             'under_regular_medical_care' => ['nullable', 'boolean'],
             'own_vehicle' => ['nullable', 'boolean'],
+            'assembly_point_id' => [
+                'required_if:own_vehicle,false',
+                'nullable',
+                Rule::exists('assembly_points', 'id')->where('event_id', $eventId),
+            ],
             'travels_alone' => ['nullable', 'boolean'],
 
             'special_needs' => ['array'],
