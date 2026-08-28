@@ -22,6 +22,7 @@ class Registration extends Model
         'central_accommodation_required',
         'under_regular_medical_care',
         'own_vehicle',
+        'assembly_point_id',
         'travels_alone',
         'registered_at',
         'registered_by',
@@ -51,6 +52,11 @@ class Registration extends Model
     public function event(): BelongsTo
     {
         return $this->belongsTo(EvacuationEvent::class, 'event_id');
+    }
+
+    public function assemblyPoint(): BelongsTo
+    {
+        return $this->belongsTo(AssemblyPoint::class);
     }
 
     public function registeredBy(): BelongsTo
