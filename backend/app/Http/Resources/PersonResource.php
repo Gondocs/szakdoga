@@ -77,6 +77,11 @@ class PersonResource extends JsonResource
                 'central_accommodation_required' => $this->registration->central_accommodation_required,
                 'under_regular_medical_care' => $this->registration->under_regular_medical_care,
                 'own_vehicle' => $this->registration->own_vehicle,
+                'assembly_point_id' => $this->registration->assembly_point_id,
+                'assembly_point' => $this->registration->assemblyPoint ? [
+                    'id' => $this->registration->assemblyPoint->id,
+                    'name' => $this->registration->assemblyPoint->name,
+                ] : null,
                 'travels_alone' => $this->registration->travels_alone,
                 'registered_at' => $this->registration->registered_at?->toIso8601String(),
                 'self_arrival_confirmed_at' => $this->registration->self_arrival_confirmed_at?->toIso8601String(),
