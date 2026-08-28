@@ -37,6 +37,7 @@ Route::middleware('throttle:20,1')->group(function () {
 // (Interreg tanulmány "1. fázis"). Rate-limitelve a visszaélések ellen.
 Route::middleware('throttle:20,1')->group(function () {
     Route::get('/public/events/{code}', [SelfServiceController::class, 'showEvent']);
+    Route::get('/public/events/{code}/assembly-points', [SelfServiceController::class, 'assemblyPoints']);
     Route::post('/public/events/{code}/self-register', [SelfServiceController::class, 'selfRegister']);
     Route::post('/public/events/{code}/self-register-family', [SelfServiceController::class, 'selfRegisterFamily']);
     Route::get('/public/municipalities', [MunicipalityController::class, 'index']);
