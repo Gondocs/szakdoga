@@ -46,6 +46,11 @@ class StorePersonRequest extends FormRequest
             'central_accommodation_required' => ['nullable', 'boolean'],
             'under_regular_medical_care' => ['nullable', 'boolean'],
             'own_vehicle' => ['nullable', 'boolean'],
+            'assembly_point_id' => [
+                'required_if:own_vehicle,false',
+                'nullable',
+                Rule::exists('assembly_points', 'id')->where('event_id', $eventId),
+            ],
             'travels_alone' => ['nullable', 'boolean'],
 
             'special_needs' => ['array'],
