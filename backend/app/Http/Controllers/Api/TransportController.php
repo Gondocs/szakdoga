@@ -252,7 +252,7 @@ class TransportController extends Controller
 
         $persons = Person::query()
             ->whereHas('transportManifestEntries', fn ($q) => $q->where('transport_id', $transport->id)->whereNull('alighted_at'))
-            ->with(['municipality', 'registration', 'specialNeeds'])
+            ->with(['municipality', 'registration.assemblyPoint', 'specialNeeds'])
             ->orderBy('last_name')
             ->get();
 
@@ -402,7 +402,7 @@ class TransportController extends Controller
 
         $auditService->log('transport_board', $entry, $request->user(), null, ['transport_id' => $transport->id, 'person_id' => $person->id]);
 
-        return (new PersonResource($person->fresh(['municipality', 'registration', 'specialNeeds'])))->response()->setStatusCode(201);
+        return (new PersonResource($person->fresh(['municipality', 'registration.assemblyPoint', 'specialNeeds'])))->response()->setStatusCode(201);
     }
 
     #[OA\Post(
@@ -461,7 +461,7 @@ class TransportController extends Controller
 
         $auditService->log('transport_alight', $entry, $request->user(), $before, $entry->fresh()->toArray());
 
-        return new PersonResource($person->fresh(['municipality', 'registration', 'specialNeeds']));
+        return new PersonResource($person->fresh(['municipality', 'registration.assemblyPoint', 'specialNeeds']));
     }
 
     #[OA\Post(
