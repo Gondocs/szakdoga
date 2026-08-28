@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Models\EvacuationEvent;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Lakossági önkiszolgáló CSALÁDI előregisztráció: egy kérésben több
@@ -23,6 +25,8 @@ class SelfRegisterFamilyRequest extends FormRequest
 
     public function rules(): array
     {
+        $eventId = EvacuationEvent::where('code', $this->route('code'))->value('id');
+
         return [
             'members' => ['required', 'array', 'min:1', 'max:12'],
 
@@ -45,6 +49,11 @@ class SelfRegisterFamilyRequest extends FormRequest
             'members.*.central_accommodation_required' => ['nullable', 'boolean'],
             'members.*.under_regular_medical_care' => ['nullable', 'boolean'],
             'members.*.own_vehicle' => ['nullable', 'boolean'],
+            'members.*.assembly_point_id' => [
+                'required_if:members.*.own_vehicle,false',
+                'nullable',
+                Rule::exists('assembly_points', 'id')->where('event_id', $eventId),
+            ],
             'members.*.travels_alone' => ['nullable', 'boolean'],
 
             'members.*.special_needs' => ['array'],
