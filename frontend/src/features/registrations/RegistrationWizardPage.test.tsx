@@ -5,8 +5,8 @@ import { MemoryRouter } from 'react-router-dom';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { RegistrationWizardPage } from './RegistrationWizardPage';
-import { createPerson, createPersonFamily, fetchFamilies, fetchMunicipalities } from '../../lib/api/endpoints';
-import type { Municipality, Person } from '../../types';
+import { createPerson, createPersonFamily, fetchAssemblyPoints, fetchFamilies, fetchMunicipalities } from '../../lib/api/endpoints';
+import type { AssemblyPoint, Municipality, Person } from '../../types';
 
 const navigateMock = vi.fn();
 
@@ -28,10 +28,15 @@ vi.mock('../../lib/api/endpoints', () => ({
   createPersonFamily: vi.fn(),
   fetchFamilies: vi.fn(),
   fetchMunicipalities: vi.fn(),
+  fetchAssemblyPoints: vi.fn(),
 }));
 
 const municipalities: Municipality[] = [
   { id: 1, name: 'Győr', county: 'Győr-Moson-Sopron', postal_code: '9021' },
+];
+
+const assemblyPoints: AssemblyPoint[] = [
+  { id: 1, event_id: 'event-1', name: 'Városháza', address: 'Győr, Fő tér 1.', lat: 47.68, lng: 17.63, notes: null, created_at: '2026-08-20T09:00:00Z' },
 ];
 
 function makePerson(overrides: Partial<Person> = {}): Person {
@@ -66,6 +71,8 @@ async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/Keresztnév/), 'Béla');
   await user.click(screen.getByRole('combobox', { name: /Település/ }));
   await user.click(await screen.findByRole('option', { name: 'Győr' }));
+  await user.click(screen.getByRole('combobox', { name: /Válasszon gyülekezőpontot/ }));
+  await user.click(await screen.findByRole('option', { name: /Városháza/ }));
 }
 
 beforeEach(() => {
@@ -73,6 +80,7 @@ beforeEach(() => {
   vi.mocked(createPersonFamily).mockReset();
   vi.mocked(fetchFamilies).mockReset().mockResolvedValue([]);
   vi.mocked(fetchMunicipalities).mockReset().mockResolvedValue(municipalities);
+  vi.mocked(fetchAssemblyPoints).mockReset().mockResolvedValue(assemblyPoints);
   navigateMock.mockClear();
 });
 
@@ -195,6 +203,8 @@ describe('RegistrationWizardPage', () => {
     await user.type(screen.getAllByLabelText(/Keresztnév/)[1], 'Anna');
     await user.click(screen.getAllByRole('combobox', { name: /Település/ })[1]);
     await user.click((await screen.findAllByRole('option', { name: 'Győr' }))[0]);
+    await user.click(screen.getAllByRole('combobox', { name: /Válasszon gyülekezőpontot/ })[1]);
+    await user.click((await screen.findAllByRole('option', { name: /Városháza/ }))[0]);
 
     await user.click(screen.getByRole('button', { name: /Család regisztrálása \(2 fő\)/ }));
 
