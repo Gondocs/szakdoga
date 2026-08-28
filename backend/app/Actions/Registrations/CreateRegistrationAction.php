@@ -86,6 +86,7 @@ class CreateRegistrationAction
                 'central_accommodation_required' => $data['central_accommodation_required'] ?? false,
                 'under_regular_medical_care' => $data['under_regular_medical_care'] ?? false,
                 'own_vehicle' => $data['own_vehicle'] ?? false,
+                'assembly_point_id' => $data['assembly_point_id'] ?? null,
                 'travels_alone' => $data['travels_alone'] ?? null,
                 'registered_at' => now(),
                 'registered_by' => $registrar->id,
@@ -115,7 +116,7 @@ class CreateRegistrationAction
 
             $this->auditService->log('create', $person, $registrar, null, $person->fresh(['registration', 'specialNeeds', 'animals'])->toArray());
 
-            return $person->fresh(['family', 'registration', 'specialNeeds', 'animals']);
+            return $person->fresh(['family', 'registration.assemblyPoint', 'specialNeeds', 'animals']);
         });
     }
 
