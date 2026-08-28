@@ -58,6 +58,8 @@ export interface Registration {
   central_accommodation_required: boolean;
   under_regular_medical_care: boolean;
   own_vehicle: boolean;
+  assembly_point_id: number | null;
+  assembly_point?: { id: number; name: string } | null;
   travels_alone: boolean | null;
   registered_at: string;
   self_arrival_confirmed_at?: string | null;
