@@ -77,6 +77,7 @@ function makePerson(overrides: Partial<Person> = {}): Person {
       central_accommodation_required: false,
       under_regular_medical_care: false,
       own_vehicle: false,
+      assembly_point_id: null,
       travels_alone: false,
       registered_at: '2026-08-20T09:00:00Z',
     },
