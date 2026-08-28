@@ -18,10 +18,11 @@ import PrintIcon from '@mui/icons-material/Print';
 import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1';
 import { QRCodeCanvas } from 'qrcode.react';
 import { toast } from 'react-toastify';
-import type { Municipality } from '../../types';
+import type { AssemblyPoint, Municipality } from '../../types';
 import {
   fetchPublicEvent,
   fetchPublicMunicipalities,
+  fetchPublicAssemblyPoints,
   selfRegister,
   selfRegisterFamily,
   type PublicEventInfo,
@@ -37,6 +38,7 @@ export function SelfRegisterPage() {
   const [event, setEvent] = useState<PublicEventInfo | null>(null);
   const [eventError, setEventError] = useState<string | null>(null);
   const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
+  const [assemblyPoints, setAssemblyPoints] = useState<AssemblyPoint[]>([]);
 
   const [members, setMembers] = useState<MemberFormState[]>([makeEmptyMember()]);
 
@@ -50,6 +52,7 @@ export function SelfRegisterPage() {
       .then(setEvent)
       .catch(() => setEventError('Nincs ilyen kódú, jelenleg aktív kitelepítési esemény. Kérjük, ellenőrizze a kapott linket.'));
     fetchPublicMunicipalities().then(setMunicipalities).catch(() => setMunicipalities([]));
+    fetchPublicAssemblyPoints(eventCode).then(setAssemblyPoints).catch(() => setAssemblyPoints([]));
   }, [eventCode]);
 
   function setMemberField<K extends keyof MemberFormState['values']>(index: number, key: K, value: MemberFormState['values'][K]) {
@@ -70,7 +73,7 @@ export function SelfRegisterPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!eventCode || members.some((m) => m.values.municipalityId === '')) return;
+    if (!eventCode || members.some((m) => m.values.municipalityId === '' || (!m.ownVehicle && m.assemblyPointId === ''))) return;
     setIsSubmitting(true);
     try {
       if (members.length === 1) {
@@ -212,6 +215,7 @@ export function SelfRegisterPage() {
                     setField={(key, value) => setMemberField(index, key, value)}
                     onChange={(patch) => updateMember(index, patch)}
                     municipalities={municipalities}
+                    assemblyPoints={assemblyPoints}
                     idDocumentNumberLabel="Személyazonosító okmány száma"
                     ownVehicleLabel="Saját járművel, magam választotta helyre utazom (nem központi szállítással/befogadóhelyre)"
                     transportLabel="Központi szállítást igénylek"
