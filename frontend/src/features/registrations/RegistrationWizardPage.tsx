@@ -3,8 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Box, Typography, Paper, TextField, MenuItem, Button, Stack, Alert } from '@mui/material';
 import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1';
 import { toast } from 'react-toastify';
-import type { FamilySummary, Municipality } from '../../types';
-import { createPerson, createPersonFamily, fetchFamilies, fetchMunicipalities } from '../../lib/api/endpoints';
+import type { AssemblyPoint, FamilySummary, Municipality } from '../../types';
+import { createPerson, createPersonFamily, fetchAssemblyPoints, fetchFamilies, fetchMunicipalities } from '../../lib/api/endpoints';
 import { FamilyMemberForm, makeEmptyMember, memberToPayloadBase, type MemberFormState } from '../persons/FamilyMemberForm';
 import { FamilyMemberCard } from '../persons/FamilyMemberCard';
 
@@ -13,6 +13,7 @@ export function RegistrationWizardPage() {
   const navigate = useNavigate();
 
   const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
+  const [assemblyPoints, setAssemblyPoints] = useState<AssemblyPoint[]>([]);
   const [families, setFamilies] = useState<FamilySummary[]>([]);
 
   const [members, setMembers] = useState<MemberFormState[]>([makeEmptyMember()]);
@@ -28,6 +29,7 @@ export function RegistrationWizardPage() {
   useEffect(() => {
     if (!eventId) return;
     fetchFamilies(eventId).then(setFamilies).catch(() => setFamilies([]));
+    fetchAssemblyPoints(eventId).then(setAssemblyPoints).catch(() => setAssemblyPoints([]));
   }, [eventId, lastCreated]);
 
   function setMemberField<K extends keyof MemberFormState['values']>(index: number, key: K, value: MemberFormState['values'][K]) {
@@ -48,7 +50,7 @@ export function RegistrationWizardPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!eventId || members.some((m) => m.values.municipalityId === '')) return;
+    if (!eventId || members.some((m) => m.values.municipalityId === '' || (!m.ownVehicle && m.assemblyPointId === ''))) return;
     setIsSubmitting(true);
 
     try {
@@ -124,6 +126,7 @@ export function RegistrationWizardPage() {
                 setField={(key, value) => setMemberField(index, key, value)}
                 onChange={(patch) => updateMember(index, patch)}
                 municipalities={municipalities}
+                assemblyPoints={assemblyPoints}
                 showMedicalCare
                 transportDescription="Akkor jelölje, ha a személynek nincs saját járműve, és a hatóság által szervezett busszal/kisbusszal jut el a gyülekezőpontra vagy a befogadóhelyre."
                 accommodationDescription="Akkor jelölje, ha a személynek nincs hova mennie, és a hatóság által kijelölt befogadóhelyen fog megszállni a kitelepítés alatt."
