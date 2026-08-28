@@ -1,9 +1,10 @@
 import { Box } from '@mui/material';
 import DirectionsCarFilledIcon from '@mui/icons-material/DirectionsCarFilled';
 import MedicalServicesIcon from '@mui/icons-material/MedicalServices';
-import type { Municipality } from '../../types';
+import type { AssemblyPoint, Municipality } from '../../types';
 import { PersonalDetailsFields, initialPersonalDetailsValues, personalDetailsToPayloadBase, type PersonalDetailsValues } from './PersonalDetailsFields';
 import { TransportAccommodationFields } from './TransportAccommodationFields';
+import { AssemblyPointField } from './AssemblyPointField';
 import { SpecialNeedsEditor, type SpecialNeedRow } from './SpecialNeedsEditor';
 import { SelectableToggleCard } from '../../components/ui/SelectableToggleCard';
 
@@ -13,6 +14,7 @@ export interface MemberFormState {
   centralTransportRequired: boolean;
   centralAccommodationRequired: boolean;
   underRegularMedicalCare: boolean;
+  assemblyPointId: number | '';
   specialNeeds: SpecialNeedRow[];
 }
 
@@ -23,6 +25,7 @@ export function makeEmptyMember(): MemberFormState {
     centralTransportRequired: false,
     centralAccommodationRequired: false,
     underRegularMedicalCare: false,
+    assemblyPointId: '',
     specialNeeds: [],
   };
 }
@@ -36,6 +39,7 @@ export function memberToPayloadBase(member: MemberFormState) {
   return {
     ...personalDetailsToPayloadBase(member.values),
     own_vehicle: member.ownVehicle,
+    assembly_point_id: member.ownVehicle || member.assemblyPointId === '' ? undefined : member.assemblyPointId,
     central_transport_required: member.centralTransportRequired,
     central_accommodation_required: member.centralAccommodationRequired,
     under_regular_medical_care: member.underRegularMedicalCare,
@@ -50,6 +54,7 @@ interface FamilyMemberFormProps {
   setField: <K extends keyof PersonalDetailsValues>(key: K, value: PersonalDetailsValues[K]) => void;
   onChange: (patch: Partial<Omit<MemberFormState, 'values'>>) => void;
   municipalities: Municipality[];
+  assemblyPoints: AssemblyPoint[];
   idDocumentNumberLabel?: string;
   ownVehicleLabel?: string;
   ownVehicleDescription?: string;
@@ -71,6 +76,7 @@ export function FamilyMemberForm({
   setField,
   onChange,
   municipalities,
+  assemblyPoints,
   idDocumentNumberLabel,
   ownVehicleLabel = 'Saját járművel távozik',
   ownVehicleDescription = 'Akkor jelölje, ha a személy saját autóval, önválasztott helyre utazik — ez kizárja a központi szállítás egyidejű igénylését.',
@@ -89,7 +95,7 @@ export function FamilyMemberForm({
   }
 
   function handleOwnVehicleChange(value: boolean) {
-    onChange(value ? { ownVehicle: true, centralTransportRequired: false } : { ownVehicle: false });
+    onChange(value ? { ownVehicle: true, centralTransportRequired: false, assemblyPointId: '' } : { ownVehicle: false });
   }
 
   return (
@@ -124,6 +130,16 @@ export function FamilyMemberForm({
           />
         )}
       </Box>
+
+      {!member.ownVehicle && (
+        <Box sx={{ mt: 2 }}>
+          <AssemblyPointField
+            assemblyPoints={assemblyPoints}
+            value={member.assemblyPointId}
+            onChange={(id) => onChange({ assemblyPointId: id })}
+          />
+        </Box>
+      )}
 
       <Box sx={{ mt: 2 }}>
         <SpecialNeedsEditor rows={member.specialNeeds} onChange={(rows) => onChange({ specialNeeds: rows })} />
