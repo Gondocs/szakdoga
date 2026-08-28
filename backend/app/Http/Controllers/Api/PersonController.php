@@ -55,7 +55,7 @@ class PersonController extends Controller
         $this->authorize('viewAny', Person::class);
 
         $persons = $event->persons()
-            ->with(['municipality', 'registration', 'specialNeeds', 'family'])
+            ->with(['municipality', 'registration.assemblyPoint', 'specialNeeds', 'family'])
             ->when($request->string('search')->isNotEmpty(), function ($query) use ($request) {
                 $term = '%'.$request->string('search').'%';
                 $query->where(function ($q) use ($term) {
@@ -379,7 +379,7 @@ class PersonController extends Controller
     {
         $this->authorize('view', $person);
 
-        $person->load(['municipality', 'family', 'registration', 'specialNeeds', 'animals', 'qrTokens', 'checkins.shelter']);
+        $person->load(['municipality', 'family', 'registration.assemblyPoint', 'specialNeeds', 'animals', 'qrTokens', 'checkins.shelter']);
 
         return new PersonResource($person);
     }
@@ -430,7 +430,7 @@ class PersonController extends Controller
 
         $auditService->log('update', $person, $request->user(), $before, $person->fresh()->toArray());
 
-        return new PersonResource($person->fresh(['municipality', 'registration']));
+        return new PersonResource($person->fresh(['municipality', 'registration.assemblyPoint']));
     }
 
     #[OA\Post(
@@ -480,7 +480,7 @@ class PersonController extends Controller
 
         $auditService->log('document_photo_upload', $person, $request->user(), $before, [$column => $path]);
 
-        return new PersonResource($person->fresh(['municipality', 'registration']));
+        return new PersonResource($person->fresh(['municipality', 'registration.assemblyPoint']));
     }
 
     #[OA\Delete(
@@ -516,7 +516,7 @@ class PersonController extends Controller
             $auditService->log('document_photo_delete', $person, $request->user(), $before, [$column => null]);
         }
 
-        return new PersonResource($person->fresh(['municipality', 'registration']));
+        return new PersonResource($person->fresh(['municipality', 'registration.assemblyPoint']));
     }
 
     #[OA\Get(
